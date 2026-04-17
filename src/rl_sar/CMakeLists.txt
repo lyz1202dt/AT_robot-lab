@@ -269,6 +269,36 @@ else()
     message(FATAL_ERROR "Unsupported architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
+# LCM dependency for Unitree A1:
+# Prefer vendored source in the repository for reproducible builds.
+if(SYSTEM_TYPE STREQUAL "Linux")
+    set(RL_SAR_LCM_TARGET "")
+    set(RL_SAR_VENDORED_LCM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/library/thirdparty/lcm")
+    if(EXISTS "${RL_SAR_VENDORED_LCM_DIR}/CMakeLists.txt")
+        message(STATUS "Using vendored LCM from ${RL_SAR_VENDORED_LCM_DIR}")
+        set(LCM_ENABLE_EXAMPLES OFF CACHE BOOL "Disable LCM examples" FORCE)
+        set(LCM_ENABLE_TESTS OFF CACHE BOOL "Disable LCM tests" FORCE)
+        set(LCM_ENABLE_PYTHON OFF CACHE BOOL "Disable LCM Python bindings" FORCE)
+        set(LCM_ENABLE_JAVA OFF CACHE BOOL "Disable LCM Java bindings" FORCE)
+        set(LCM_ENABLE_LUA OFF CACHE BOOL "Disable LCM Lua bindings" FORCE)
+        set(LCM_INSTALL_M4MACROS OFF CACHE BOOL "Disable LCM M4 install" FORCE)
+        set(LCM_INSTALL_PKGCONFIG OFF CACHE BOOL "Disable LCM pkg-config install" FORCE)
+        add_subdirectory(library/thirdparty/lcm EXCLUDE_FROM_ALL)
+        set(RL_SAR_LCM_TARGET lcm)
+    else()
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(LCM QUIET IMPORTED_TARGET lcm)
+        if(LCM_FOUND)
+            message(STATUS "Using system LCM from pkg-config")
+            set(RL_SAR_LCM_TARGET PkgConfig::LCM)
+        else()
+            message(FATAL_ERROR
+                "LCM not found. Run `git submodule update --init --recursive` to fetch "
+                "`library/thirdparty/lcm`, or install system package `liblcm-dev`.")
+        endif()
+    endif()
+endif()
+
 # unitree_legged_sdk
 if(SYSTEM_TYPE STREQUAL "Linux")
 add_library(unitree_legged_sdk SHARED IMPORTED)
@@ -276,7 +306,7 @@ set_target_properties(unitree_legged_sdk PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/library/thirdparty/robot_sdk/unitree/unitree_legged_sdk/include"
     IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/library/thirdparty/robot_sdk/unitree/unitree_legged_sdk/lib/${UNITREE_LIB}.so"
 )
-set(UNITREE_A1_LIBS Threads::Threads unitree_legged_sdk lcm)
+set(UNITREE_A1_LIBS Threads::Threads unitree_legged_sdk ${RL_SAR_LCM_TARGET})
 if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
     file(GLOB GLOB_UNITREE_LEGGED_SDK "${CMAKE_CURRENT_SOURCE_DIR}/library/thirdparty/robot_sdk/unitree/unitree_legged_sdk/lib/${UNITREE_LIB}.so")
     install(FILES

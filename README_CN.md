@@ -75,10 +75,17 @@ git submodule update --init --recursive --recommend-shallow --progress
 
 ```bash
 # Ubuntu
-sudo apt install cmake g++ build-essential libyaml-cpp-dev libeigen3-dev libboost-all-dev libspdlog-dev libfmt-dev libtbb-dev liblcm-dev
+sudo apt install cmake g++ build-essential libyaml-cpp-dev libeigen3-dev libboost-all-dev libspdlog-dev libfmt-dev libtbb-dev
 
 # macOS
-brew install boost lcm yaml-cpp tbb libomp pkg-config glfw
+brew install boost yaml-cpp tbb libomp pkg-config glfw
+```
+
+LCM 已通过 `src/rl_sar/library/thirdparty/lcm` 子模块内置，Unitree A1 会自动从源码编译 LCM，不再强制依赖系统安装。
+对于已克隆仓库，请执行：
+
+```bash
+git submodule update --init --recursive --recommend-shallow --progress
 ```
 
 如果需要使用ROS，安装下列依赖包：

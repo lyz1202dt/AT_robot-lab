@@ -75,10 +75,17 @@ Install the required packages:
 
 ```bash
 # Ubuntu
-sudo apt install cmake g++ build-essential libyaml-cpp-dev libeigen3-dev libboost-all-dev libspdlog-dev libfmt-dev libtbb-dev liblcm-dev
+sudo apt install cmake g++ build-essential libyaml-cpp-dev libeigen3-dev libboost-all-dev libspdlog-dev libfmt-dev libtbb-dev
 
 # macOS
-brew install boost lcm yaml-cpp tbb libomp pkg-config glfw
+brew install boost yaml-cpp tbb libomp pkg-config glfw
+```
+
+LCM is vendored in `src/rl_sar/library/thirdparty/lcm` (git submodule) and built from source automatically for Unitree A1.
+For existing clones, run:
+
+```bash
+git submodule update --init --recursive --recommend-shallow --progress
 ```
 
 If you need to use ROS, install the following dependency packages:
