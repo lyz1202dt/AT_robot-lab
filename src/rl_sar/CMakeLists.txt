@@ -46,6 +46,15 @@ add_definitions(-DCMAKE_CURRENT_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 add_definitions(-DPOLICY_DIR="${PROJECT_ROOT_DIR}/policy")
 add_definitions(-DBOOST_BIND_GLOBAL_PLACEHOLDERS)
 
+# Allow binaries in the build tree to locate sibling shared libraries without
+# requiring users to manually export LD_LIBRARY_PATH / DYLD_LIBRARY_PATH.
+set(RL_SAR_BUILD_RPATHS "")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    list(APPEND RL_SAR_BUILD_RPATHS "\$ORIGIN" "\$ORIGIN/../lib" "${CMAKE_BINARY_DIR}/lib")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    list(APPEND RL_SAR_BUILD_RPATHS "@loader_path" "@loader_path/../lib" "${CMAKE_BINARY_DIR}/lib")
+endif()
+
 if(NOT USE_CMAKE)
     if($ENV{ROS_DISTRO} MATCHES "noetic")
         find_package(catkin REQUIRED COMPONENTS
@@ -207,6 +216,7 @@ if(USE_TORCH OR USE_ONNX)
         list(APPEND PREBUILT_LIB_PATHS "${ONNX_RUNTIME_DIR}/lib")
     endif()
     # OpenMP path will be added later after it's found on macOS
+    list(APPEND PREBUILT_LIB_PATHS ${RL_SAR_BUILD_RPATHS})
     set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${PREBUILT_LIB_PATHS}")
 
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
