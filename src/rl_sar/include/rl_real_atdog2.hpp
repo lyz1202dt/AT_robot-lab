@@ -1,0 +1,51 @@
+/*
+ * Copyright (c) 2024-2025 Ziqi Fan
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#ifndef RL_REAL_ATDOG2_HPP
+#define RL_REAL_ATDOG2_HPP
+
+// #define CSV_LOGGER
+// #define USE_ROS
+
+#include "rl_sdk.hpp"
+#include "observation_buffer.hpp"
+#include "inference_runtime.hpp"
+#include "loop.hpp"
+#include "fsm_atdog2.hpp"
+
+#include <csignal>
+
+class RL_Real : public RL
+{
+public:
+    RL_Real(int argc, char **argv);
+    ~RL_Real();
+
+private:
+    // rl functions
+    std::vector<float> Forward() override;
+    void GetState(RobotState<float> *state) override;
+    void SetCommand(const RobotCommand<float> *command) override;
+    void RunModel();
+    void RobotControl();
+
+    // loop
+    std::shared_ptr<LoopFunc> loop_keyboard;
+    std::shared_ptr<LoopFunc> loop_control;
+    std::shared_ptr<LoopFunc> loop_rl;
+    std::shared_ptr<LoopFunc> loop_plot;
+
+    // plot
+    const int plot_size = 100;
+    std::vector<int> plot_t;
+    std::vector<std::vector<float>> plot_real_joint_pos, plot_target_joint_pos;
+    void Plot();
+    
+    // others
+    std::vector<float> mapped_joint_positions;
+    std::vector<float> mapped_joint_velocities;
+};
+
+#endif // RL_REAL_GO2_HPP
