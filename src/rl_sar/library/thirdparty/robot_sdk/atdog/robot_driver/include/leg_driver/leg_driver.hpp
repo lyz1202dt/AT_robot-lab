@@ -17,11 +17,13 @@ class LegDriver
 
 
 public:
-    LegDriver(uint16_t vid,uint16_t pid);
+    LegDriver(uint16_t vid=0x0483,uint16_t pid=0x5740);
     ~LegDriver();
     bool set_leg_target(const std::array<LegTarget_t,4> &legs_target);
     bool get_leg_state(std::array<LegState_t,4> &legs_state);
     bool enable_control(bool cmd);
+
+    bool get_imu_state(std::array<float,4> &q,std::array<float,4> &angular_vel,std::array<float,4> &acc);
 private:
     bool exit_thread{false};
     bool first_update{true};

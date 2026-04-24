@@ -332,6 +332,11 @@ set(BUILD_EXAMPLES OFF CACHE BOOL "Disable examples build for unitree_sdk2" FORC
 add_subdirectory(library/thirdparty/robot_sdk/unitree/unitree_sdk2)
 endif()
 
+# atdog robot driver
+if(SYSTEM_TYPE STREQUAL "Linux")
+add_subdirectory(library/thirdparty/robot_sdk/atdog/robot_driver)
+endif()
+
 # l4w4_sdk
 add_library(l4w4_sdk INTERFACE)
 target_include_directories(l4w4_sdk INTERFACE
@@ -580,6 +585,29 @@ if(SYSTEM_TYPE STREQUAL "Linux")
                 geometry_msgs
             )
             install(TARGETS rl_real_g1 DESTINATION lib/${PROJECT_NAME})
+        endif()
+    endif()
+endif()
+
+# executable for rl real atdog2
+if(SYSTEM_TYPE STREQUAL "Linux")
+    add_executable(rl_real_atdog2 src/rl_real_atdog2.cpp)
+    target_link_libraries(rl_real_atdog2
+        atdog::imu_driver
+        atdog::leg_driver
+        rl_sdk
+        observation_buffer
+        ${YAML_CPP_LIBRARIES}
+    )
+    if(NOT USE_CMAKE)
+        if($ENV{ROS_DISTRO} MATCHES "noetic")
+            target_link_libraries(rl_real_atdog2 ${catkin_LIBRARIES})
+        elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+            ament_target_dependencies(rl_real_atdog2
+                rclcpp
+                geometry_msgs
+            )
+            install(TARGETS rl_real_atdog2 DESTINATION lib/${PROJECT_NAME})
         endif()
     endif()
 endif()

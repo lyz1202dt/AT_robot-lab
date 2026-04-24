@@ -10,12 +10,17 @@
 // #define USE_ROS
 
 #include "rl_sdk.hpp"
+#include "loop.hpp"
 #include "observation_buffer.hpp"
 #include "inference_runtime.hpp"
-#include "loop.hpp"
 #include "fsm_atdog2.hpp"
+#include "leg_driver/leg_driver.hpp"
+#include "imu_driver/imu_driver.hpp"
 
 #include <csignal>
+#include <memory>
+
+
 
 class RL_Real : public RL
 {
@@ -35,13 +40,16 @@ private:
     std::shared_ptr<LoopFunc> loop_keyboard;
     std::shared_ptr<LoopFunc> loop_control;
     std::shared_ptr<LoopFunc> loop_rl;
-    std::shared_ptr<LoopFunc> loop_plot;
 
     // plot
     const int plot_size = 100;
     std::vector<int> plot_t;
     std::vector<std::vector<float>> plot_real_joint_pos, plot_target_joint_pos;
     void Plot();
+
+    //real_port
+    std::unique_ptr<IMUDriver> imu_driver;
+    std::unique_ptr<LegDriver> leg_driver;
     
     // others
     std::vector<float> mapped_joint_positions;

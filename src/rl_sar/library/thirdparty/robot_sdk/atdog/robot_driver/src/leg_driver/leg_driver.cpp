@@ -13,17 +13,53 @@
 LegDriver::LegDriver(uint16_t vid,uint16_t pid) {
     cdc_trans = std::make_unique<CDCTrans>();
     cdc_trans->regeiser_recv_cb([this](const uint8_t* data, int size) {
+        if (data == nullptr || size < static_cast<int>(sizeof(int))) {
+            return;
+        }
+
         std::lock_guard<std::mutex> lock(state_mutex_);
-        std::memcpy(&state_pack, data, size);
-        if (state_pack.type == 0 && size == static_cast<int>(sizeof(DogStatePack0_t))) {
-            
+
+        int pack_type = -1;
+        std::memcpy(&pack_type, data, sizeof(pack_type));
+
+        const bool is_pack0 = pack_type == 0 && size == static_cast<int>(sizeof(DogStatePack0_t));
+        const bool is_pack1 = pack_type == 1 && size == static_cast<int>(sizeof(DogStatePack1_t));
+        if (!is_pack0 && !is_pack1) {
             return;
         }
-        if (state_pack.type == 1 && size == static_cast<int>(sizeof(DogStatePack1_t))) {
-            
-            return;
+
+        if (is_pack0) {
+            std::memcpy(&state_pack.pack0, data, sizeof(DogStatePack0_t));
+        } else {
+            std::memcpy(&state_pack.pack1, data, sizeof(DogStatePack1_t));
         }
-        first_update=false;
+
+        const LegState_t* legs_state = is_pack0 ? state_pack.pack0.leg : state_pack.pack1.leg;
+        const bool need_reset_filter = first_update;
+
+        for (int i = 0; i < 4; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                position[i][j] = legs_state[i].joint[j].rad;
+                filtered_omega[i][j] = legs_state[i].joint[j].omega;
+
+                if (need_reset_filter) {
+                    torque_filters[i][j].reset(legs_state[i].joint[j].torque);
+                    filtered_torque[i][j] = legs_state[i].joint[j].torque;
+                } else {
+                    filtered_torque[i][j] = torque_filters[i][j].update(legs_state[i].joint[j].torque);
+                }
+            }
+
+            filtered_wheel_omega[i] = legs_state[i].wheel.omega;
+            if (need_reset_filter) {
+                wheel_torque_filters[i].reset(legs_state[i].wheel.torque);
+                filtered_wheel_torque[i] = legs_state[i].wheel.torque;
+            } else {
+                filtered_wheel_torque[i] = wheel_torque_filters[i].update(legs_state[i].wheel.torque);
+            }
+        }
+
+        first_update = false;
     });
 
     if (!cdc_trans->open(vid, pid)) {
@@ -39,6 +75,12 @@ LegDriver::LegDriver(uint16_t vid,uint16_t pid) {
             cdc_trans->process_once();
         }
     });
+}
+
+bool get_imu_state(std::array<float,4> &q,std::array<float,4> &angular_vel,std::array<float,4> &acc)
+{
+    //TOD:未完成
+    return true;
 }
 
 LegDriver::~LegDriver() {
@@ -67,9 +109,15 @@ bool LegDriver::set_leg_target(const std::array<LegTarget_t, 4>& legs_target) {
     else{   //安全阻尼模式
         for(int i=0;i<4;i++)
         {
-            for(j=0;j<3;j++)
-                target_pack.leg[i].joint[j]=joint_default_kd;
-            target_pack.leg[i].wheel=wheel_default_kd;
+            for(int j=0;j<3;j++) {
+                target_pack.leg[i].joint[j].rad = 0.0f;
+                target_pack.leg[i].joint[j].omega = 0.0f;
+                target_pack.leg[i].joint[j].torque = 0.0f;
+                target_pack.leg[i].joint[j].kp = 0.0f;
+                target_pack.leg[i].joint[j].kd = joint_default_kd;
+            }
+            target_pack.leg[i].wheel.omega = 0.0f;
+            target_pack.leg[i].wheel.torque = 0.0f;
         }
         
     }
@@ -79,9 +127,6 @@ bool LegDriver::set_leg_target(const std::array<LegTarget_t, 4>& legs_target) {
 bool LegDriver::get_leg_state(std::array<LegState_t, 4>& legs_state) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     if (first_update)
-        return false;
-
-    if(!enable_control_)
         return false;
 
     for (int i = 0; i < 4; ++i) {
