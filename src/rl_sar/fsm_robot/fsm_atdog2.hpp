@@ -51,6 +51,7 @@ class RLFSMStateGetUp : public RLFSMState
 public:
     RLFSMStateGetUp(RL *rl) : RLFSMState(*rl, "RLFSMStateGetUp") {}
 
+
     float percent_pre_getup = 0.0f;
     float percent_getup = 0.0f;
     std::vector<float> pre_running_pos = {
@@ -76,6 +77,7 @@ public:
         }
         rl.now_state = *fsm_state;
         rl.start_state = rl.now_state;
+        rl.EnableLegControl(true);
     }
 
     void Run() override

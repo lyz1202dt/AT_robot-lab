@@ -142,6 +142,8 @@ bool IMUDriver::get_imu_state(
     angular_velocity_out = angular_velocity_;
     acceleration_out = acceleration_;
     rotation_out = rotation_;
+
+    //std::cout<<"IMU:"<<rotation_out.x()<<","<<rotation_out.y()<<","<<rotation_out.z()<<","<<rotation_out.w()<<std::endl;
     return true;
 }
 
@@ -254,9 +256,9 @@ void IMUDriver::data_recv() {
             if (!first_packet_) {
                 const uint8_t expected_seq_num = static_cast<uint8_t>(last_seq_num_ + 1);
                 if (seq_num != expected_seq_num) {
-                    std::cerr << "[IMUDriver] Packet sequence jump: expected "
-                              << static_cast<int>(expected_seq_num) << ", got "
-                              << static_cast<int>(seq_num) << std::endl;
+                    // std::cerr << "[IMUDriver] Packet sequence jump: expected "
+                    //           << static_cast<int>(expected_seq_num) << ", got "
+                    //           << static_cast<int>(seq_num) << std::endl;
                 }
             } else {
                 first_packet_ = false;

@@ -28,6 +28,7 @@ private:
     bool exit_thread{false};
     bool first_update{true};
     bool enable_control_{false};
+    bool motor_has_error{false};
 
 
     std::unique_ptr<CDCTrans> cdc_trans;    //CDC传输类
@@ -35,8 +36,7 @@ private:
 
     union {
         int type;
-        DogStatePack0_t pack0;
-        DogStatePack1_t pack1;
+        DogStatePack3_t pack3;
     }state_pack;
     
     
@@ -54,8 +54,8 @@ private:
 
     mutable std::mutex state_mutex_;
 
-    float joint_default_kd{0.1};
-    float wheel_default_kd{0.1};
+    float joint_default_kd{8.0};
+    float wheel_default_kd{8.0};
 };
 
 #endif

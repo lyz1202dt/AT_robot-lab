@@ -4,6 +4,7 @@
  */
 
 #include "rl_real_atdog2.hpp"
+#include "fsm_atdog2.hpp"
 #include "imu_driver/imu_driver.hpp"
 
 #include <array>
@@ -38,6 +39,13 @@ RL_Real::~RL_Real() {
     this->loop_control->shutdown();
     this->loop_rl->shutdown();
     std::cout << LOGGER::INFO << "RL_Real exit" << std::endl;
+}
+
+bool RL_Real::EnableLegControl(bool enable) {
+    if (this->leg_driver == nullptr) {
+        return false;
+    }
+    return this->leg_driver->enable_control(enable);
 }
 
 void RL_Real::GetState(RobotState<float>* state) {
@@ -153,6 +161,8 @@ void RL_Real::SetCommand(const RobotCommand<float>* command) {
             legs_target[leg_index].joint[joint_index].kd = command->motor_command.kd[dof];
         }
     }
+
+    std::cout<<"kd:"<<command->motor_command.q<<std::endl;
 
     this->leg_driver->set_leg_target(legs_target);
 }

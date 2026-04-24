@@ -13,7 +13,6 @@
 #include "loop.hpp"
 #include "observation_buffer.hpp"
 #include "inference_runtime.hpp"
-#include "fsm_atdog2.hpp"
 #include "leg_driver/leg_driver.hpp"
 #include "imu_driver/imu_driver.hpp"
 
@@ -27,6 +26,7 @@ class RL_Real : public RL
 public:
     RL_Real(int argc, char **argv);
     ~RL_Real();
+    bool EnableLegControl(bool enable) override;
 
 private:
     // rl functions

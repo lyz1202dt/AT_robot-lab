@@ -21,20 +21,15 @@ LegDriver::LegDriver(uint16_t vid,uint16_t pid) {
 
         int pack_type = -1;
         std::memcpy(&pack_type, data, sizeof(pack_type));
+        
+        const bool is_pack3 = pack_type == 3 && size == static_cast<int>(sizeof(DogStatePack3_t));
 
-        const bool is_pack0 = pack_type == 0 && size == static_cast<int>(sizeof(DogStatePack0_t));
-        const bool is_pack1 = pack_type == 1 && size == static_cast<int>(sizeof(DogStatePack1_t));
-        if (!is_pack0 && !is_pack1) {
-            return;
-        }
+        if (!is_pack3)
+            return ;
 
-        if (is_pack0) {
-            std::memcpy(&state_pack.pack0, data, sizeof(DogStatePack0_t));
-        } else {
-            std::memcpy(&state_pack.pack1, data, sizeof(DogStatePack1_t));
-        }
+        std::memcpy(&state_pack.pack3, data, sizeof(DogStatePack3_t));
 
-        const LegState_t* legs_state = is_pack0 ? state_pack.pack0.leg : state_pack.pack1.leg;
+        const LegState_t* legs_state =  state_pack.pack3.leg;
         const bool need_reset_filter = first_update;
 
         for (int i = 0; i < 4; ++i) {
@@ -58,6 +53,14 @@ LegDriver::LegDriver(uint16_t vid,uint16_t pid) {
                 filtered_wheel_torque[i] = wheel_torque_filters[i].update(legs_state[i].wheel.torque);
             }
         }
+
+        if(state_pack.pack3.motor_state)
+        {
+            motor_has_error=true;
+            std::cout<<"电机异常:"<<state_pack.pack3.motor_state<<std::endl;
+        }
+            
+        motor_has_error=false;
 
         first_update = false;
     });
@@ -101,10 +104,11 @@ bool LegDriver::set_leg_target(const std::array<LegTarget_t, 4>& legs_target) {
     }
 
     DogTargetPack_t target_pack;
-    target_pack.pack_type = 0;
+    target_pack.pack_type = 4;
 
     if (enable_control_) {  //正常模式
-        std::copy(legs_target.begin(), legs_target.end(), std::begin(target_pack.leg));
+        for(int i=0;i<4;i++)
+            target_pack.leg[i]=legs_target[i];
     }
     else{   //安全阻尼模式
         for(int i=0;i<4;i++)
@@ -126,7 +130,10 @@ bool LegDriver::set_leg_target(const std::array<LegTarget_t, 4>& legs_target) {
 
 bool LegDriver::get_leg_state(std::array<LegState_t, 4>& legs_state) {
     std::lock_guard<std::mutex> lock(state_mutex_);
-    if (first_update)
+    if (first_update)   //完成首次更新后再去给电机提供数值
+        return false;
+
+    if(!motor_has_error)
         return false;
 
     for (int i = 0; i < 4; ++i) {
@@ -138,7 +145,6 @@ bool LegDriver::get_leg_state(std::array<LegState_t, 4>& legs_state) {
         legs_state[i].wheel.omega = filtered_wheel_omega[i];
         legs_state[i].wheel.torque = filtered_wheel_torque[i];
     }
-
     return true;
 }
 

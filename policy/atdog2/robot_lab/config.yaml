@@ -54,4 +54,5 @@ atdog2/robot_lab:
   # Map policy DOF order -> hardware DOF index.
   # Policy DOF order: FR, FL, RR, RL (3 joints per leg).
   # Hardware leg order: LF=0, RF=1, LH=2, RH=3.
-  joint_mapping: [3, 4, 5, 0, 1, 2, 9, 10, 11, 6, 7, 8]
+  #joint_mapping: [3, 4, 5, 0, 1, 2, 9, 10, 11, 6, 7, 8]
+  joint_mapping: [0,1,2,3,4,5,6,7,8,9,10,11]
