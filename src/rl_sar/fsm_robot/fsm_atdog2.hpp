@@ -77,7 +77,7 @@ public:
         }
         rl.now_state = *fsm_state;
         rl.start_state = rl.now_state;
-        rl.EnableLegControl(true);
+        std::cout<<"当前关节角:"<<rl.now_state.motor_state.q<<std::endl;
     }
 
     void Run() override

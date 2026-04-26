@@ -215,11 +215,6 @@ public:
     std::vector<float> ComputeObservation();
     virtual void GetState(RobotState<float> *state) = 0;
     virtual void SetCommand(const RobotCommand<float> *command) = 0;
-    virtual bool EnableLegControl(bool enable)
-    {
-        (void)enable;
-        return false;
-    }
     void StateController(const RobotState<float> *state, RobotCommand<float> *command);
     void ComputeOutput(const std::vector<float> &actions, std::vector<float> &output_dof_pos, std::vector<float> &output_dof_vel, std::vector<float> &output_dof_tau);
 

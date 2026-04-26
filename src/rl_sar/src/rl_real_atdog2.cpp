@@ -32,6 +32,8 @@ RL_Real::RL_Real(int argc, char** argv) {
     this->loop_keyboard->start();
     this->loop_control->start();
     this->loop_rl->start();
+
+    leg_driver->enable_control(true);
 }
 
 RL_Real::~RL_Real() {
@@ -39,13 +41,6 @@ RL_Real::~RL_Real() {
     this->loop_control->shutdown();
     this->loop_rl->shutdown();
     std::cout << LOGGER::INFO << "RL_Real exit" << std::endl;
-}
-
-bool RL_Real::EnableLegControl(bool enable) {
-    if (this->leg_driver == nullptr) {
-        return false;
-    }
-    return this->leg_driver->enable_control(enable);
 }
 
 void RL_Real::GetState(RobotState<float>* state) {
@@ -72,9 +67,11 @@ void RL_Real::GetState(RobotState<float>* state) {
             state->imu.gyroscope[1] = static_cast<float>(angular_velocity.y());
             state->imu.gyroscope[2] = static_cast<float>(angular_velocity.z());
 
-            state->imu.accelerometer[0] = static_cast<float>(acceleration.x());
-            state->imu.accelerometer[1] = static_cast<float>(acceleration.y());
-            state->imu.accelerometer[2] = static_cast<float>(acceleration.z());
+            // state->imu.accelerometer[0] = static_cast<float>(acceleration.x());
+            // state->imu.accelerometer[1] = static_cast<float>(acceleration.y());
+            // state->imu.accelerometer[2] = static_cast<float>(acceleration.z());
+
+            //std::cout<<"q:"<<rotation<<"\nangular_vel:"<<angular_velocity<<"\nacc:"<<acceleration<<std::endl;
         }
     }
 
@@ -100,6 +97,8 @@ void RL_Real::GetState(RobotState<float>* state) {
         state->motor_state.dq[i]      = legs_state[leg_index].joint[joint_index].omega;
         state->motor_state.tau_est[i] = legs_state[leg_index].joint[joint_index].torque;
     }
+
+    //std::cout<<"cur_pos:"<<state->motor_state.q<<std::endl;
 }
 
 void RL_Real::RobotControl() {
@@ -162,9 +161,16 @@ void RL_Real::SetCommand(const RobotCommand<float>* command) {
         }
     }
 
-    std::cout<<"kd:"<<command->motor_command.q<<std::endl;
+    std::array<LegState_t, 4> legs_state;
+    uint32_t time;
+    leg_driver->get_leg_state(legs_state,time);
 
-    this->leg_driver->set_leg_target(legs_target);
+    auto now = std::chrono::steady_clock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+
+    this->leg_driver->set_leg_target(legs_target,(uint32_t)ms);
+
+    std::cout<<"dt(ms)="<<ms-time<<std::endl;
 }
 
 void RL_Real::RunModel() {

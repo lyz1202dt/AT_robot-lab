@@ -26,7 +26,6 @@ class RL_Real : public RL
 public:
     RL_Real(int argc, char **argv);
     ~RL_Real();
-    bool EnableLegControl(bool enable) override;
 
 private:
     // rl functions

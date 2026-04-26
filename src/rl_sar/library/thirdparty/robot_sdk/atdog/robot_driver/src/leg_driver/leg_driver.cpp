@@ -54,15 +54,18 @@ LegDriver::LegDriver(uint16_t vid,uint16_t pid) {
             }
         }
 
+        motor_has_error=false;
+
         if(state_pack.pack3.motor_state)
         {
             motor_has_error=true;
             std::cout<<"电机异常:"<<state_pack.pack3.motor_state<<std::endl;
         }
-            
-        motor_has_error=false;
-
         first_update = false;
+
+        this->last_time=state_pack.pack3.time;  //记录时间戳
+
+        //std::cout<<"joint1_pos="<<position[0][0]<<std::endl;
     });
 
     if (!cdc_trans->open(vid, pid)) {
@@ -98,7 +101,13 @@ LegDriver::~LegDriver() {
     }
 }
 
-bool LegDriver::set_leg_target(const std::array<LegTarget_t, 4>& legs_target) {
+bool LegDriver::get_leg_state(std::array<LegState_t,4> &legs_state,uint32_t &last_time)
+{
+    get_leg_state(legs_state);
+    last_time=this->last_time;
+}
+
+bool LegDriver::set_leg_target(const std::array<LegTarget_t, 4>& legs_target,uint32_t time) {
     if (!cdc_trans) {
         return false;
     }
@@ -109,6 +118,7 @@ bool LegDriver::set_leg_target(const std::array<LegTarget_t, 4>& legs_target) {
     if (enable_control_) {  //正常模式
         for(int i=0;i<4;i++)
             target_pack.leg[i]=legs_target[i];
+        target_pack.time=time;
     }
     else{   //安全阻尼模式
         for(int i=0;i<4;i++)
@@ -133,7 +143,7 @@ bool LegDriver::get_leg_state(std::array<LegState_t, 4>& legs_state) {
     if (first_update)   //完成首次更新后再去给电机提供数值
         return false;
 
-    if(!motor_has_error)
+    if(motor_has_error)
         return false;
 
     for (int i = 0; i < 4; ++i) {

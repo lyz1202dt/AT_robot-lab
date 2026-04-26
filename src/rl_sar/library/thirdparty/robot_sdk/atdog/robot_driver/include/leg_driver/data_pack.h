@@ -75,11 +75,13 @@ typedef struct {
     int pack_type;
     LegState_t leg[4];
     uint16_t motor_state;
+    uint32_t time;
 } DogStatePack3_t;
 
 typedef struct {
     int pack_type;
     LegTarget_t leg[4];
+    uint32_t time;
 } DogTargetPack_t;
 
 

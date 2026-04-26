@@ -19,7 +19,8 @@ class LegDriver
 public:
     LegDriver(uint16_t vid=0x0483,uint16_t pid=0x5740);
     ~LegDriver();
-    bool set_leg_target(const std::array<LegTarget_t,4> &legs_target);
+    bool set_leg_target(const std::array<LegTarget_t,4> &legs_target,uint32_t time=0);
+    bool get_leg_state(std::array<LegState_t,4> &legs_state,uint32_t &last_time);
     bool get_leg_state(std::array<LegState_t,4> &legs_state);
     bool enable_control(bool cmd);
 
@@ -56,6 +57,8 @@ private:
 
     float joint_default_kd{8.0};
     float wheel_default_kd{8.0};
+
+    uint32_t last_time{0};
 };
 
 #endif

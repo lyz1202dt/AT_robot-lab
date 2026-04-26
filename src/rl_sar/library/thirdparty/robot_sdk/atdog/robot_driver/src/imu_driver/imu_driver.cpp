@@ -334,7 +334,7 @@ int IMUDriver::pack_parsing() {
         std::memcpy(&gyro_z, payload + 8, sizeof(float));
 
         std::lock_guard<std::mutex> lock(state_mutex_);
-        angular_velocity_ = Eigen::Vector3d(-gyro_x, gyro_y, -gyro_z);
+        angular_velocity_ = Eigen::Vector3d(gyro_x, gyro_y, gyro_z);
         return 0;
     }
 
