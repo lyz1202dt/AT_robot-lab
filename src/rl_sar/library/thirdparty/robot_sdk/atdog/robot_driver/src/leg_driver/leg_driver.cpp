@@ -10,7 +10,7 @@
 // constexpr uint16_t kLegDriverProductId = 0x5740;
 
 
-LegDriver::LegDriver(uint16_t vid,uint16_t pid) {
+LegDriver::LegDriver(uint16_t vid, uint16_t pid) {
     cdc_trans = std::make_unique<CDCTrans>();
     cdc_trans->regeiser_recv_cb([this](const uint8_t* data, int size) {
         if (data == nullptr || size < static_cast<int>(sizeof(int))) {
@@ -21,20 +21,35 @@ LegDriver::LegDriver(uint16_t vid,uint16_t pid) {
 
         int pack_type = -1;
         std::memcpy(&pack_type, data, sizeof(pack_type));
-        
+
         const bool is_pack3 = pack_type == 3 && size == static_cast<int>(sizeof(DogStatePack3_t));
+        const bool is_pack0 = pack_type == 0 && size == static_cast<int>(sizeof(DogStatePack0_t));
 
-        if (!is_pack3)
-            return ;
+        if ((!is_pack3) && (!is_pack0))
+            return;
 
-        std::memcpy(&state_pack.pack3, data, sizeof(DogStatePack3_t));
+        LegState_t* legs_state;
 
-        const LegState_t* legs_state =  state_pack.pack3.leg;
+        if (is_pack3) {
+            legs_state = state_pack.pack3.leg;
+            std::memcpy(&state_pack.pack3, data, size);
+            this->last_time = state_pack.pack3.time;
+        }
+        else if (is_pack0) {
+            legs_state = state_pack.pack0.leg;
+            std::memcpy(&state_pack.pack0, data, size);
+            // TODO:复制IMU信息
+            imu         = state_pack.pack0.imu;
+            imu_updated = true;
+
+            this->last_time = state_pack.pack0.time;
+        }
+
         const bool need_reset_filter = first_update;
 
         for (int i = 0; i < 4; ++i) {
             for (int j = 0; j < 3; ++j) {
-                position[i][j] = legs_state[i].joint[j].rad;
+                position[i][j]       = legs_state[i].joint[j].rad;
                 filtered_omega[i][j] = legs_state[i].joint[j].omega;
 
                 if (need_reset_filter) {
@@ -54,25 +69,28 @@ LegDriver::LegDriver(uint16_t vid,uint16_t pid) {
             }
         }
 
-        motor_has_error=false;
+        motor_has_error = false;
 
-        if(state_pack.pack3.motor_state)
-        {
-            motor_has_error=true;
-            std::cout<<"电机异常:"<<state_pack.pack3.motor_state<<std::endl;
+        if (is_pack3&&state_pack.pack3.motor_state) {
+            motor_has_error = true;
+            std::cout << "电机异常:" << state_pack.pack3.motor_state << std::endl;
         }
+        else if(is_pack0&&state_pack.pack0.motor_state)
+        {
+            motor_has_error = true;
+            std::cout << "电机异常:" << state_pack.pack0.motor_state << std::endl;
+        }
+
+
+
         first_update = false;
 
-        this->last_time=state_pack.pack3.time;  //记录时间戳
-
-        //std::cout<<"joint1_pos="<<position[0][0]<<std::endl;
+        // std::cout<<"joint1_pos="<<position[0][0]<<std::endl;
     });
 
     if (!cdc_trans->open(vid, pid)) {
         exit_thread = true;
-        std::cerr << "[LegDriver] Failed to open USB CDC device "
-                  << std::hex << vid << ":" << pid
-                  << std::dec << std::endl;
+        std::cerr << "[LegDriver] Failed to open USB CDC device " << std::hex << vid << ":" << pid << std::dec << std::endl;
         return;
     }
 
@@ -83,9 +101,17 @@ LegDriver::LegDriver(uint16_t vid,uint16_t pid) {
     });
 }
 
-bool get_imu_state(std::array<float,4> &q,std::array<float,4> &angular_vel,std::array<float,4> &acc)
-{
-    //TOD:未完成
+bool LegDriver::get_imu_state(std::array<float,4> &q,std::array<float,3> &w) {
+    if (!imu_updated)
+        return false;
+    q[0]=imu.w;
+    q[1]=imu.x;
+    q[2]=imu.y;
+    q[3]=imu.z;
+
+    w[0]=imu.wx;
+    w[1]=imu.wy;
+    w[2]=imu.wz;
     return true;
 }
 
@@ -101,13 +127,12 @@ LegDriver::~LegDriver() {
     }
 }
 
-bool LegDriver::get_leg_state(std::array<LegState_t,4> &legs_state,uint32_t &last_time)
-{
+bool LegDriver::get_leg_state(std::array<LegState_t, 4>& legs_state, uint32_t& last_time) {
     get_leg_state(legs_state);
-    last_time=this->last_time;
+    last_time = this->last_time;
 }
 
-bool LegDriver::set_leg_target(const std::array<LegTarget_t, 4>& legs_target,uint32_t time) {
+bool LegDriver::set_leg_target(const std::array<LegTarget_t, 4>& legs_target, uint32_t time) {
     if (!cdc_trans) {
         return false;
     }
@@ -115,44 +140,41 @@ bool LegDriver::set_leg_target(const std::array<LegTarget_t, 4>& legs_target,uin
     DogTargetPack_t target_pack;
     target_pack.pack_type = 4;
 
-    if (enable_control_) {  //正常模式
-        for(int i=0;i<4;i++)
-            target_pack.leg[i]=legs_target[i];
-        target_pack.time=time;
-    }
-    else{   //安全阻尼模式
-        for(int i=0;i<4;i++)
-        {
-            for(int j=0;j<3;j++) {
-                target_pack.leg[i].joint[j].rad = 0.0f;
-                target_pack.leg[i].joint[j].omega = 0.0f;
+    if (enable_control_) { // 正常模式
+        for (int i = 0; i < 4; i++)
+            target_pack.leg[i] = legs_target[i];
+        target_pack.time = time;
+    } else {               // 安全阻尼模式
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 3; j++) {
+                target_pack.leg[i].joint[j].rad    = 0.0f;
+                target_pack.leg[i].joint[j].omega  = 0.0f;
                 target_pack.leg[i].joint[j].torque = 0.0f;
-                target_pack.leg[i].joint[j].kp = 0.0f;
-                target_pack.leg[i].joint[j].kd = joint_default_kd;
+                target_pack.leg[i].joint[j].kp     = 0.0f;
+                target_pack.leg[i].joint[j].kd     = joint_default_kd;
             }
-            target_pack.leg[i].wheel.omega = 0.0f;
+            target_pack.leg[i].wheel.omega  = 0.0f;
             target_pack.leg[i].wheel.torque = 0.0f;
         }
-        
     }
     return cdc_trans->send_struct(target_pack);
 }
 
 bool LegDriver::get_leg_state(std::array<LegState_t, 4>& legs_state) {
     std::lock_guard<std::mutex> lock(state_mutex_);
-    if (first_update)   //完成首次更新后再去给电机提供数值
+    if (first_update)      // 完成首次更新后再去给电机提供数值
         return false;
 
-    if(motor_has_error)
+    if (motor_has_error)
         return false;
 
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 3; ++j) {
-            legs_state[i].joint[j].rad = position[i][j];
-            legs_state[i].joint[j].omega = filtered_omega[i][j];
+            legs_state[i].joint[j].rad    = position[i][j];
+            legs_state[i].joint[j].omega  = filtered_omega[i][j];
             legs_state[i].joint[j].torque = filtered_torque[i][j];
         }
-        legs_state[i].wheel.omega = filtered_wheel_omega[i];
+        legs_state[i].wheel.omega  = filtered_wheel_omega[i];
         legs_state[i].wheel.torque = filtered_wheel_torque[i];
     }
     return true;
@@ -160,6 +182,6 @@ bool LegDriver::get_leg_state(std::array<LegState_t, 4>& legs_state) {
 
 bool LegDriver::enable_control(bool cmd) {
     enable_control_ = cmd;
-    first_update=true;
+    first_update    = true;
     return enable_control_;
 }

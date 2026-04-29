@@ -37,6 +37,17 @@ typedef struct {
     }angle;
 } JY61_Typedef;
 
+typedef struct{
+    float x;
+    float y;
+    float z;
+    float w;
+
+    float wx;
+    float wy;
+    float wz;
+}IMU_t;
+
 typedef struct {
     float rad;
     float omega;
@@ -64,9 +75,9 @@ typedef struct {
 typedef struct {
     int pack_type;
     LegState_t leg[4];
-    JY61_Typedef JY61;
-    Remotepack_t remote;
+    IMU_t imu;
     uint16_t motor_state;
+    uint32_t time;
 } DogStatePack0_t;
 
 

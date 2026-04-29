@@ -24,7 +24,7 @@ public:
     bool get_leg_state(std::array<LegState_t,4> &legs_state);
     bool enable_control(bool cmd);
 
-    bool get_imu_state(std::array<float,4> &q,std::array<float,4> &angular_vel,std::array<float,4> &acc);
+    bool get_imu_state(std::array<float,4> &q,std::array<float,3> &w);
 private:
     bool exit_thread{false};
     bool first_update{true};
@@ -37,6 +37,7 @@ private:
 
     union {
         int type;
+        DogStatePack0_t pack0;
         DogStatePack3_t pack3;
     }state_pack;
     
@@ -44,6 +45,10 @@ private:
     // 卡尔曼滤波器：为每个电机的力矩提供滤波
     KalmanFilter torque_filters[4][3];
     KalmanFilter wheel_torque_filters[4];
+
+    //IMU数据
+    IMU_t imu;
+    bool imu_updated{false};
 
     //电机数据缓存
     float filtered_torque[4][3];

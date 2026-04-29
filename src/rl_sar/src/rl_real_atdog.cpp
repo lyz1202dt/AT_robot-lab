@@ -21,7 +21,6 @@ RL_Real::RL_Real(int argc, char** argv) {
     this->InitJointNum(this->params.Get<int>("num_of_dofs"));
     // Shut down motion control-related service
 
-    imu_driver = std::make_unique<IMUDriver>();
     leg_driver = std::make_unique<LegDriver>();
 
     // 键盘控制、底层控制、策略推理循环
@@ -53,30 +52,48 @@ void RL_Real::GetState(RobotState<float>* state) {
         state->motor_state.resize(static_cast<size_t>(dof_count));
     }
 
-    if (this->imu_driver) {
-        Eigen::Vector3d angular_velocity;
-        Eigen::Vector3d acceleration;
-        Eigen::Quaterniond rotation;
-        if (this->imu_driver->get_imu_state(angular_velocity, acceleration, rotation)) {
-            state->imu.quaternion[0] = static_cast<float>(rotation.w());
-            state->imu.quaternion[1] = static_cast<float>(rotation.x());
-            state->imu.quaternion[2] = static_cast<float>(rotation.y());
-            state->imu.quaternion[3] = static_cast<float>(rotation.z());
+    // if (this->imu_driver) {
+    //     Eigen::Vector3d angular_velocity;
+    //     Eigen::Vector3d acceleration;
+    //     Eigen::Quaterniond rotation;
+    //     if (this->imu_driver->get_imu_state(angular_velocity, acceleration, rotation)) {
+    //         state->imu.quaternion[0] = static_cast<float>(rotation.w());
+    //         state->imu.quaternion[1] = static_cast<float>(rotation.x());
+    //         state->imu.quaternion[2] = static_cast<float>(rotation.y());
+    //         state->imu.quaternion[3] = static_cast<float>(rotation.z());
 
-            state->imu.gyroscope[0] = static_cast<float>(angular_velocity.x());
-            state->imu.gyroscope[1] = static_cast<float>(angular_velocity.y());
-            state->imu.gyroscope[2] = static_cast<float>(angular_velocity.z());
+    //         state->imu.gyroscope[0] = static_cast<float>(angular_velocity.x());
+    //         state->imu.gyroscope[1] = static_cast<float>(angular_velocity.y());
+    //         state->imu.gyroscope[2] = static_cast<float>(angular_velocity.z());
 
-            // state->imu.accelerometer[0] = static_cast<float>(acceleration.x());
-            // state->imu.accelerometer[1] = static_cast<float>(acceleration.y());
-            // state->imu.accelerometer[2] = static_cast<float>(acceleration.z());
+    //         // state->imu.accelerometer[0] = static_cast<float>(acceleration.x());
+    //         // state->imu.accelerometer[1] = static_cast<float>(acceleration.y());
+    //         // state->imu.accelerometer[2] = static_cast<float>(acceleration.z());
 
-            //std::cout<<"q:"<<rotation<<"\nangular_vel:"<<angular_velocity<<"\nacc:"<<acceleration<<std::endl;
-        }
-    }
+    //         //std::cout<<"q:"<<rotation<<"\nangular_vel:"<<angular_velocity<<"\nacc:"<<acceleration<<std::endl;
+    //     }
+    // }
+    std::array<float, 4> q;
+    std::array<float, 3> w;
+    auto ret = leg_driver->get_imu_state(q, w);
+    if (ret == true) {
+        state->imu.quaternion[0] = static_cast<float>(q[0]);
+        state->imu.quaternion[1] = static_cast<float>(q[1]);
+        state->imu.quaternion[2] = static_cast<float>(q[2]);
+        state->imu.quaternion[3] = static_cast<float>(q[3]);
 
-    if (this->leg_driver == nullptr || dof_count <= 0) {
-        return;
+        state->imu.gyroscope[0] = static_cast<float>(w[0]);
+        state->imu.gyroscope[1] = static_cast<float>(w[1]);
+        state->imu.gyroscope[2] = static_cast<float>(w[2]);
+    } else {
+        state->imu.quaternion[0] = 1.0;
+        state->imu.quaternion[1] = 0.0;
+        state->imu.quaternion[2] = 0.0;
+        state->imu.quaternion[3] = 0.0;
+
+        state->imu.gyroscope[0] = 0.0;
+        state->imu.gyroscope[1] = 0.0;
+        state->imu.gyroscope[2] = 0.0;
     }
 
     std::array<LegState_t, 4> legs_state{};
@@ -98,7 +115,7 @@ void RL_Real::GetState(RobotState<float>* state) {
         state->motor_state.tau_est[i] = legs_state[leg_index].joint[joint_index].torque;
     }
 
-    //std::cout<<"cur_pos:"<<state->motor_state.q<<std::endl;
+    // std::cout<<"cur_pos:"<<state->motor_state.q<<std::endl;
 }
 
 void RL_Real::RobotControl() {
@@ -133,19 +150,26 @@ void RL_Real::SetCommand(const RobotCommand<float>* command) {
         legs_target[leg].wheel.torque = 0.0f;
     }
 
-    const int dof_count = this->params.Get<int>("num_of_dofs");
+    const int dof_count      = this->params.Get<int>("num_of_dofs");
     const auto joint_mapping = this->params.Get<std::vector<int>>("joint_mapping");
 
     for (int dof = 0; dof < dof_count; ++dof) {
-        const int hw_index = (dof < static_cast<int>(joint_mapping.size())) ? joint_mapping[dof] : dof;
-        const int leg_index = hw_index / 3;
-        const int joint_index = hw_index % 3;
-        if (leg_index < 0 || leg_index >= 4 || joint_index < 0 || joint_index >= 3) {
+        const int hw_index    = (dof < static_cast<int>(joint_mapping.size())) ? joint_mapping[dof] : dof;
+        const int leg_index   = hw_index / 4;
+        const int joint_index = hw_index % 4;
+        if (leg_index < 0 || leg_index >= 4 || joint_index < 0 || joint_index >= 4) {
+            continue;
+        }
+
+        if (joint_index == 4) { // 如果该关节是轮子，那么赋值到轮子
+            legs_target[leg_index].wheel.omega  = command->motor_command.dq[dof];
+            legs_target[leg_index].wheel.torque = command->motor_command.tau[dof];
+            // legs_target[leg_index].wheel.kd = command->motor_command.kd[dof];
             continue;
         }
 
         if (dof < static_cast<int>(command->motor_command.q.size())) {
-            legs_target[leg_index].joint[joint_index].rad = command->motor_command.q[dof];      //这些参数在下位机转到电机输出轴
+            legs_target[leg_index].joint[joint_index].rad = command->motor_command.q[dof]; // 这些参数在下位机转到电机输出轴
         }
         if (dof < static_cast<int>(command->motor_command.dq.size())) {
             legs_target[leg_index].joint[joint_index].omega = command->motor_command.dq[dof];
@@ -163,14 +187,14 @@ void RL_Real::SetCommand(const RobotCommand<float>* command) {
 
     std::array<LegState_t, 4> legs_state;
     uint32_t time;
-    leg_driver->get_leg_state(legs_state,time);
+    leg_driver->get_leg_state(legs_state, time);
 
     auto now = std::chrono::steady_clock::now();
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    auto ms  = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
-    this->leg_driver->set_leg_target(legs_target,(uint32_t)ms);
+    this->leg_driver->set_leg_target(legs_target, (uint32_t)ms);
 
-    std::cout<<"dt(ms)="<<ms-time<<std::endl;
+    std::cout << "dt(ms)=" << ms - time << std::endl;
 }
 
 void RL_Real::RunModel() {
