@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ATDOG2_FSM_HPP
-#define ATDOG2_FSM_HPP
+#ifndef ATDOG_FSM_HPP
+#define ATDOG_FSM_HPP
 
 #include "fsm.hpp"
 #include "rl_sdk.hpp"
 
-namespace atdog2_fsm
+namespace atdog_fsm
 {
 
 class RLFSMStatePassive : public RLFSMState
@@ -217,26 +217,26 @@ public:
     }
 };
 
-} // namespace atdog2_fsm
+} // namespace atdog_fsm
 
-class ATDog2FSMFactory : public FSMFactory
+class ATDogFSMFactory : public FSMFactory
 {
 public:
-    ATDog2FSMFactory(const std::string& initial) : initial_state_(initial) {}
+    ATDogFSMFactory(const std::string& initial) : initial_state_(initial) {}
     std::shared_ptr<FSMState> CreateState(void *context, const std::string &state_name) override
     {
         RL *rl = static_cast<RL *>(context);
         if (state_name == "RLFSMStatePassive")
-            return std::make_shared<atdog2_fsm::RLFSMStatePassive>(rl);
+            return std::make_shared<atdog_fsm::RLFSMStatePassive>(rl);
         else if (state_name == "RLFSMStateGetUp")
-            return std::make_shared<atdog2_fsm::RLFSMStateGetUp>(rl);
+            return std::make_shared<atdog_fsm::RLFSMStateGetUp>(rl);
         else if (state_name == "RLFSMStateGetDown")
-            return std::make_shared<atdog2_fsm::RLFSMStateGetDown>(rl);
+            return std::make_shared<atdog_fsm::RLFSMStateGetDown>(rl);
         else if (state_name == "RLFSMStateRLLocomotion")
-            return std::make_shared<atdog2_fsm::RLFSMStateRLLocomotion>(rl);
+            return std::make_shared<atdog_fsm::RLFSMStateRLLocomotion>(rl);
         return nullptr;
     }
-    std::string GetType() const override { return "atdog2"; }
+    std::string GetType() const override { return "atdog"; }
     std::vector<std::string> GetSupportedStates() const override
     {
         return {
@@ -251,6 +251,6 @@ private:
     std::string initial_state_;
 };
 
-REGISTER_FSM_FACTORY(ATDog2FSMFactory, "RLFSMStatePassive")
+REGISTER_FSM_FACTORY(ATDogFSMFactory, "RLFSMStatePassive")
 
-#endif // ATDOG2_FSM_HPP
+#endif

@@ -171,7 +171,7 @@ void RL_Sim::GetState(RobotState<float> *state)
             state->motor_state.tau_est[i] = mj_data->sensordata[this->params.Get<std::vector<int>>("joint_mapping")[i] + 2 * this->params.Get<int>("num_of_dofs")];
         }
 
-        std::cout<<"q:"<<state->imu.quaternion<<"\nangular_vel:"<<state->imu.gyroscope<<std::endl;
+        //std::cout<<"q:"<<state->imu.quaternion<<"\nangular_vel:"<<state->imu.gyroscope<<std::endl;
     }
 }
 
