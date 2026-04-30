@@ -38,14 +38,14 @@ typedef struct {
 } JY61_Typedef;
 
 typedef struct{
-    float x;
-    float y;
-    float z;
-    float w;
-
     float wx;
     float wy;
     float wz;
+
+    float w;
+    float x;
+    float y;
+    float z;
 }IMU_t;
 
 typedef struct {
