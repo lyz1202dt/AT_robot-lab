@@ -304,22 +304,22 @@ int IMUDriver::pack_parsing() {
     const uint8_t data_len = buffer_[2];
     const uint8_t* payload = buffer_.data() + 7;
 
-    if (packet_id == MSG_ACCELERATION) {
-        if (data_len < 3 * sizeof(float)) {
-            return -1;
-        }
+    // if (packet_id == MSG_ACCELERATION) {
+    //     if (data_len < 3 * sizeof(float)) {
+    //         return -1;
+    //     }
 
-        float acc_x = 0.0F;
-        float acc_y = 0.0F;
-        float acc_z = 0.0F;
-        std::memcpy(&acc_x, payload, sizeof(float));
-        std::memcpy(&acc_y, payload + 4, sizeof(float));
-        std::memcpy(&acc_z, payload + 8, sizeof(float));
+    //     float acc_x = 0.0F;
+    //     float acc_y = 0.0F;
+    //     float acc_z = 0.0F;
+    //     std::memcpy(&acc_x, payload, sizeof(float));
+    //     std::memcpy(&acc_y, payload + 4, sizeof(float));
+    //     std::memcpy(&acc_z, payload + 8, sizeof(float));
 
-        std::lock_guard<std::mutex> lock(state_mutex_);
-        acceleration_ = Eigen::Vector3d(-acc_x, acc_y, -acc_z);
-        return 0;
-    }
+    //     std::lock_guard<std::mutex> lock(state_mutex_);
+    //     acceleration_ = Eigen::Vector3d(-acc_x, acc_y, -acc_z);
+    //     return 0;
+    // }
 
     if (packet_id == MSG_ANGULAR_VEL) {
         if (data_len < 3 * sizeof(float)) {
