@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
 project(robot_joint_controller VERSION 3.0.0 LANGUAGES CXX)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 if($ENV{ROS_DISTRO} MATCHES "noetic")
     find_package(catkin REQUIRED COMPONENTS
         controller_interface

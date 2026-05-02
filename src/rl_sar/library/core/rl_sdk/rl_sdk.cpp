@@ -54,11 +54,11 @@ void RL::StateController(const RobotState<float>* state, RobotCommand<float>* co
         this->control.y = 0.0f;
         this->control.yaw = 0.0f;
     }
-    if (this->control.current_keyboard == Input::Keyboard::N || this->control.current_gamepad == Input::Gamepad::X)
-    {
-        this->control.navigation_mode = !this->control.navigation_mode;
-        std::cout << std::endl << LOGGER::INFO << "Navigation mode: " << (this->control.navigation_mode ? "ON" : "OFF") << std::endl;
-    }
+    // if (this->control.current_keyboard == Input::Keyboard::N || this->control.current_gamepad == Input::Gamepad::X)
+    // {
+    //     this->control.navigation_mode = !this->control.navigation_mode;
+    //     std::cout << std::endl << LOGGER::INFO << "Navigation mode: " << (this->control.navigation_mode ? "ON" : "OFF") << std::endl;
+    // }
 }
 
 std::vector<float> RL::ComputeObservation()

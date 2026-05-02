@@ -5,6 +5,8 @@ project(rl_sar VERSION 4.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # System environment detection
 set(SYSTEM_TYPE ${CMAKE_SYSTEM_NAME})
 
@@ -29,7 +31,6 @@ endif()
 # MuJoCo simulator option
 set(USE_MUJOCO OFF CACHE BOOL "Build with MuJoCo simulator support")
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
@@ -606,6 +607,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
             ament_target_dependencies(rl_real_atdog2
                 rclcpp
                 geometry_msgs
+                robot_msgs
             )
             install(TARGETS rl_real_atdog2 DESTINATION lib/${PROJECT_NAME})
         endif()

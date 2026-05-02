@@ -18,16 +18,20 @@
 
 #include <csignal>
 #include <memory>
-
+#include <rclcpp/rclcpp.hpp>
+#include <robot_msgs/msg/cmd.hpp>
 
 
 class RL_Real : public RL
 {
 public:
-    RL_Real(int argc, char **argv);
+    RL_Real(int argc, char **argv,const rclcpp::Node::SharedPtr node);
     ~RL_Real();
 
 private:
+    rclcpp::Node::SharedPtr node_;      //用于ROS2订阅通信的节点
+    rclcpp::Subscription<robot_msgs::msg::Cmd>::SharedPtr cmd_sub;
+    robot_msgs::msg::Cmd remote_cmd;
     // rl functions
     std::vector<float> Forward() override;
     void GetState(RobotState<float> *state) override;
@@ -36,7 +40,7 @@ private:
     void RobotControl();
 
     // loop
-    std::shared_ptr<LoopFunc> loop_keyboard;
+    std::shared_ptr<LoopFunc> loop_command;
     std::shared_ptr<LoopFunc> loop_control;
     std::shared_ptr<LoopFunc> loop_rl;
 
