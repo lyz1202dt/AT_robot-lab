@@ -223,7 +223,7 @@ private:
 
     public:
 
-        inline void update_support_trajectory(const Eigen::vector3d & cur_pos, const Eigen::vector3d  final_pos, double time)
+        inline void update_support_trajectory(const Eigen::Vector3d & cur_pos, const Eigen::Vector3d  final_pos, double time)
         {
             traj.time = time;
             T = time;
@@ -248,9 +248,9 @@ private:
             }
 
         }
-        inline std::tuple<Eigen::vector3d , Eigen::vector3d , Eigen::vector3d > get_target(double time,bool &success)
+        inline std::tuple<Eigen::Vector3d , Eigen::Vector3d , Eigen::Vector3d > get_target(double time,bool &success)
         {
-            Eigen::vector3d  pos, vel, acc;
+            Eigen::Vector3d  pos, vel, acc;
 
             if (time >= T)
             {
@@ -284,19 +284,19 @@ public:
 
     int cross_wall_stage{-1};
 
-    Eigen::vector3d  wall_lf_foot_pos{0,0,0}, wall_rf_foot_pos{0,0,0}, wall_lb_foot_pos{0,0,0}, wall_rb_foot_pos{0,0,0};
-    Eigen::vector3d  lf_foot_exp_pos{0,0,0}, rf_foot_exp_pos{0,0,0}, lb_foot_exp_pos{0,0,0}, rb_foot_exp_pos{0,0,0};
-    Eigen::vector3d  lf_foot_exp_force{0,0,0}, rf_foot_exp_force{0,0,0}, lb_foot_exp_force{0,0,0}, rb_foot_exp_force{0,0,0};
-    Eigen::vector3d  lf_foot_exp_vel{0,0,0}, rf_foot_exp_vel{0,0,0}, lb_foot_exp_vel{0,0,0}, rb_foot_exp_vel{0,0,0};
-    Eigen::vector3d  lf_foot_exp_acc{0,0,0}, rf_foot_exp_acc{0,0,0}, lb_foot_exp_acc{0,0,0}, rb_foot_exp_acc{0,0,0};
-    Eigen::vector3d  lf_forward_torque{0,0,0}, rf_forward_torque{0,0,0}, lb_forward_torque{0,0,0}, rb_forward_torque{0,0,0};
+    Eigen::Vector3d  wall_lf_foot_pos{0,0,0}, wall_rf_foot_pos{0,0,0}, wall_lb_foot_pos{0,0,0}, wall_rb_foot_pos{0,0,0};
+    Eigen::Vector3d  lf_foot_exp_pos{0,0,0}, rf_foot_exp_pos{0,0,0}, lb_foot_exp_pos{0,0,0}, rb_foot_exp_pos{0,0,0};
+    Eigen::Vector3d  lf_foot_exp_force{0,0,0}, rf_foot_exp_force{0,0,0}, lb_foot_exp_force{0,0,0}, rb_foot_exp_force{0,0,0};
+    Eigen::Vector3d  lf_foot_exp_vel{0,0,0}, rf_foot_exp_vel{0,0,0}, lb_foot_exp_vel{0,0,0}, rb_foot_exp_vel{0,0,0};
+    Eigen::Vector3d  lf_foot_exp_acc{0,0,0}, rf_foot_exp_acc{0,0,0}, lb_foot_exp_acc{0,0,0}, rb_foot_exp_acc{0,0,0};
+    Eigen::Vector3d  lf_forward_torque{0,0,0}, rf_forward_torque{0,0,0}, lb_forward_torque{0,0,0}, rb_forward_torque{0,0,0};
 
     //使用关节角度
-    Eigen::vector3d  lf_joint_exp_pos_{0,0,0},rf_joint_exp_pos_{0,0,0},
+    Eigen::Vector3d  lf_joint_exp_pos_{0,0,0},rf_joint_exp_pos_{0,0,0},
              lb_joint_exp_pos_{0,0,0},rb_joint_exp_pos_{0,0,0};
-    Eigen::vector3d  lf_joint_omega{0,0,0}, rf_joint_omega{0,0,0},
+    Eigen::Vector3d  lf_joint_omega{0,0,0}, rf_joint_omega{0,0,0},
              lb_joint_omega{0,0,0},rb_joint_omega{0,0,0};
-    Eigen::vector3d  lf_joint_torque{0,0,0},rf_joint_torque{0,0,0},
+    Eigen::Vector3d  lf_joint_torque{0,0,0},rf_joint_torque{0,0,0},
              lb_joint_torque{0,0,0},rb_joint_torque{0,0,0};
 
     double lf_wheel_vel{0.0},rf_wheel_vel{0.0},lb_wheel_vel{0.0},rb_wheel_vel{0.0};
@@ -316,7 +316,7 @@ public:
     float k_F{1.0f};
 
     //力变量
-    Vector2D mass_center_pos;
+    Eigen::Vector2d mass_center_pos;
     double mass;
 
     Cross_Step lf_step, rf_step, lb_step, rb_step;
