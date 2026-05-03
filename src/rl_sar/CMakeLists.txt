@@ -234,6 +234,7 @@ endif()
 find_package(TBB REQUIRED)
 find_package(Threads REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 # Add Python library path to RPATH
 if(Python3_LIBRARIES)
@@ -439,6 +440,7 @@ target_link_libraries(rl_sdk PUBLIC
     Python3::Python
     Python3::Module
     TBB::tbb
+    Eigen3::Eigen
 )
 find_package(Python3 COMPONENTS NumPy)
 if(Python3_NumPy_FOUND)
