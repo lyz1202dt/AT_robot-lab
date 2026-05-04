@@ -50,6 +50,7 @@ elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
     "msg/RobotState.msg"
     "msg/IMU.msg"
     "msg/Cmd.msg"
+    "msg/Remote.msg"
     DEPENDENCIES builtin_interfaces std_msgs geometry_msgs sensor_msgs
   )
   ament_export_dependencies(rosidl_default_runtime)

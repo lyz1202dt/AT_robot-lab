@@ -3,6 +3,7 @@
 #include <rclcpp/logging.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <cstring>
+#include <robot_msgs/msg/detail/remote__struct.hpp>
 #include <sstream>
 #include <iomanip>
 #include <chrono>
@@ -11,7 +12,9 @@
 RemoteNode::RemoteNode()
     : Node("remote_node"), remote_control_cb_id_(0)
 {
-    std::string port = "/dev/ttyUSB0";
+
+    this->declare_parameter("remote_dev_port","/dev/ttyUSB0");
+    std::string port = this->get_parameter("remote_dev_port").as_string();
     int baudrate = 115200;
     
     // 打开串口 - 使用极短的超时时间（10ms）以提高实时性
@@ -25,8 +28,8 @@ RemoteNode::RemoteNode()
     RCLCPP_INFO(this->get_logger(), "成功打开设备:%s,波特率为%d", port.c_str(), baudrate);
     
     // 创建ROS2发布器
-    move_cmd_pub = this->create_publisher<robot_msgs::msg::Cmd>(
-            "robot_move_cmd", 10);
+    remote_pub = this->create_publisher<robot_msgs::msg::Remote>(
+            "remote", 10);
     
     RCLCPP_INFO(this->get_logger(), "遥控器数据发布器已创建");
     
@@ -147,111 +150,15 @@ void RemoteNode::on_remote_control_data(const uint8_t* data, uint16_t size, void
         return;
     }
     
-    float rocker0, rocker1, rocker2, rocker3;
-    uint32_t key_data;
+    robot_msgs::msg::Remote remote;
     
-    memcpy(&rocker0, data + 0, sizeof(float));
-    memcpy(&rocker1, data + 4, sizeof(float));
-    memcpy(&rocker2, data + 8, sizeof(float));
-    memcpy(&rocker3, data + 12, sizeof(float));
-    memcpy(&key_data, data + 16, sizeof(uint32_t));
-    
-    // 修正符号：rocker2 和 rocker3 的符号与遥控器显示相反，需要取反
-    rocker2 = -rocker2;
-    rocker3 = -rocker3;
+    memcpy(&remote.lx, data + 0, sizeof(float));
+    memcpy(&remote.ly, data + 4, sizeof(float));
+    memcpy(&remote.rx, data + 8, sizeof(float));
+    memcpy(&remote.ry, data + 12, sizeof(float));
+    memcpy(&remote.key, data + 16, sizeof(uint32_t));
 
-    // 严格的按键值白名单验证 - 只允许指定的按键值
-    // 允许的值：0x0, 0x8, 0x10, 0x20, 0x40, 0x800, 0x1000, 0x2000, 0x4000
-    static const uint32_t VALID_KEY_VALUES[] = {
-         0x0,0x8, 0x10, 0x20, 0x40, 0x800, 0x1000, 0x2000, 0x4000
-    };
-    static const size_t VALID_KEY_COUNT = sizeof(VALID_KEY_VALUES) / sizeof(VALID_KEY_VALUES[0]);
-    
-    bool key_valid = false;
-    for (size_t i = 0; i < VALID_KEY_COUNT; i++) {
-        if (key_data == VALID_KEY_VALUES[i]) {
-            key_valid = true;
-            break;
-        }
-    }
-    
-    if (!key_valid) {
-        RCLCPP_WARN(node->get_logger(),
-                   "[数据过滤] 非法按键值 0x%04X，已拒绝此包", key_data);
-        return;  // 丢弃此包，不发送
-    }
-    
-    // 发布 ROS 消息
-    static uint32_t last_mode = 0;
-    auto msg = robot_msgs::msg::Cmd();
-    if(key_data == 0x8)        //idle
-    {
-        msg.mode = 0;      
-        last_mode = 0;     
-    }    
-    else if(key_data == 0x10)    //stop
-    {
-        msg.mode = 1;
-        last_mode = 1;
-    }
-    else if(key_data == 0x20)    //walk
-    {
-        msg.mode = 2;     
-        last_mode = 2;
-    }   
-    else if(key_data == 0x40)    //climb_steps
-    {
-        msg.mode = 3;     
-        last_mode = 3;
-    }
-    else if(key_data == 0x800)   //climb_steps
-    {
-        msg.mode = 4;      
-        last_mode = 4;
-    }
-    else if(key_data == 0x1000)  
-    {
-        msg.mode = 5;       //cross_wall
-        last_mode = 5;
-    }
-    else if(key_data == 0x2000)  
-    {
-        msg.mode = 6;       //jump
-        last_mode = 6;
-    }
-    else if(key_data == 0x4000)  
-    {
-        msg.mode = 7;      //amble
-        last_mode = 7;
-    }
-    else if(key_data == 0x0)     
-    {
-        msg.mode = last_mode;  //保持上次模式
-    }
-
-    if(std::abs(rocker0) < 100)
-        rocker0 = 0.0f;
-    if(std::abs(rocker1) < 100)
-        rocker1 = 0.0f;
-    if(std::abs(rocker2) < 100)
-        rocker2 = 0.0f;
-    if(std::abs(rocker3) < 100)
-        rocker3 = 0.0f;
-    msg.vy = std::clamp(rocker0 / 1950.0f, -0.5f, 0.5f);
-    msg.vx = std::clamp(rocker1 / 1950.0f, -1.0f, 1.0f);
-    msg.vz = std::clamp(rocker2 / 1950.0f, -1.0f, 1.0f);
-    msg.wheel_vel = 0 * std::clamp(rocker3 / 1950.0f, -1.0f, 1.0f);
-
-    node->move_cmd_pub->publish(msg);
-
-    
-    RCLCPP_INFO_THROTTLE(
-        node->get_logger(),
-        *node->get_clock(),
-        100,
-        "vx=%.3f vy=%.3f vz=%.3f wheel=%.3f",
-        msg.vx, msg.vy, msg.vz, msg.wheel_vel
-    );
+    node->remote_pub->publish(remote);
 }
 
 

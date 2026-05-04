@@ -3,7 +3,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <memory>
 #include <serial/serial.h>
-#include <robot_msgs/msg/cmd.hpp>
+#include <robot_msgs/msg/remote.hpp>
 #include <thread>
 #include <atomic>
 #include <mutex>
@@ -20,7 +20,7 @@ public:
 
 private:
     // ROS2 Publishers
-    rclcpp::Publisher<robot_msgs::msg::Cmd>::SharedPtr move_cmd_pub;
+    rclcpp::Publisher<robot_msgs::msg::Remote>::SharedPtr remote_pub;
 
     // 串口通信
     std::unique_ptr<serial::Serial> serial_;

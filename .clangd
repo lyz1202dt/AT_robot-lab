@@ -1,5 +1,6 @@
 CompileFlags:
-  CompilationDatabase: cmake_build
+  CompilationDatabase: build
+  Compiler: /usr/bin/g++
   Add: 
     - "-I/usr/include/c++/11"
     - "-I/usr/include/x86_64-linux-gnu/c++/11"

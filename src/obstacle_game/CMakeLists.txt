@@ -20,6 +20,7 @@ find_package(visualization_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(robot_msgs REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 
 if(BUILD_TESTING)
@@ -36,8 +37,6 @@ endif()
 
 add_executable(robot_control
 src/main.cpp
-
-src/core/robot.cpp
 )
 
 add_executable(test_node
@@ -50,8 +49,6 @@ PUBLIC
 $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
 
-target_link_libraries(robot_control Eigen3::Eigen ${qpOASES_LIBRARY})
-
 ament_target_dependencies(
   robot_control
   rclcpp
@@ -62,6 +59,8 @@ ament_target_dependencies(
   tf2_ros
   robot_msgs
 )
+
+target_link_libraries(robot_control Eigen3::Eigen)
 
 ament_target_dependencies(
   test_node
