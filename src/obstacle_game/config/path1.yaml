@@ -1,0 +1,19 @@
+#policy_id表示机器人执行这段路径时使用的策略，0表示上电策略，不用；1表示位控站立，一般也不用；
+#2表示walk策略，3表示sand策略，4表示stair策略
+
+paths:
+  - policy_id: 2          #使用策略2执行这段轨迹
+    target_pos:           #目标点位置
+      x: 0.0
+      y: 0.0
+    target_vel: 0.5     #轨迹结束时机器人的期望速度
+    max_velocity: 1.2     #最大期望速度
+    max_accelation: 1.0   #最大加速度
+    kp:                   #位置P控制器参数
+      x: 1.0
+      y: 0.5
+      yaw: 1.0
+    allow_start_dir_error: 0.2 #开始行走时，允许的方向误差
+    err_allow: 0.2        #到达目标时的允许位置误差
+    adjust_min_vel: 0.1   #在目标附件微调时的最小速度，误差小于err_allow时执行下一个目标点
+    

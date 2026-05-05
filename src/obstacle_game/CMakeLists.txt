@@ -21,6 +21,7 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(robot_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 
 if(BUILD_TESTING)
@@ -36,7 +37,9 @@ if(BUILD_TESTING)
 endif()
 
 add_executable(robot_control
-src/main.cpp
+  src/main.cpp
+  src/core/robot.cpp
+  src/core/pilot.cpp
 )
 
 add_executable(test_node
@@ -60,7 +63,7 @@ ament_target_dependencies(
   robot_msgs
 )
 
-target_link_libraries(robot_control Eigen3::Eigen)
+target_link_libraries(robot_control Eigen3::Eigen yaml-cpp)
 
 ament_target_dependencies(
   test_node
