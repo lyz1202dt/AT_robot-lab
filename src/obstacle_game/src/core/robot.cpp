@@ -1,5 +1,8 @@
 #include <chrono>
 #include <core/robot.hpp>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/time.hpp>
 
@@ -9,6 +12,7 @@ using namespace std::chrono_literals;
 Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     : node_(node) {
     node_->declare_parameter<std::string>("scene_path");
+    node_->declare_parameter<std::string>("yaml_file_path");
 
     auto yaml_path = node_->get_parameter("scene_path").as_string();
     if (yaml_path.empty()) {
@@ -21,6 +25,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
 
     pilot = std::make_shared<Pilot>(node_, yaml_path);
+    record=std::make_shared<Record>(node_);
 
     // 机器人运动控制指令发布
     cmd_pub_ = node_->create_publisher<robot_msgs::msg::Cmd>("robot_move_cmd", 10);
@@ -69,6 +74,30 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             } else if (check_key_trigger(msg.key,2)) {
                 pilot->stop();         //  自动控制执行暂停
             }
+        }
+
+
+        if(check_key_trigger(msg.key,5))    //开启文件记录
+        {
+            const auto now = std::chrono::system_clock::now();
+            const std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+            std::tm local_tm{};
+            localtime_r(&now_time, &local_tm);
+
+            std::ostringstream oss;
+            oss << node_->get_parameter("yaml_file_path").as_string()
+                << std::put_time(&local_tm, "%Y%m%d_%H%M%S") << ".yaml";
+            record->set_output_yaml(oss.str());
+        }
+        else if(check_key_trigger(msg.key,6))   //关闭文件记录
+        {
+            record->finishe_record();
+        }
+        else if(check_key_trigger(msg.key,7))   //记录点位
+        {
+            Record::PathPoint point;
+            point.target_pos[0]=
+            record->record_pos(point);
         }
 
         record_key(msg.key);
