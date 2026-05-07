@@ -234,7 +234,13 @@ endif()
 find_package(TBB REQUIRED)
 find_package(Threads REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
-find_package(Eigen3 REQUIRED)
+find_package(kdl_parser REQUIRED PATHS //opt/ros/humble/include/kdl_parser)
+find_package(orocos_kdl REQUIRED)
+
+find_package(Eigen3 REQUIRED PATHS /usr/include/eigen3)
+find_package(qpOASES REQUIRED)
+find_package(osqp REQUIRED)
+find_package(OsqpEigen REQUIRED)
 
 # Add Python library path to RPATH
 if(Python3_LIBRARIES)
@@ -441,6 +447,8 @@ target_link_libraries(rl_sdk PUBLIC
     Python3::Module
     TBB::tbb
     Eigen3::Eigen
+    osqp::osqp
+    OsqpEigen::OsqpEigen
 )
 find_package(Python3 COMPONENTS NumPy)
 if(Python3_NumPy_FOUND)
