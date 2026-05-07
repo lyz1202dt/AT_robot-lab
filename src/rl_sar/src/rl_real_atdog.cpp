@@ -85,6 +85,9 @@ void RL_Real::GetState(RobotState<float>* state) {
         state->imu.gyroscope[0] = static_cast<float>(w[0]);
         state->imu.gyroscope[1] = static_cast<float>(w[1]);
         state->imu.gyroscope[2] = static_cast<float>(w[2]);
+
+        std::cout<<"imu:"<<state->imu.quaternion;
+        
     } else {
         state->imu.quaternion[0] = 1.0;
         state->imu.quaternion[1] = 0.0;
