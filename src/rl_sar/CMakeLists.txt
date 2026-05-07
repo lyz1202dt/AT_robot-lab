@@ -236,6 +236,39 @@ find_package(Threads REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 find_package(Eigen3 REQUIRED)
 
+# Find KDL parser and orocos_kdl for kinematics
+if(NOT USE_CMAKE)
+    if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+        find_package(kdl_parser REQUIRED)
+        find_package(orocos_kdl REQUIRED)
+        message(STATUS "Found KDL parser and orocos_kdl")
+    elseif($ENV{ROS_DISTRO} MATCHES "noetic")
+        find_package(kdl_parser REQUIRED)
+        find_package(orocos_kdl REQUIRED)
+        message(STATUS "Found KDL parser and orocos_kdl (ROS1)")
+    endif()
+else()
+    # For non-ROS builds, try to find KDL system-wide
+    find_package(kdl_parser QUIET)
+    find_package(orocos_kdl QUIET)
+    if(kdl_parser_FOUND AND orocos_kdl_FOUND)
+        message(STATUS "Found KDL parser and orocos_kdl (system)")
+    else()
+        message(WARNING "KDL libraries not found. Some features may be unavailable.")
+    endif()
+endif()
+
+# Find OSQP and qpOASES for optimization
+find_package(osqp QUIET)
+find_package(OsqpEigen QUIET)
+find_package(qpOASES QUIET)
+if(osqp_FOUND AND OsqpEigen_FOUND AND qpOASES_FOUND)
+    message(STATUS "Found OSQP, OsqpEigen, and qpOASES")
+    add_compile_definitions(HAVE_OSQP HAVE_OSQPEIGEN HAVE_QPOASES)
+else()
+    message(WARNING "OSQP libraries not found. Some optimization features may be unavailable.")
+endif()
+
 # Add Python library path to RPATH
 if(Python3_LIBRARIES)
     get_filename_component(PYTHON_LIB_DIR "${Python3_LIBRARIES}" DIRECTORY)
@@ -441,13 +474,40 @@ target_link_libraries(rl_sdk PUBLIC
     Python3::Module
     TBB::tbb
     Eigen3::Eigen
+    osqp::osqp
+    OsqpEigen::OsqpEigen
 )
+
+# Link KDL libraries if available
+if(NOT USE_CMAKE)
+    if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+        target_link_libraries(rl_sdk PUBLIC
+            kdl_parser::kdl_parser
+            orocos_kdl::orocos_kdl
+        )
+    elseif($ENV{ROS_DISTRO} MATCHES "noetic")
+        target_link_libraries(rl_sdk PUBLIC
+            ${kdl_parser_LIBRARIES}
+            ${orocos_kdl_LIBRARIES}
+        )
+    endif()
+else()
+    # For non-ROS builds, link KDL if found
+    if(kdl_parser_FOUND AND orocos_kdl_FOUND)
+        target_link_libraries(rl_sdk PUBLIC
+            kdl_parser::kdl_parser
+            orocos_kdl::orocos_kdl
+        )
+    endif()
+endif()
+
 find_package(Python3 COMPONENTS NumPy)
 if(Python3_NumPy_FOUND)
     target_link_libraries(rl_sdk PUBLIC Python3::NumPy)
 else()
     target_compile_definitions(rl_sdk PUBLIC WITHOUT_NUMPY)
 endif()
+
 if(NOT USE_CMAKE)
     if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
         install(TARGETS rl_sdk DESTINATION lib/${PROJECT_NAME})
