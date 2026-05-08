@@ -483,7 +483,6 @@ if(NOT USE_CMAKE)
     if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
         target_link_libraries(rl_sdk PUBLIC
             kdl_parser::kdl_parser
-            orocos_kdl::orocos_kdl
         )
     elseif($ENV{ROS_DISTRO} MATCHES "noetic")
         target_link_libraries(rl_sdk PUBLIC
@@ -496,7 +495,6 @@ else()
     if(kdl_parser_FOUND AND orocos_kdl_FOUND)
         target_link_libraries(rl_sdk PUBLIC
             kdl_parser::kdl_parser
-            orocos_kdl::orocos_kdl
         )
     endif()
 endif()

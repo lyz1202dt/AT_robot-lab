@@ -43,6 +43,10 @@ public:
         {
             return "RLFSMStateGetUp";
         }
+        if(rl.control.mode==1)  //检查切换到位控站立
+        {
+            return "RLFSMStateGetUp";
+        }
         return state_name_;
     }
 };
@@ -148,6 +152,11 @@ public:
         {
             return "RLFSMStateGetUp";
         }
+
+        if (rl.control.mode==1)
+        {
+            return "RLFSMStateGetUp";
+        }
         return state_name_;
     }
 };
@@ -245,6 +254,181 @@ public:
         else if (rl.control.current_keyboard == Input::Keyboard::Num1 || rl.control.current_gamepad == Input::Gamepad::RB_DPadUp)
         {
             return "RLFSMStateRLLocomotion";
+        }
+
+        //遥控器切换
+        if(rl.control.mode==1)   //转到位控站立状态
+        {
+            return "RLFSMStateGetUp";
+        }
+        else if(rl.control.mode==3)     //切换到爬台阶状态
+        {
+            return "RLFSMStateRLStairs";
+        }
+        else if(rl.control.mode==4)     //切换到沙石地行走状态
+        {
+            return "RLFSMStateRLSand";
+        }
+        return state_name_;
+    }
+};
+
+
+class RLFSMStateRLStairs : public RLFSMState
+{
+public:
+    RLFSMStateRLStairs(RL *rl) : RLFSMState(*rl, "RLFSMStateRLStairs") {}
+
+    float percent_transition = 0.0f;
+
+    void Enter() override
+    {
+        percent_transition = 0.0f;
+        rl.episode_length_buf = 0;
+
+        // read params from yaml
+        rl.config_name = "robot_lab_stairs";
+        std::string robot_config_path = rl.robot_name + "/" + rl.config_name;
+        try
+        {
+            rl.InitRL(robot_config_path);
+            rl.now_state = *fsm_state;
+        }
+        catch (const std::exception& e)
+        {
+            std::cout << LOGGER::ERROR << "InitRL() failed: " << e.what() << std::endl;
+            rl.rl_init_done = false;
+            rl.fsm.RequestStateChange("RLFSMStatePassive");
+        }
+    }
+
+    void Run() override
+    {
+        // position transition from last default_dof_pos to current default_dof_pos
+        // if (Interpolate(percent_transition, rl.now_state.motor_state.q, rl.params.Get<std::vector<float>>("default_dof_pos"), 0.5f, "Policy transition", true)) return;
+
+        if (!rl.rl_init_done) rl.rl_init_done = true;
+
+        std::cout << "\r\033[K" << std::flush << LOGGER::INFO << "RL Controller [" << rl.config_name << "] x:" << rl.control.x << " y:" << rl.control.y << " yaw:" << rl.control.yaw << std::flush;
+        RLControl();
+    }
+
+    void Exit() override
+    {
+        rl.rl_init_done = false;
+    }
+
+    std::string CheckChange() override
+    {
+        if (rl.control.current_keyboard == Input::Keyboard::P || rl.control.current_gamepad == Input::Gamepad::LB_X)
+        {
+            return "RLFSMStatePassive";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num9 || rl.control.current_gamepad == Input::Gamepad::B)
+        {
+            return "RLFSMStateGetDown";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num0 || rl.control.current_gamepad == Input::Gamepad::A)
+        {
+            return "RLFSMStateGetUp";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num1 || rl.control.current_gamepad == Input::Gamepad::RB_DPadUp)
+        {
+            return "RLFSMStateRLLocomotion";
+        }
+
+        //遥控器切换
+        if(rl.control.mode==1)   //转到位控站立状态
+        {
+            return "RLFSMStateGetUp";
+        }
+        else if(rl.control.mode==2)     //切换到普通行走模式
+        {
+            return "RLFSMStateRLLocomotion";
+        }
+        else if(rl.control.mode==4)     //切换到沙石地行走状态
+        {
+            return "RLFSMStateRLSand";
+        }
+        return state_name_;
+    }
+};
+
+class RLFSMStateRLSand : public RLFSMState
+{
+public:
+    RLFSMStateRLSand(RL *rl) : RLFSMState(*rl, "RLFSMStateRLSand") {}
+
+    float percent_transition = 0.0f;
+
+    void Enter() override
+    {
+        percent_transition = 0.0f;
+        rl.episode_length_buf = 0;
+
+        // read params from yaml
+        rl.config_name = "robot_lab_sand";
+        std::string robot_config_path = rl.robot_name + "/" + rl.config_name;
+        try
+        {
+            rl.InitRL(robot_config_path);
+            rl.now_state = *fsm_state;
+        }
+        catch (const std::exception& e)
+        {
+            std::cout << LOGGER::ERROR << "InitRL() failed: " << e.what() << std::endl;
+            rl.rl_init_done = false;
+            rl.fsm.RequestStateChange("RLFSMStatePassive");
+        }
+    }
+
+    void Run() override
+    {
+        // position transition from last default_dof_pos to current default_dof_pos
+        // if (Interpolate(percent_transition, rl.now_state.motor_state.q, rl.params.Get<std::vector<float>>("default_dof_pos"), 0.5f, "Policy transition", true)) return;
+
+        if (!rl.rl_init_done) rl.rl_init_done = true;
+
+        std::cout << "\r\033[K" << std::flush << LOGGER::INFO << "RL Controller [" << rl.config_name << "] x:" << rl.control.x << " y:" << rl.control.y << " yaw:" << rl.control.yaw << std::flush;
+        RLControl();
+    }
+
+    void Exit() override
+    {
+        rl.rl_init_done = false;
+    }
+
+    std::string CheckChange() override
+    {
+        if (rl.control.current_keyboard == Input::Keyboard::P || rl.control.current_gamepad == Input::Gamepad::LB_X)
+        {
+            return "RLFSMStatePassive";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num9 || rl.control.current_gamepad == Input::Gamepad::B)
+        {
+            return "RLFSMStateGetDown";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num0 || rl.control.current_gamepad == Input::Gamepad::A)
+        {
+            return "RLFSMStateGetUp";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num1 || rl.control.current_gamepad == Input::Gamepad::RB_DPadUp)
+        {
+            return "RLFSMStateRLLocomotion";
+        }
+
+        //遥控器切换
+        if(rl.control.mode==1)   //转到位控站立状态
+        {
+            return "RLFSMStateGetUp";
+        }
+        else if(rl.control.mode==2)     //切换到普通行走模式
+        {
+            return "RLFSMStateRLLocomotion";
+        }
+        else if(rl.control.mode==3)     //切换到爬台阶状态
+        {
+            return "RLFSMStateRLStairs";
         }
         return state_name_;
     }
