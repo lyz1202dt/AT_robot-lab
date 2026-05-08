@@ -24,6 +24,8 @@ add_executable(remote_node
   src/remote_comm.cpp
 )
 
+target_compile_features(remote_node PUBLIC cxx_std_17)
+
 
 
 

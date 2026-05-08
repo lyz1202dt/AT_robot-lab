@@ -7,6 +7,7 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <string>
 #include "remote_node/remote_comm.hpp"
 
 // 远程控制器数据包命令类型
@@ -52,4 +53,10 @@ private:
 
     // 错误包处理回调
     static void on_bad_packet(uint32_t error_type);
+
+    // 解析并打开串口，失败时仅记录日志
+    bool init_serial();
+
+    // 返回可用的串口设备路径；若找不到则返回空字符串
+    std::string resolve_serial_port(const std::string& configured_port) const;
 };

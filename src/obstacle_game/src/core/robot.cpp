@@ -11,10 +11,13 @@ using namespace std::chrono_literals;
 
 Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     : node_(node) {
-    node_->declare_parameter<std::string>("scene_path");
-    node_->declare_parameter<std::string>("yaml_file_path");
+    node_->declare_parameter<std::string>("scene_path","");
+    node_->declare_parameter<std::string>("yaml_file_path","");
 
-    auto yaml_path = node_->get_parameter("scene_path").as_string();
+    auto yaml_path = node_->get_parameter("yaml_file_path").as_string();
+    if (yaml_path.empty()) {
+        yaml_path = node_->get_parameter("scene_path").as_string();
+    }
     if (yaml_path.empty()) {
         autopilot_available = false;
         RCLCPP_WARN(node_->get_logger(), "无导航点yaml文件路径，自动驾驶不可用");
@@ -33,7 +36,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     // 机器人遥控器指令订阅
     remote_sub_ = node_->create_subscription<robot_msgs::msg::Remote>("remote", 10, [this](const robot_msgs::msg::Remote& msg) {
         // TODO:处理并发布遥控器数据
-        if (check_key_trigger(msg.key,2)) // 手动控制
+        if (check_key_trigger(msg.key,1)) // 手动控制
         {
             if (current_control_mode == 1) {
                 cmd.mode = 1;    // 如果刚才是自动控制，那么切入手动控制时进入位控站立模式(可能是有紧急情况)
@@ -42,20 +45,21 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             pilot->stop();
             current_control_mode = 0;
             RCLCPP_INFO(node_->get_logger(), "请求切入手动控制");
-        } else if (check_key_trigger(msg.key,3)) {
+        }
+        if (check_key_trigger(msg.key,2)) {
             current_control_mode = 1;
             RCLCPP_INFO(node_->get_logger(), "请求切入自动控制");
         }
 
         // 只有手动控制模式下可以使用遥控器修改机器人当前使用的策略
         if (current_control_mode == 0) {
-            if (check_key_trigger(msg.key,5)) {         //模式控制
+            if (check_key_trigger(msg.key,4)) {         //模式控制
                 cmd.mode = 1; // 位控站立
-            } else if (check_key_trigger(msg.key,6)) {
+            } else if (check_key_trigger(msg.key,5)) {
                 cmd.mode = 2; // 普通行走策略
-            } else if (check_key_trigger(msg.key,7)) {
+            } else if (check_key_trigger(msg.key,6)) {
                 cmd.mode = 3; // 过沙地策略
-            } else if (check_key_trigger(msg.key,4)) {
+            } else if (check_key_trigger(msg.key,3)) {
                 cmd.mode = 4; // 上台阶策略
             }
 
@@ -66,12 +70,12 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
 
         } else if (current_control_mode == 1) {
-            if (check_key_trigger(msg.key,5)) {
+            if (check_key_trigger(msg.key,4)) {
                 pilot->reset();
                 pilot->stop();
-            } else if (check_key_trigger(msg.key,6)) {
+            } else if (check_key_trigger(msg.key,5)) {
                 pilot->start();        // 开始执行自动控制
-            } else if (check_key_trigger(msg.key,7)) {
+            } else if (check_key_trigger(msg.key,6)) {
                 pilot->stop();         //  自动控制执行暂停
             }
         }

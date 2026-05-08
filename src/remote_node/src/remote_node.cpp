@@ -8,30 +8,22 @@
 #include <iomanip>
 #include <chrono>
 #include <atomic>
+#include <filesystem>
+#include <vector>
 
 RemoteNode::RemoteNode()
     : Node("remote_node"), remote_control_cb_id_(0)
 {
-
-    this->declare_parameter("remote_dev_port","/dev/ttyUSB0");
-    std::string port = this->get_parameter("remote_dev_port").as_string();
-    int baudrate = 115200;
-    
-    // 打开串口 - 使用极短的超时时间（10ms）以提高实时性
-    // 这样可以更快地响应按键数据变化
-    serial_ = std::make_unique<serial::Serial>(port, baudrate, serial::Timeout::simpleTimeout(10));
-    if (!serial_->isOpen()) {
-        RCLCPP_ERROR(this->get_logger(), "打开设备失败:%s", port.c_str());
-        return;
-    }
-
-    RCLCPP_INFO(this->get_logger(), "成功打开设备:%s,波特率为%d", port.c_str(), baudrate);
-    
+    this->declare_parameter("remote_dev_port","/dev/ttyCH341USB0");
     // 创建ROS2发布器
     remote_pub = this->create_publisher<robot_msgs::msg::Remote>(
             "remote", 10);
     
     RCLCPP_INFO(this->get_logger(), "遥控器数据发布器已创建");
+
+    if (!init_serial()) {
+        return;
+    }
     
     // 初始化通信协议处理器
     remote_comm_ = std::make_unique<RemoteComm>();
@@ -55,6 +47,105 @@ RemoteNode::RemoteNode()
     watchdog_thread_ = std::make_unique<std::thread>([this]() { watchdog_task(); });
     
     RCLCPP_INFO(this->get_logger(), "看门狗监视线程已启动");
+}
+
+bool RemoteNode::init_serial()
+{
+    const std::string configured_port = this->get_parameter("remote_dev_port").as_string();
+    const std::string port = resolve_serial_port(configured_port);
+    constexpr int baudrate = 115200;
+
+    if (port.empty()) {
+        RCLCPP_ERROR(
+            this->get_logger(),
+            "未找到可用串口。请检查遥控器是否已连接，或通过 --ros-args -p remote_dev_port:=/dev/ttyUSB0 指定正确设备。");
+        return false;
+    }
+
+    try {
+        // 使用较短超时以更快响应输入变化。
+        serial_ = std::make_unique<serial::Serial>(
+            port, baudrate, serial::Timeout::simpleTimeout(10));
+    } catch (const serial::IOException& e) {
+        RCLCPP_ERROR(
+            this->get_logger(),
+            "打开串口失败: %s。异常信息: %s",
+            port.c_str(),
+            e.what());
+        return false;
+    } catch (const std::exception& e) {
+        RCLCPP_ERROR(
+            this->get_logger(),
+            "初始化串口时发生异常: %s。异常信息: %s",
+            port.c_str(),
+            e.what());
+        return false;
+    }
+
+    if (!serial_ || !serial_->isOpen()) {
+        RCLCPP_ERROR(this->get_logger(), "打开设备失败: %s", port.c_str());
+        return false;
+    }
+
+    RCLCPP_INFO(this->get_logger(), "成功打开设备:%s,波特率为%d", port.c_str(), baudrate);
+    return true;
+}
+
+std::string RemoteNode::resolve_serial_port(const std::string& configured_port) const
+{
+    namespace fs = std::filesystem;
+
+    if (fs::exists(configured_port)) {
+        return configured_port;
+    }
+
+    const std::vector<std::string> fallback_ports = {
+        "/dev/ttyUSB0",
+        "/dev/ttyUSB1",
+        "/dev/ttyACM0",
+        "/dev/ttyACM1",
+    };
+
+    for (const auto& candidate : fallback_ports) {
+        if (candidate == configured_port) {
+            continue;
+        }
+        if (fs::exists(candidate)) {
+            RCLCPP_WARN(
+                this->get_logger(),
+                "配置的串口 %s 不存在，自动改用检测到的设备 %s",
+                configured_port.c_str(),
+                candidate.c_str());
+            return candidate;
+        }
+    }
+
+    std::ostringstream oss;
+    bool has_any_device = false;
+    for (const auto& candidate : fallback_ports) {
+        if (fs::exists(candidate)) {
+            if (has_any_device) {
+                oss << ", ";
+            }
+            oss << candidate;
+            has_any_device = true;
+        }
+    }
+
+    if (has_any_device) {
+        RCLCPP_ERROR(
+            this->get_logger(),
+            "配置的串口 %s 不存在，可检测到的串口有: %s",
+            configured_port.c_str(),
+            oss.str().c_str());
+    } else {
+        RCLCPP_ERROR(
+            this->get_logger(),
+            "配置的串口 %s 不存在，当前也未检测到常见串口设备 (/dev/ttyUSB* 或 /dev/ttyACM*)",
+            configured_port.c_str());
+    }
+
+    return "";
 }
 
 RemoteNode::~RemoteNode()
@@ -222,4 +313,3 @@ void RemoteNode::watchdog_task()
     
     RCLCPP_INFO(this->get_logger(), "[看门狗] 监视线程已退出");
 }
-

@@ -17,13 +17,13 @@ double read_required_double(const YAML::Node &node, const std::string &key)
 
 }  // namespace
 
-Pilot::Pilot(rclcpp::Node::SharedPtr node_, const std::string yaml_path)
-    : node_(std::move(node_))
+Pilot::Pilot(rclcpp::Node::SharedPtr node, const std::string yaml_path)
+    : node_(std::move(node))
 {
     if (!yaml_path.empty()) {
         load_paths(yaml_path);
     } else {
-        RCLCPP_WARN(node_->get_logger(), "Pilot未提供yaml路径，轨迹为空");
+        RCLCPP_WARN(this->node_->get_logger(), "Pilot未提供yaml路径，轨迹为空");
     }
 
     reset();
