@@ -326,6 +326,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
         set(LCM_ENABLE_PYTHON OFF CACHE BOOL "Disable LCM Python bindings" FORCE)
         set(LCM_ENABLE_JAVA OFF CACHE BOOL "Disable LCM Java bindings" FORCE)
         set(LCM_ENABLE_LUA OFF CACHE BOOL "Disable LCM Lua bindings" FORCE)
+        set(LCM_ENABLE_LOGGER_TOOLS OFF CACHE BOOL "Disable LCM logger tools" FORCE)
         set(LCM_INSTALL_M4MACROS OFF CACHE BOOL "Disable LCM M4 install" FORCE)
         set(LCM_INSTALL_PKGCONFIG OFF CACHE BOOL "Disable LCM pkg-config install" FORCE)
         add_subdirectory(library/thirdparty/lcm EXCLUDE_FROM_ALL)
@@ -370,6 +371,15 @@ endif()
 # atdog robot driver
 if(SYSTEM_TYPE STREQUAL "Linux")
 add_subdirectory(library/thirdparty/robot_sdk/atdog/robot_driver)
+if(NOT USE_CMAKE)
+    if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+        install(TARGETS
+            atdog_imu_driver
+            atdog_leg_driver
+            DESTINATION lib/${PROJECT_NAME}
+        )
+    endif()
+endif()
 endif()
 
 # l4w4_sdk
@@ -464,6 +474,11 @@ endif()
 
 # library for motion loader
 add_library(motion_loader library/core/motion_loader/motion_loader.cpp)
+if(NOT USE_CMAKE)
+    if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+        install(TARGETS motion_loader DESTINATION lib/${PROJECT_NAME})
+    endif()
+endif()
 
 # library for rl sdk
 add_library(rl_sdk library/core/rl_sdk/rl_sdk.cpp)
@@ -691,6 +706,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
             ament_target_dependencies(rl_real_atdog
                 rclcpp
                 geometry_msgs
+                robot_msgs
             )
             install(TARGETS rl_real_atdog DESTINATION lib/${PROJECT_NAME})
         endif()

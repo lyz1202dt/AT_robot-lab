@@ -117,6 +117,21 @@ public:
             {
                 return "RLFSMStateGetDown";
             }
+
+            //std::cout<<"检查切换\n";
+            if(rl.control.mode==2)   //转到位控站立状态
+            {
+                std::cout<<"切入普通行走状态\n";
+                return "RLFSMStateRLLocomotion";
+            }
+            else if(rl.control.mode==3)     //切换到爬台阶状态
+            {
+                return "RLFSMStateRLStairs";
+            }
+            else if(rl.control.mode==4)     //切换到沙石地行走状态
+            {
+                return "RLFSMStateRLSand";
+            }
         }
         return state_name_;
     }
@@ -451,6 +466,10 @@ public:
             return std::make_shared<atdog2_fsm::RLFSMStateGetDown>(rl);
         else if (state_name == "RLFSMStateRLLocomotion")
             return std::make_shared<atdog2_fsm::RLFSMStateRLLocomotion>(rl);
+        else if (state_name == "RLFSMStateRLStairs")
+            return std::make_shared<atdog2_fsm::RLFSMStateRLStairs>(rl);
+        else if (state_name == "RLFSMStateRLSand")
+            return std::make_shared<atdog2_fsm::RLFSMStateRLSand>(rl);
         else if (state_name == "RLFSMStateCrosswall")
             return std::make_shared<atdog2_fsm::RLFSMStateCrosswall>(rl);
         return nullptr;
@@ -463,6 +482,8 @@ public:
             "RLFSMStateGetUp",
             "RLFSMStateGetDown",
             "RLFSMStateRLLocomotion",
+            "RLFSMStateRLStairs",
+            "RLFSMStateRLSand",
             "RLFSMStateCrosswall"
         };
     }
