@@ -10,9 +10,8 @@
 #include <array>
 #include <memory>
 
-RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
+RL_Real::RL_Real(int argc, char** argv) {
 
-    this->node_ = node;
     this->robot_name = "atdog2";
     this->ReadYaml("atdog2", "base.yaml");
 
@@ -25,12 +24,6 @@ RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
 
     imu_driver = std::make_unique<IMUDriver>();
     leg_driver = std::make_unique<LegDriver>();
-
-    cmd_sub =
-        node_->create_subscription<robot_msgs::msg::Cmd>("robot_move_cmd", 10, [this](const robot_msgs::msg::Cmd& msg) {
-            remote_cmd = msg;
-            std::cout << "mode=" << msg.mode << std::endl;
-        });
 
 
     // 键盘控制、底层控制、策略推理循环
@@ -113,14 +106,6 @@ void RL_Real::GetState(RobotState<float>* state) {
 void RL_Real::RobotControl() {
     // 获取各个传感器数据，遥控器期望，填写到robot_state中
     this->GetState(&this->robot_state);
-
-    if (remote_cmd.mode != 0) {     //由ROS2上层接管控制
-        this->control.setMode(remote_cmd.mode);
-        this->control.setVel(remote_cmd.vx, remote_cmd.vy, remote_cmd.vz);
-    }
-    else {
-        this->control.setMode(0);
-    }
 
     // 执行状态机，送入state，输出command
     this->StateController(&this->robot_state, &this->robot_command);
@@ -257,11 +242,10 @@ void signalHandler(int signum) {
 
 
 int main(int argc, char** argv) {
-    rclcpp::init(argc, argv);
-    auto node = std::make_shared<rclcpp::Node>("robot_controller_node");
-    RL_Real rl_sar(argc, argv, node);
-    rclcpp::spin(node);
+    RL_Real rl_sar(argc, argv);
+    while (!g_shutdown_requested) {
+        sleep(1);
+    }
     std::cout << LOGGER::INFO << "Exiting..." << std::endl;
-    rclcpp::shutdown();
     return 0;
 }
