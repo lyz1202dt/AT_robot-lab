@@ -303,8 +303,8 @@ if(SYSTEM_TYPE STREQUAL "Linux")
             set(RL_SAR_LCM_TARGET PkgConfig::LCM)
         else()
             message(FATAL_ERROR
-                "LCM not found. Run `git submodule update --init --recursive` to fetch "
-                "`library/thirdparty/lcm`, or install system package `liblcm-dev`.")
+                "LCM not found. Ensure vendored directory `library/thirdparty/lcm` exists "
+                "in the workspace, or install system package `liblcm-dev`.")
         endif()
     endif()
 endif()

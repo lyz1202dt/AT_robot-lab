@@ -80,44 +80,27 @@ setup_gazebo_models() {
     fi
 }
 
-setup_required_submodules() {
-    print_header "[Checking Required Submodules]"
+setup_required_dependencies() {
+    print_header "[Checking Required Dependencies]"
 
-    local required_submodules=("src/rl_sar/library/thirdparty/lcm")
-    local missing_submodules=()
+    local required_paths=("src/rl_sar/library/thirdparty/lcm")
+    local missing_paths=()
 
-    for submodule in "${required_submodules[@]}"; do
-        if [ ! -f "${SCRIPT_DIR}/${submodule}/CMakeLists.txt" ]; then
-            missing_submodules+=("$submodule")
+    for required_path in "${required_paths[@]}"; do
+        if [ ! -f "${SCRIPT_DIR}/${required_path}/CMakeLists.txt" ]; then
+            missing_paths+=("$required_path")
         fi
     done
 
-    if [ ${#missing_submodules[@]} -eq 0 ]; then
-        print_success "Required submodules are ready"
+    if [ ${#missing_paths[@]} -eq 0 ]; then
+        print_success "Required dependencies are ready"
         return 0
     fi
 
-    if ! command -v git >/dev/null 2>&1; then
-        print_error "git is not installed, cannot initialize required submodules: ${missing_submodules[*]}"
-        exit 1
-    fi
-
-    if ! git -C "$SCRIPT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        print_error "This project is not in a git worktree; cannot initialize submodules automatically."
-        print_info "Please ensure these directories exist: ${missing_submodules[*]}"
-        exit 1
-    fi
-
-    print_warning "Missing required submodules: ${missing_submodules[*]}"
-    print_info "Initializing submodules automatically..."
-
-    git -C "$SCRIPT_DIR" submodule update --init --recursive --recommend-shallow --progress "${missing_submodules[@]}" || {
-        print_error "Failed to initialize required submodules"
-        print_info "Try running manually: git submodule update --init --recursive --recommend-shallow --progress"
-        exit 1
-    }
-
-    print_success "Required submodules initialized"
+    print_error "Missing required vendored dependencies: ${missing_paths[*]}"
+    print_info "This build script no longer clones submodules automatically."
+    print_info "Please ensure the required directories exist in the workspace before building."
+    exit 1
 }
 
 run_cmake_build() {
@@ -419,7 +402,7 @@ main() {
 
     # Handle MuJoCo build mode
     if [ "$mujoco_mode" = true ]; then
-        setup_required_submodules
+        setup_required_dependencies
         setup_inference_runtime
         setup_robot_descriptions
         setup_mujoco
@@ -429,7 +412,7 @@ main() {
 
     # Handle CMake build mode
     if [ "$cmake_mode" = true ]; then
-        setup_required_submodules
+        setup_required_dependencies
         setup_inference_runtime
         run_cmake_build
         exit 0
@@ -448,7 +431,7 @@ main() {
         exit 1
     fi
 
-    setup_required_submodules
+    setup_required_dependencies
     setup_inference_runtime
     setup_robot_descriptions
     setup_gazebo_models
