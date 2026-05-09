@@ -70,8 +70,16 @@ public:
             std::string next = current_state_->CheckChange();
             if (next != current_state_->GetStateName())
             {
+                auto it = states_.find(next);
+                if (it == states_.end())
+                {
+                    std::cout << LOGGER::ERROR << "[FSM] State '" << next
+                              << "' requested by " << current_state_->GetStateName()
+                              << " but not registered!" << std::endl;
+                    return;
+                }
                 mode_ = Mode::CHANGE;
-                next_state_ = states_.at(next);
+                next_state_ = it->second;
                 std::cout << std::endl << LOGGER::NOTE << "[FSM] Switch from " << current_state_->GetStateName() << " to " << next_state_->GetStateName() << std::endl;
             }
         }

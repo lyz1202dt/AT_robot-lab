@@ -18,6 +18,8 @@
 
 #include <csignal>
 #include <memory>
+#include <rclcpp/rclcpp.hpp>
+#include <robot_msgs/msg/cmd.hpp>
 
 
 
@@ -28,6 +30,9 @@ public:
     ~RL_Real();
 
 private:
+
+    rclcpp::Node::SharedPtr node_;      //用于ROS2订阅通信的节点
+    rclcpp::Subscription<robot_msgs::msg::Cmd>::SharedPtr cmd_sub;
     // rl functions
     std::vector<float> Forward() override;
     void GetState(RobotState<float> *state) override;

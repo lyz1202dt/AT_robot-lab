@@ -54,11 +54,11 @@ void RL::StateController(const RobotState<float>* state, RobotCommand<float>* co
         this->control.y = 0.0f;
         this->control.yaw = 0.0f;
     }
-    if (this->control.current_keyboard == Input::Keyboard::N || this->control.current_gamepad == Input::Gamepad::X)
-    {
-        this->control.navigation_mode = !this->control.navigation_mode;
-        std::cout << std::endl << LOGGER::INFO << "Navigation mode: " << (this->control.navigation_mode ? "ON" : "OFF") << std::endl;
-    }
+    // if (this->control.current_keyboard == Input::Keyboard::N || this->control.current_gamepad == Input::Gamepad::X)
+    // {
+    //     this->control.navigation_mode = !this->control.navigation_mode;
+    //     std::cout << std::endl << LOGGER::INFO << "Navigation mode: " << (this->control.navigation_mode ? "ON" : "OFF") << std::endl;
+    // }
 }
 
 std::vector<float> RL::ComputeObservation()
@@ -472,12 +472,18 @@ void RL::ReadYaml(const std::string& file_path, const std::string& file_name)
     YAML::Node config;
     try
     {
-        config = YAML::LoadFile(config_path)[file_path];
+        YAML::Node root = YAML::LoadFile(config_path);
+        config = root[file_path];
     }
     catch (YAML::BadFile &e)
     {
-        std::cout << LOGGER::ERROR << "The file '" << config_path << "' does not exist" << std::endl;
-        return;
+        throw std::runtime_error("The file '" + config_path + "' does not exist");
+    }
+
+    if (!config || !config.IsMap())
+    {
+        throw std::runtime_error(
+            "Failed to load config section '" + file_path + "' from '" + config_path + "'");
     }
 
     for (auto it = config.begin(); it != config.end(); ++it)

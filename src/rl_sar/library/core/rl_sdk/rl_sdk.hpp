@@ -119,6 +119,7 @@ struct Control
     float y = 0.0f;
     float yaw = 0.0f;
     bool navigation_mode = false;
+    int mode=0;
 
     void SetKeyboard(Input::Keyboard keyboad)
     {
@@ -136,6 +137,18 @@ struct Control
             last_gamepad = current_gamepad;
             current_gamepad = gamepad;
         }
+    }
+
+    void setMode(int mode)
+    {
+        this->mode=mode;
+    }
+
+    void setVel(float x,float y,float yaw)
+    {
+        this->x=x;
+        this->y=y;
+        this->yaw=yaw;
     }
 
     void ClearInput()

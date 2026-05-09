@@ -5,6 +5,8 @@ project(rl_sar VERSION 4.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # System environment detection
 set(SYSTEM_TYPE ${CMAKE_SYSTEM_NAME})
 
@@ -29,7 +31,6 @@ endif()
 # MuJoCo simulator option
 set(USE_MUJOCO OFF CACHE BOOL "Build with MuJoCo simulator support")
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
@@ -233,6 +234,40 @@ endif()
 find_package(TBB REQUIRED)
 find_package(Threads REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+find_package(Eigen3 REQUIRED)
+
+# Find KDL parser and orocos_kdl for kinematics
+if(NOT USE_CMAKE)
+    if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+        find_package(kdl_parser REQUIRED)
+        find_package(orocos_kdl REQUIRED)
+        message(STATUS "Found KDL parser and orocos_kdl")
+    elseif($ENV{ROS_DISTRO} MATCHES "noetic")
+        find_package(kdl_parser REQUIRED)
+        find_package(orocos_kdl REQUIRED)
+        message(STATUS "Found KDL parser and orocos_kdl (ROS1)")
+    endif()
+else()
+    # For non-ROS builds, try to find KDL system-wide
+    find_package(kdl_parser QUIET)
+    find_package(orocos_kdl QUIET)
+    if(kdl_parser_FOUND AND orocos_kdl_FOUND)
+        message(STATUS "Found KDL parser and orocos_kdl (system)")
+    else()
+        message(WARNING "KDL libraries not found. Some features may be unavailable.")
+    endif()
+endif()
+
+# Find OSQP and qpOASES for optimization
+find_package(osqp QUIET)
+find_package(OsqpEigen QUIET)
+find_package(qpOASES QUIET)
+if(osqp_FOUND AND OsqpEigen_FOUND AND qpOASES_FOUND)
+    message(STATUS "Found OSQP, OsqpEigen, and qpOASES")
+    add_compile_definitions(HAVE_OSQP HAVE_OSQPEIGEN HAVE_QPOASES)
+else()
+    message(WARNING "OSQP libraries not found. Some optimization features may be unavailable.")
+endif()
 
 # Add Python library path to RPATH
 if(Python3_LIBRARIES)
@@ -291,6 +326,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
         set(LCM_ENABLE_PYTHON OFF CACHE BOOL "Disable LCM Python bindings" FORCE)
         set(LCM_ENABLE_JAVA OFF CACHE BOOL "Disable LCM Java bindings" FORCE)
         set(LCM_ENABLE_LUA OFF CACHE BOOL "Disable LCM Lua bindings" FORCE)
+        set(LCM_ENABLE_LOGGER_TOOLS OFF CACHE BOOL "Disable LCM logger tools" FORCE)
         set(LCM_INSTALL_M4MACROS OFF CACHE BOOL "Disable LCM M4 install" FORCE)
         set(LCM_INSTALL_PKGCONFIG OFF CACHE BOOL "Disable LCM pkg-config install" FORCE)
         add_subdirectory(library/thirdparty/lcm EXCLUDE_FROM_ALL)
@@ -335,6 +371,15 @@ endif()
 # atdog robot driver
 if(SYSTEM_TYPE STREQUAL "Linux")
 add_subdirectory(library/thirdparty/robot_sdk/atdog/robot_driver)
+if(NOT USE_CMAKE)
+    if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+        install(TARGETS
+            atdog_imu_driver
+            atdog_leg_driver
+            DESTINATION lib/${PROJECT_NAME}
+        )
+    endif()
+endif()
 endif()
 
 # l4w4_sdk
@@ -429,6 +474,11 @@ endif()
 
 # library for motion loader
 add_library(motion_loader library/core/motion_loader/motion_loader.cpp)
+if(NOT USE_CMAKE)
+    if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+        install(TARGETS motion_loader DESTINATION lib/${PROJECT_NAME})
+    endif()
+endif()
 
 # library for rl sdk
 add_library(rl_sdk library/core/rl_sdk/rl_sdk.cpp)
@@ -438,13 +488,39 @@ target_link_libraries(rl_sdk PUBLIC
     Python3::Python
     Python3::Module
     TBB::tbb
+    Eigen3::Eigen
+    osqp::osqp
+    OsqpEigen::OsqpEigen
 )
+
+# Link KDL libraries if available
+if(NOT USE_CMAKE)
+    if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+        target_link_libraries(rl_sdk PUBLIC
+            kdl_parser::kdl_parser
+        )
+    elseif($ENV{ROS_DISTRO} MATCHES "noetic")
+        target_link_libraries(rl_sdk PUBLIC
+            ${kdl_parser_LIBRARIES}
+            ${orocos_kdl_LIBRARIES}
+        )
+    endif()
+else()
+    # For non-ROS builds, link KDL if found
+    if(kdl_parser_FOUND AND orocos_kdl_FOUND)
+        target_link_libraries(rl_sdk PUBLIC
+            kdl_parser::kdl_parser
+        )
+    endif()
+endif()
+
 find_package(Python3 COMPONENTS NumPy)
 if(Python3_NumPy_FOUND)
     target_link_libraries(rl_sdk PUBLIC Python3::NumPy)
 else()
     target_compile_definitions(rl_sdk PUBLIC WITHOUT_NUMPY)
 endif()
+
 if(NOT USE_CMAKE)
     if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
         install(TARGETS rl_sdk DESTINATION lib/${PROJECT_NAME})
@@ -606,6 +682,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
             ament_target_dependencies(rl_real_atdog2
                 rclcpp
                 geometry_msgs
+                robot_msgs
             )
             install(TARGETS rl_real_atdog2 DESTINATION lib/${PROJECT_NAME})
         endif()
@@ -629,6 +706,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
             ament_target_dependencies(rl_real_atdog
                 rclcpp
                 geometry_msgs
+                robot_msgs
             )
             install(TARGETS rl_real_atdog DESTINATION lib/${PROJECT_NAME})
         endif()
