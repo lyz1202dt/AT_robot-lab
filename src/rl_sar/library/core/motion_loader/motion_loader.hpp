@@ -13,7 +13,7 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
-#include "vector_math.hpp"
+#include "../vector_math/vector_math.hpp"
 #include "../logger/logger.hpp"
 
 /**

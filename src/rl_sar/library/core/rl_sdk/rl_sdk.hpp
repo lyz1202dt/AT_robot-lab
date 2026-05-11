@@ -18,12 +18,12 @@
 #include <mutex>
 
 #include <yaml-cpp/yaml.h>
-#include "fsm.hpp"
-#include "observation_buffer.hpp"
-#include "vector_math.hpp"
-#include "inference_runtime.hpp"
-#include "logger.hpp"
-#include "motion_loader.hpp"
+#include "../fsm/fsm.hpp"
+#include "../observation_buffer/observation_buffer.hpp"
+#include "../vector_math/vector_math.hpp"
+#include "../inference_runtime/inference_runtime.hpp"
+#include "../logger/logger.hpp"
+#include "../motion_loader/motion_loader.hpp"
 
 template <typename T>
 struct RobotCommand

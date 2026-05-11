@@ -6,10 +6,10 @@
 #ifndef ATDOG2_FSM_HPP
 #define ATDOG2_FSM_HPP
 
-#include "fsm.hpp"
-#include "rl_sdk.hpp"
+#include "../library/core/fsm/fsm.hpp"
+#include "../library/core/rl_sdk/rl_sdk.hpp"
 #include <Eigen/Dense>
-
+#include "cross_wall.hpp"
 namespace atdog2_fsm
 {
 
@@ -103,6 +103,10 @@ public:
 
     std::string CheckChange() override
     {
+        if(rl.fsm.previous_state_->GetStateName()=="RLFSMStateCrosswall")
+        {
+            return "RLFSMStateRLLocomotion";
+        }
         if (rl.control.current_keyboard == Input::Keyboard::P || rl.control.current_gamepad == Input::Gamepad::LB_X)
         {
             return "RLFSMStatePassive";
@@ -132,7 +136,12 @@ public:
             {
                 return "RLFSMStateRLSand";
             }
+            else if(rl.control.mode==5)     //切换到翻墙状态
+            {
+                return "RLFSMStateCrosswall";
+            }
         }
+        
         return state_name_;
     }
 };
@@ -181,25 +190,82 @@ class RLFSMStateCrosswall : public RLFSMState
 
     
 public:
-    RLFSMStateCrosswall(RL *rl) : RLFSMState(*rl, "RLFSMStateCrosswall") {}
-
+    int num_dofs;
+    std::shared_ptr<Cross_WallState> cross_wall_state;
+    RLFSMStateCrosswall(RL *rl) : RLFSMState(*rl, "RLFSMStateCrosswall") {
+        std::string urdf_path = "src/rl_sar_zoo/" + rl->robot_name + "_description/urdf/dog2.urdf";
+        cross_wall_state = std::make_shared<Cross_WallState>(urdf_path);
+    }
+    
     
 
     void Enter() override
     {
-        
         rl.now_state = *fsm_state;
+        num_dofs = rl.params.Get<int>("num_of_dofs");
+        cross_wall_state->enter();
+        
     }
 
     void Run() override
     {
-        
+        for (int i = 0; i < num_dofs; ++i)
+        {
+            int leg_index = i / 4;
+            int jonit_index = i % 4;
+            // 获取当前电机状态
+            switch (leg_index) 
+            {
+                case 0:
+                    cross_wall_state->robot->rf_joint_pos[jonit_index] = fsm_state->motor_state.q[i];      // 位置
+                    cross_wall_state->robot->rf_joint_vel[jonit_index] = fsm_state->motor_state.dq[i];    // 速度
+                break;
+                case 1:
+                    cross_wall_state->robot->lf_joint_pos[jonit_index] = fsm_state->motor_state.q[i];      
+                    cross_wall_state->robot->lf_joint_vel[jonit_index] = fsm_state->motor_state.dq[i];
+                case 2:
+                    cross_wall_state->robot->lb_joint_pos[jonit_index] = fsm_state->motor_state.q[i];
+                    cross_wall_state->robot->lb_joint_vel[jonit_index] = fsm_state->motor_state.dq[i];
+                break;
+                case 3:
+                    cross_wall_state->robot->rb_joint_pos[jonit_index] = fsm_state->motor_state.q[i];
+                    cross_wall_state->robot->rb_joint_vel[jonit_index] = fsm_state->motor_state.dq[i];
+                break;
+                default:
+                    break;
+            }
+            
+        }
+        RobotTarget joints_target;
+        joints_target = cross_wall_state->update();
+        for (int i = 0; i < num_dofs; ++i)
+        {
+            int leg_index = i / 4;
+            int jonit_index = i % 4;
+            fsm_command->motor_command.q[i] = joints_target.legs[leg_index].joints[jonit_index].rad;
+            fsm_command->motor_command.dq[i] = joints_target.legs[leg_index].joints[jonit_index].omega;
+            fsm_command->motor_command.kp[i] = joints_target.legs[leg_index].joints[jonit_index].kp;
+            fsm_command->motor_command.kd[i] = joints_target.legs[leg_index].joints[jonit_index].kd;
+            fsm_command->motor_command.tau[i] = 0;
+        }
     }
 
     void Exit() override {}
 
     std::string CheckChange() override
     {
+        if(cross_wall_state->RL_walk_flag == true)
+        {
+            cross_wall_state->RL_walk_flag = false;
+            cross_wall_state->cross_wall_stage = 13;
+            return "RLFSMStateRLLocomotion";
+        }
+        if(cross_wall_state->Cross_wall_over == true)
+        {
+            cross_wall_state->Cross_wall_over = false;
+            cross_wall_state->cross_wall_stage = -1;
+            return "RLFSMStateGetUp";
+        }
         
         return state_name_;
     }
@@ -214,6 +280,7 @@ public:
     RLFSMStateRLLocomotion(RL *rl) : RLFSMState(*rl, "RLFSMStateRLLocomotion") {}
 
     float percent_transition = 0.0f;
+    std::chrono::steady_clock::time_point cross_enter_time = std::chrono::steady_clock::now();
 
     void Enter() override
     {
@@ -233,6 +300,11 @@ public:
             std::cout << LOGGER::ERROR << "InitRL() failed: " << e.what() << std::endl;
             rl.rl_init_done = false;
             rl.fsm.RequestStateChange("RLFSMStatePassive");
+        }
+        if (rl.fsm.previous_state_->GetStateName() == "RLFSMStateCrosswall")
+        {
+            cross_enter_time = std::chrono::steady_clock::now();
+            //rl.control.setVel(0.3f, 0.0f, 0.0f);
         }
     }
 
@@ -254,6 +326,11 @@ public:
 
     std::string CheckChange() override
     {
+        if(std::chrono::steady_clock::now() - cross_enter_time > std::chrono::milliseconds(1))
+        {
+            //rl.control.setVel(0.0f, 0.0f, 0.0f);
+            return "RLFSMStateCrosswall";
+        }
         if (rl.control.current_keyboard == Input::Keyboard::P || rl.control.current_gamepad == Input::Gamepad::LB_X)
         {
             return "RLFSMStatePassive";

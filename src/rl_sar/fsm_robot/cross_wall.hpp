@@ -27,6 +27,7 @@
 // C++ 标准库
 #include <chrono>
 #include <iostream>
+#include <memory>
 
 class LegCalc;
 
@@ -103,7 +104,9 @@ public:
 
 class LegCalc {
 public:
-    LegCalc(KDL::Chain& chain, const std::vector<double>& kp_list, const std::vector<double>& kd_list, double wheel_kd_param);
+    LegCalc(
+    KDL::Chain& chain, const std::vector<double>& kp_list = {3.0, 2.8, 2.8}, const std::vector<double>& kd_list = {0.17, 0.14, 0.11},
+    double wheel_kd_param = 0.5);
     ~LegCalc();
 
     void set_init_joint_pos(const Eigen::Vector3d init_joint_pos);
@@ -144,7 +147,7 @@ private:
 
     Eigen::Matrix<double, 3, 3> get_3x3_jacobian_(const KDL::Jacobian& full_jacobian); // 从KDL库中求出我们感兴趣的3*3位置雅可比矩阵
 
-    KDL::Chain chain;
+    const KDL::Chain chain;
     KDL::ChainFkSolverPos_recursive fk_solver;                                         // 关节位置->足端位置
     KDL::ChainJntToJacSolver jacobain_solver;                                          // 求解雅可比矩阵
     KDL::ChainJntToJacDotSolver jdot_solver;                                           // 求解dJdq
@@ -187,6 +190,8 @@ private:
         QuinticLineParam_t x;
         QuinticLineParam_t y;
         QuinticLineParam_t z;
+        QuinticLineParam_t l1_z;
+        QuinticLineParam_t l2_z;
         double time;
     } StepTrajectory_t;
     StepTrajectory_t traj;
@@ -219,33 +224,47 @@ private:
     }
 
 public:
+    bool flight_trajectory_is_available = false;
+    bool support_trajectory_is_available = false;
     inline void update_support_trajectory(const Eigen::Vector3d& cur_pos, const Eigen::Vector3d final_pos, double time) {
         traj.time = time;
-        T         = time;
 
-        for (int i = 0; i < 3; i++) {
-            double p0 = cur_pos[i];
-            double pT = final_pos[i];
 
-            // ⭐ Quintic：直接保证平滑
             double v0 = 0.0;
             double vT = 0.0;
             double a0 = 0.0;
             double aT = 0.0;
 
-            if (i == 0)
-                set_quintic(traj.x, p0, v0, a0, pT, vT, aT, time);
-            else if (i == 1)
-                set_quintic(traj.y, p0, v0, a0, pT, vT, aT, time);
-            else
-                set_quintic(traj.z, p0, v0, a0, pT, vT, aT, time);
-        }
+
+                set_quintic(traj.x, cur_pos[0], v0, a0, final_pos[0], vT, aT, time);
+
+                set_quintic(traj.y, cur_pos[1], v0, a0, final_pos[1], vT, aT, time);
+
+                set_quintic(traj.z, cur_pos[2], v0, a0, final_pos[2], vT, aT, time);
+        
     }
+    inline void update_flight_trajectory(
+        const Eigen::Vector3d& cur_pos, const Eigen::Vector3d& cur_vel, const Eigen::Vector3d& exp_pos, const Eigen::Vector3d& exp_vel, const double time, const double step_height) {
+
+            traj.time = time;
+
+            set_quintic(
+                traj.x, cur_pos[0], cur_vel[0], 0.0, // 起点
+                exp_pos[0], -exp_vel[0], 0.0, time);               // 终点
+            // y方向轨迹
+            set_quintic(traj.y, cur_pos[1], cur_vel[1], 0.0, exp_pos[1], -exp_vel[1], 0.0, time);
+            // z方向分为两段：抬腿 -> 落腿
+            // 第一段：从当前z抬到最高点
+            set_quintic(traj.l1_z, cur_pos[2], cur_vel[2], 0.0, step_height, 0.0, 0.0, time * 0.5f);
+
+            // 第二段：从最高点落到地面
+            set_quintic(traj.l2_z, step_height, 0.0, 0.0, exp_pos[2], 0.0, 0.0, time * 0.5f);
+}
     inline std::tuple<Eigen::Vector3d, Eigen::Vector3d, Eigen::Vector3d> get_target(double time, bool& success) {
         Eigen::Vector3d pos, vel, acc;
 
-        if (time >= T) {
-            time    = T;
+        if (time >= traj.time) {
+            time    = traj.time;
             success = false;
         } else {
             success = true;
@@ -274,6 +293,8 @@ public:
     Cross_WallState(const std::string& urdf_file_path);
     void enter();
     RobotTarget update();
+    std::tuple<Eigen::Vector3d, double> get_robot_mass_info(
+    const Eigen::Vector3d& lf_joint_pos, const Eigen::Vector3d& rf_joint_pos, const Eigen::Vector3d& lb_joint_pos, const Eigen::Vector3d& rb_joint_pos);
 
     std::shared_ptr<Robot_t> robot;
     int cross_wall_stage{-1};
@@ -310,6 +331,8 @@ public:
     // 力变量
     Eigen::Vector2d mass_center_pos;
     double mass;
+    bool RL_walk_flag{false};
+    bool Cross_wall_over{false};
 
     Cross_Step lf_step, rf_step, lb_step, rb_step;
 };
