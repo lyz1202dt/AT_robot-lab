@@ -265,8 +265,20 @@ find_package(qpOASES QUIET)
 if(osqp_FOUND AND OsqpEigen_FOUND AND qpOASES_FOUND)
     message(STATUS "Found OSQP, OsqpEigen, and qpOASES")
     add_compile_definitions(HAVE_OSQP HAVE_OSQPEIGEN HAVE_QPOASES)
+    set(OSQP_LIBS osqp::osqp OsqpEigen::OsqpEigen)
 else()
     message(WARNING "OSQP libraries not found. Some optimization features may be unavailable.")
+    set(OSQP_LIBS "")
+endif()
+
+# Find rclcpp for non-ROS builds if headers are present in the system
+if(USE_CMAKE)
+    find_package(rclcpp QUIET)
+    if(rclcpp_FOUND)
+        message(STATUS "Found rclcpp in system (non-ROS mode)")
+    else()
+        message(WARNING "rclcpp not found. rl_real targets requiring ROS2 will fail to compile.")
+    endif()
 endif()
 
 # Add Python library path to RPATH
@@ -489,8 +501,7 @@ target_link_libraries(rl_sdk PUBLIC
     Python3::Module
     TBB::tbb
     Eigen3::Eigen
-    osqp::osqp
-    OsqpEigen::OsqpEigen
+    ${OSQP_LIBS}
 )
 
 # Link KDL libraries if available
@@ -666,7 +677,8 @@ if(SYSTEM_TYPE STREQUAL "Linux")
 endif()
 
 # executable for rl real atdog2
-if(SYSTEM_TYPE STREQUAL "Linux")
+# Note: rl_real_atdog2 requires ROS2 robot_msgs which is not available in USE_CMAKE mode
+if(SYSTEM_TYPE STREQUAL "Linux" AND NOT USE_CMAKE)
     add_executable(rl_real_atdog2 src/rl_real_atdog2.cpp)
     target_link_libraries(rl_real_atdog2
         atdog::imu_driver
@@ -675,22 +687,25 @@ if(SYSTEM_TYPE STREQUAL "Linux")
         observation_buffer
         ${YAML_CPP_LIBRARIES}
     )
-    if(NOT USE_CMAKE)
-        if($ENV{ROS_DISTRO} MATCHES "noetic")
-            target_link_libraries(rl_real_atdog2 ${catkin_LIBRARIES})
-        elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
-            ament_target_dependencies(rl_real_atdog2
-                rclcpp
-                geometry_msgs
-                robot_msgs
-            )
-            install(TARGETS rl_real_atdog2 DESTINATION lib/${PROJECT_NAME})
-        endif()
+    if(rclcpp_FOUND)
+        target_link_libraries(rl_real_atdog2 rclcpp::rclcpp)
+        target_include_directories(rl_real_atdog2 PRIVATE ${rclcpp_INCLUDE_DIRS})
+    endif()
+    if($ENV{ROS_DISTRO} MATCHES "noetic")
+        target_link_libraries(rl_real_atdog2 ${catkin_LIBRARIES})
+    elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+        ament_target_dependencies(rl_real_atdog2
+            rclcpp
+            geometry_msgs
+            robot_msgs
+        )
+        install(TARGETS rl_real_atdog2 DESTINATION lib/${PROJECT_NAME})
     endif()
 endif()
 
 # executable for rl real atdog
-if(SYSTEM_TYPE STREQUAL "Linux")
+# Note: rl_real_atdog requires ROS2 robot_msgs which is not available in USE_CMAKE mode
+if(SYSTEM_TYPE STREQUAL "Linux" AND NOT USE_CMAKE)
     add_executable(rl_real_atdog src/rl_real_atdog.cpp)
     target_link_libraries(rl_real_atdog
         atdog::imu_driver
@@ -699,17 +714,19 @@ if(SYSTEM_TYPE STREQUAL "Linux")
         observation_buffer
         ${YAML_CPP_LIBRARIES}
     )
-    if(NOT USE_CMAKE)
-        if($ENV{ROS_DISTRO} MATCHES "noetic")
-            target_link_libraries(rl_real_atdog ${catkin_LIBRARIES})
-        elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
-            ament_target_dependencies(rl_real_atdog
-                rclcpp
-                geometry_msgs
-                robot_msgs
-            )
-            install(TARGETS rl_real_atdog DESTINATION lib/${PROJECT_NAME})
-        endif()
+    if(rclcpp_FOUND)
+        target_link_libraries(rl_real_atdog rclcpp::rclcpp)
+        target_include_directories(rl_real_atdog PRIVATE ${rclcpp_INCLUDE_DIRS})
+    endif()
+    if($ENV{ROS_DISTRO} MATCHES "noetic")
+        target_link_libraries(rl_real_atdog ${catkin_LIBRARIES})
+    elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+        ament_target_dependencies(rl_real_atdog
+            rclcpp
+            geometry_msgs
+            robot_msgs
+        )
+        install(TARGETS rl_real_atdog DESTINATION lib/${PROJECT_NAME})
     endif()
 endif()
 
@@ -853,6 +870,12 @@ if(USE_MUJOCO)
     file(GLOB MUJOCO_SIMULATE_SRC library/thirdparty/mujoco_simulate/*.cc)
     set(JOYSTICK_SRC library/thirdparty/joystick/joystick.cc)
 
+    # Add FSM source files for cross_wall
+    set(FSM_SOURCES "")
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fsm_robot/cross_wall.cpp")
+        list(APPEND FSM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/fsm_robot/cross_wall.cpp")
+    endif()
+
     # On macOS, also include Objective-C++ files for CoreVideo support
     if(SYSTEM_TYPE STREQUAL "Darwin")
         file(GLOB MUJOCO_SIMULATE_MM library/thirdparty/mujoco_simulate/*.mm)
@@ -860,7 +883,7 @@ if(USE_MUJOCO)
     endif()
 
     # Build executable
-    add_executable(rl_sim_mujoco src/rl_sim_mujoco.cpp ${MUJOCO_SIMULATE_SRC} ${JOYSTICK_SRC})
+    add_executable(rl_sim_mujoco src/rl_sim_mujoco.cpp ${MUJOCO_SIMULATE_SRC} ${JOYSTICK_SRC} ${FSM_SOURCES})
 
     # Suppress deprecation warnings for macOS 15.0 API changes in MuJoCo Simulate
     if(SYSTEM_TYPE STREQUAL "Darwin")

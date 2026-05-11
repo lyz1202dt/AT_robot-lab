@@ -587,7 +587,7 @@ RobotTarget Cross_WallState::update() {
                 lf_step.update_support_trajectory(lf_cart_pos,lf_cart_pos,1.0);
                 rf_step.update_support_trajectory(rf_cart_pos,rf_cart_pos,1.0);
                 rb_step.update_support_trajectory(rb_cart_pos,rb_cart_pos,1.0);
-                lb_step.update_flight_trajectory(lb_cart_pos,Vector3D(0.0,0.0,0.0), Vector3D(0.12,0.08,0.0), Vector2D(0.0,0.0), 1.0,0.06);
+                lb_step.update_flight_trajectory(lb_cart_pos,Vector3D(0.0,0.0,0.0), Vector3D(0.12,0.08,0.0), Vector3D(0.0,0.0,0.0), 1.0,0.06);
                 //change_flag=false;
                 cross_wall_stage=2;     
             }
@@ -1284,10 +1284,11 @@ RobotTarget Cross_WallState::update() {
                 auto rf_cart_pos = robot->rf_leg_calc->foot_pos(robot->rf_joint_pos);
                 auto lb_cart_pos = robot->lb_leg_calc->foot_pos(robot->lb_joint_pos);
                 auto rb_cart_pos = robot->rb_leg_calc->foot_pos(robot->rb_joint_pos);
-                robot->lf_z_vmc->reset(lf_cart_pos.z(), 0.0);
-                robot->rf_z_vmc->reset(rf_cart_pos.z(), 0.0);
-                robot->lb_z_vmc->reset(lb_cart_pos.z(), 0.0);
-                robot->rb_z_vmc->reset(rb_cart_pos.z(), 0.0);
+                // TODO: VMC controller initialization - these members need to be added to Robot_t class
+                // robot->lf_z_vmc->reset(lf_cart_pos.z(), 0.0);
+                // robot->rf_z_vmc->reset(rf_cart_pos.z(), 0.0);
+                // robot->lb_z_vmc->reset(lb_cart_pos.z(), 0.0);
+                // robot->rb_z_vmc->reset(rb_cart_pos.z(), 0.0);
                 Cross_wall_over = true;
                 cross_wall_stage = 20;
             }
