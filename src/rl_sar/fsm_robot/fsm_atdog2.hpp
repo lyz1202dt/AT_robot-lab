@@ -121,6 +121,10 @@ public:
             {
                 return "RLFSMStateGetDown";
             }
+            else if (rl.control.current_keyboard == Input::Keyboard::Num5 || rl.control.current_gamepad == Input::Gamepad::LB_DPadDown)
+            {
+                return "RLFSMStateCrosswall";
+            }
 
             //std::cout<<"检查切换\n";
             if(rl.control.mode==2)   //转到位控站立状态
