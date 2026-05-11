@@ -9,6 +9,7 @@
 #include "../library/core/fsm/fsm.hpp"
 #include "../library/core/rl_sdk/rl_sdk.hpp"
 #include <Eigen/Dense>
+#include <cmath>  // for std::isnan, std::isinf
 #include "cross_wall.hpp"
 namespace atdog2_fsm
 {
@@ -215,8 +216,8 @@ public:
     {
         for (int i = 0; i < num_dofs; ++i)
         {
-            int leg_index = i / 4;
-            int jonit_index = i % 4;
+            int leg_index = i / 3;    // ✅ atdog2 是 3 关节/腿
+            int jonit_index = i % 3;  // ✅ 索引范围 0-2
             // 获取当前电机状态
             switch (leg_index) 
             {
@@ -227,11 +228,12 @@ public:
                 case 1:
                     cross_wall_state->robot->lf_joint_pos[jonit_index] = fsm_state->motor_state.q[i];      
                     cross_wall_state->robot->lf_joint_vel[jonit_index] = fsm_state->motor_state.dq[i];
-                case 2:
+                break;
+                case 3:
                     cross_wall_state->robot->lb_joint_pos[jonit_index] = fsm_state->motor_state.q[i];
                     cross_wall_state->robot->lb_joint_vel[jonit_index] = fsm_state->motor_state.dq[i];
                 break;
-                case 3:
+                case 2:
                     cross_wall_state->robot->rb_joint_pos[jonit_index] = fsm_state->motor_state.q[i];
                     cross_wall_state->robot->rb_joint_vel[jonit_index] = fsm_state->motor_state.dq[i];
                 break;
@@ -244,13 +246,27 @@ public:
         joints_target = cross_wall_state->update();
         for (int i = 0; i < num_dofs; ++i)
         {
-            int leg_index = i / 4;
-            int jonit_index = i % 4;
-            fsm_command->motor_command.q[i] = joints_target.legs[leg_index].joints[jonit_index].rad;
-            fsm_command->motor_command.dq[i] = joints_target.legs[leg_index].joints[jonit_index].omega;
-            fsm_command->motor_command.kp[i] = joints_target.legs[leg_index].joints[jonit_index].kp;
-            fsm_command->motor_command.kd[i] = joints_target.legs[leg_index].joints[jonit_index].kd;
-            fsm_command->motor_command.tau[i] = 0;
+            int leg_index = i / 3;    // ✅ atdog2 是 3 关节/腿
+            int jonit_index = i % 3;  // ✅ 索引范围 0-2
+            
+            // 防止 NaN 或 Inf 值
+            float q_val = joints_target.legs[leg_index].joints[jonit_index].rad;
+            float dq_val = joints_target.legs[leg_index].joints[jonit_index].omega;
+            float kp_val = joints_target.legs[leg_index].joints[jonit_index].kp;
+            float kd_val = joints_target.legs[leg_index].joints[jonit_index].kd;
+
+            
+            // 检查并修正无效值
+            // if (std::isnan(q_val) || std::isinf(q_val)) q_val = 0.0f;
+            // if (std::isnan(dq_val) || std::isinf(dq_val)) dq_val = 0.0f;
+            // if (std::isnan(kp_val) || std::isinf(kp_val)) kp_val = 0.0f;
+            // if (std::isnan(kd_val) || std::isinf(kd_val)) kd_val = 0.0f;
+            
+            fsm_command->motor_command.q[i] = q_val;
+            fsm_command->motor_command.dq[i] = dq_val;
+            fsm_command->motor_command.kp[i] = kp_val;
+            fsm_command->motor_command.kd[i] = kd_val;
+            fsm_command->motor_command.tau[i] = joints_target.legs[leg_index].joints[jonit_index].torque;
         }
     }
 
@@ -285,6 +301,7 @@ public:
 
     float percent_transition = 0.0f;
     std::chrono::steady_clock::time_point cross_enter_time = std::chrono::steady_clock::now();
+    bool RL_to_Cross = false;
 
     void Enter() override
     {
@@ -308,6 +325,7 @@ public:
         if (rl.fsm.previous_state_->GetStateName() == "RLFSMStateCrosswall")
         {
             cross_enter_time = std::chrono::steady_clock::now();
+            RL_to_Cross = true;
             rl.control.setVel(0.3f, 0.0f, 0.0f);
         }
     }
@@ -330,8 +348,9 @@ public:
 
     std::string CheckChange() override
     {
-        if(std::chrono::steady_clock::now() - cross_enter_time > std::chrono::milliseconds(1))
+        if((std::chrono::steady_clock::now() - cross_enter_time > std::chrono::milliseconds(3000)) && RL_to_Cross)
         {
+            RL_to_Cross = false;
             rl.control.setVel(0.0f, 0.0f, 0.0f);
             return "RLFSMStateCrosswall";
         }

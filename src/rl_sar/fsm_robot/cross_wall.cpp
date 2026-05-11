@@ -3,8 +3,8 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <cmath> 
 
-#define DEBUG_FK 0
 
 using Vector3D = Eigen::Vector3d;
 using Vector2D = Eigen::Vector2d;
@@ -18,8 +18,8 @@ Robot_t::Robot_t(const std::string& urdf_file_path)
     , robot_lf_grivate(32.0)
     , robot_rb_grivate(40.0)
     , robot_rf_grivate(32.0)
-    , kp{3.0, 2.8, 2.8}
-    , kd{0.17, 0.14, 0.11} {
+    , kp{80.0, 80.0, 80.0}
+    , kd{3.0, 3.0, 3.0} {
     // 从文件直接读取 URDF
     std::ifstream urdf_file(urdf_file_path);
     if (!urdf_file.is_open()) {
@@ -47,10 +47,10 @@ Robot_t::Robot_t(const std::string& urdf_file_path)
     // }
 
     kdl_parser::treeFromString(urdf_xml, tree); // 解析四条腿的KDL树结构
-    tree.getChain("body_link", "lf_link4", lf_leg_chain);
-    tree.getChain("body_link", "rf_link4", rf_leg_chain);
-    tree.getChain("body_link", "lb_link4", lb_leg_chain);
-    tree.getChain("body_link", "rb_link4", rb_leg_chain);
+    tree.getChain("base", "FL_foot", lf_leg_chain);
+    tree.getChain("base", "FR_foot", rf_leg_chain);
+    tree.getChain("base", "RL_foot", lb_leg_chain);
+    tree.getChain("base", "RR_foot", rb_leg_chain);
 
     // 初始化狗腿解算器，定义足端中性点位置
     lf_leg_calc             = std::make_shared<LegCalc>(lf_leg_chain, kp, kd, wheel_kd);
@@ -225,7 +225,15 @@ Eigen::Vector3d LegCalc::joint_vel(const Eigen::Vector3d& joint_rad, const Eigen
     _temp_joint3_array(2) = joint_rad[2];
     jacobain_solver.JntToJac(_temp_joint3_array, temp_jacobain);
     Eigen::Matrix<double, 3, 3> jacobian = get_3x3_jacobian_(temp_jacobain);
-    return jacobian.inverse() * foot_vel;
+   // 检查雅可比矩阵是否接近奇异
+    double det = jacobian.determinant();
+    if (std::abs(det) < 1e-6) {
+        // 雅可比矩阵奇异，返回零速度
+        return Eigen::Vector3d::Zero();
+    }
+    
+    // 使用完整旋转分解求解，比直接 inverse 更稳定
+    return jacobian.fullPivLu().solve(foot_vel);
 }
 
 /**
@@ -280,7 +288,16 @@ LegTarget LegCalc::signal_leg_calc(
     auto joint_omega  = joint_vel(joint_rad, exp_cart_vel);
     auto joint_torque = joint_torque_foot_force(joint_rad, exp_cart_force);
     joint_torque += joint_torque_dynamic(joint_rad, joint_omega, exp_cart_acc);
-
+    
+        // 检查并修正 NaN/Inf 值
+    for (int i = 0; i < 3; ++i) {
+        if (std::isnan(joint_omega[i]) || std::isinf(joint_omega[i])) {
+            joint_omega[i] = 0.0;
+        }
+        if (std::isnan(joint_torque[i]) || std::isinf(joint_torque[i])) {
+            joint_torque[i] = 0.0;
+        }
+    }
     LegTarget leg;
 
     // 关节0
@@ -442,6 +459,11 @@ std::tuple<Vector3D, double> Cross_WallState::get_robot_mass_info(
 }
 
 void Cross_WallState::enter() {
+    robot->lf_leg_calc->set_init_joint_pos(robot->lf_joint_pos);
+    robot->rf_leg_calc->set_init_joint_pos(robot->rf_joint_pos);
+    robot->lb_leg_calc->set_init_joint_pos(robot->lb_joint_pos);
+    robot->rb_leg_calc->set_init_joint_pos(robot->rb_joint_pos);
+
     robot->lf_leg_calc->joint_pos_setarray(robot->lf_joint_pos);
     robot->rf_leg_calc->joint_pos_setarray(robot->rf_joint_pos);
     robot->rb_leg_calc->joint_pos_setarray(robot->rb_joint_pos);
@@ -454,6 +476,28 @@ void Cross_WallState::enter() {
 
 
 RobotTarget Cross_WallState::update() {
+
+    lf_foot_exp_pos = Eigen::Vector3d(0.0, 0.0, 0.0);
+    rf_foot_exp_pos = Eigen::Vector3d(0.0, 0.0, 0.0);
+    lb_foot_exp_pos = Eigen::Vector3d(0.0, 0.0, 0.0);
+    rb_foot_exp_pos = Eigen::Vector3d(0.0, 0.0, 0.0);
+
+    lf_foot_exp_vel = Eigen::Vector3d(0.0, 0.0, 0.0);
+    rf_foot_exp_vel = Eigen::Vector3d(0.0, 0.0, 0.0);
+    lb_foot_exp_vel = Eigen::Vector3d(0.0, 0.0, 0.0);
+    rb_foot_exp_vel = Eigen::Vector3d(0.0, 0.0, 0.0);
+
+    lf_foot_exp_acc = Eigen::Vector3d(0.0, 0.0, 0.0);
+    rf_foot_exp_acc = Eigen::Vector3d(0.0, 0.0, 0.0);
+    lb_foot_exp_acc = Eigen::Vector3d(0.0, 0.0, 0.0);
+    rb_foot_exp_acc = Eigen::Vector3d(0.0, 0.0, 0.0);
+
+    lf_foot_exp_force = Eigen::Vector3d(0.0, 0.0, 0.0);
+    rf_foot_exp_force = Eigen::Vector3d(0.0, 0.0, 0.0);
+    lb_foot_exp_force = Eigen::Vector3d(0.0, 0.0, 0.0);
+    rb_foot_exp_force = Eigen::Vector3d(0.0, 0.0, 0.0);
+
+
 
     Vector3D com_3d;
         std::tie(com_3d, mass) = get_robot_mass_info(robot->lf_joint_pos, robot->rf_joint_pos, robot->lb_joint_pos, robot->rb_joint_pos);
@@ -1366,6 +1410,111 @@ RobotTarget Cross_WallState::update() {
     // TODO: 替换为纯 C++ 的控制指令输出方式
     // robot->legs_target_pub->publish(joints_target);
     // 目前直接返回 joints_target,由调用者处理
+    //     if (std::isnan(robot->lf_joint_torque[0]) || std::isinf(robot->lf_joint_torque[0])
+    //     || std::isnan(robot->rf_joint_torque[0]) || std::isinf(robot->rf_joint_torque[0])
+    //     || std::isnan(robot->lb_joint_torque[0]) || std::isinf(robot->lb_joint_torque[0])
+    //     || std::isnan(robot->rb_joint_torque[0]) || std::isinf(robot->rb_joint_torque[0])) {
+        
+    //     std::cerr << "\033[31mError: Invalid joint torque value detected!"<< ", cross_wall_stage = " << cross_wall_stage << "\033[0m" << std::endl;
+    // }
+        // 打印当前各关节的输出
+    static int print_counter = 0;
+    if (print_counter++ % 10 == 0) {  // 每10次调用打印一次，避免刷屏
+        std::cout << "\n========== Joint Output (stage=" << cross_wall_stage << ") ==========" << std::endl;
+        
+        // 左前腿 (LF) - legs[0]
+        std::cout << "LF: pos=[" << joints_target.legs[0].joints[0].rad << ", " 
+                  << joints_target.legs[0].joints[1].rad << ", " 
+                  << joints_target.legs[0].joints[2].rad << "] | "
+                  << "vel=[" << joints_target.legs[0].joints[0].omega << ", " 
+                  << joints_target.legs[0].joints[1].omega << ", " 
+                  << joints_target.legs[0].joints[2].omega << "] | "
+                  << "kp=[" << joints_target.legs[0].joints[0].kp << ", " 
+                  << joints_target.legs[0].joints[1].kp << ", " 
+                  << joints_target.legs[0].joints[2].kp << "] | "
+                  << "kd=[" << joints_target.legs[0].joints[0].kd << ", " 
+                  << joints_target.legs[0].joints[1].kd << ", " 
+                  << joints_target.legs[0].joints[2].kd << "]" << std::endl;
+        
+        // 右前腿 (RF) - legs[1]
+        std::cout << "RF: pos=[" << joints_target.legs[1].joints[0].rad << ", " 
+                  << joints_target.legs[1].joints[1].rad << ", " 
+                  << joints_target.legs[1].joints[2].rad << "] | "
+                  << "vel=[" << joints_target.legs[1].joints[0].omega << ", " 
+                  << joints_target.legs[1].joints[1].omega << ", " 
+                  << joints_target.legs[1].joints[2].omega << "] | "
+                  << "kp=[" << joints_target.legs[1].joints[0].kp << ", " 
+                  << joints_target.legs[1].joints[1].kp << ", " 
+                  << joints_target.legs[1].joints[2].kp << "] | "
+                  << "kd=[" << joints_target.legs[1].joints[0].kd << ", " 
+                  << joints_target.legs[1].joints[1].kd << ", " 
+                  << joints_target.legs[1].joints[2].kd << "]" << std::endl;
+        
+        // 左后腿 (LB) - legs[2]
+        std::cout << "LB: pos=[" << joints_target.legs[2].joints[0].rad << ", " 
+                  << joints_target.legs[2].joints[1].rad << ", " 
+                  << joints_target.legs[2].joints[2].rad << "] | "
+                  << "vel=[" << joints_target.legs[2].joints[0].omega << ", " 
+                  << joints_target.legs[2].joints[1].omega << ", " 
+                  << joints_target.legs[2].joints[2].omega << "] | "
+                  << "kp=[" << joints_target.legs[2].joints[0].kp << ", " 
+                  << joints_target.legs[2].joints[1].kp << ", " 
+                  << joints_target.legs[2].joints[2].kp << "] | "
+                  << "kd=[" << joints_target.legs[2].joints[0].kd << ", " 
+                  << joints_target.legs[2].joints[1].kd << ", " 
+                  << joints_target.legs[2].joints[2].kd << "]" << std::endl;
+        
+        // 右后腿 (RB) - legs[3]
+        std::cout << "RB: pos=[" << joints_target.legs[3].joints[0].rad << ", " 
+                  << joints_target.legs[3].joints[1].rad << ", " 
+                  << joints_target.legs[3].joints[2].rad << "] | "
+                  << "vel=[" << joints_target.legs[3].joints[0].omega << ", " 
+                  << joints_target.legs[3].joints[1].omega << ", " 
+                  << joints_target.legs[3].joints[2].omega << "] | "
+                  << "kp=[" << joints_target.legs[3].joints[0].kp << ", " 
+                  << joints_target.legs[3].joints[1].kp << ", " 
+                  << joints_target.legs[3].joints[2].kp << "] | "
+                  << "kd=[" << joints_target.legs[3].joints[0].kd << ", " 
+                  << joints_target.legs[3].joints[1].kd << ", " 
+                  << joints_target.legs[3].joints[2].kd << "]" << std::endl;
+        
+        std::cout << "==============================================\n" << std::endl;
+
+
+        // std::cout << "==============================================\n" << std::endl;
+        
+        // // 打印期望关节角和实际关节角的差值 (Expected Joint - Actual Joint)
+        // std::cout << "========== Joint Angle Error (Exp - Act) ==========" << std::endl;
+        
+        // // LF 误差 (注意：在 joints_target 中 LF 对应 legs[1])
+        // std::cout << "LF err: [" 
+        //           << joints_target.legs[1].joints[0].rad - robot->lf_joint_pos[0] << ", "
+        //           << joints_target.legs[1].joints[1].rad - robot->lf_joint_pos[1] << ", "
+        //           << joints_target.legs[1].joints[2].rad - robot->lf_joint_pos[2] << "]" << std::endl;
+        
+        // // RF 误差 (注意：在 joints_target 中 RF 对应 legs[0])
+        // std::cout << "RF err: [" 
+        //           << joints_target.legs[0].joints[0].rad - robot->rf_joint_pos[0] << ", "
+        //           << joints_target.legs[0].joints[1].rad - robot->rf_joint_pos[1] << ", "
+        //           << joints_target.legs[0].joints[2].rad - robot->rf_joint_pos[2] << "]" << std::endl;
+        
+        // // LB 误差 (注意：在 joints_target 中 LB 对应 legs[3])
+        // std::cout << "LB err: [" 
+        //           << joints_target.legs[3].joints[0].rad - robot->lb_joint_pos[0] << ", "
+        //           << joints_target.legs[3].joints[1].rad - robot->lb_joint_pos[1] << ", "
+        //           << joints_target.legs[3].joints[2].rad - robot->lb_joint_pos[2] << "]" << std::endl;
+        
+        // // RB 误差 (注意：在 joints_target 中 RB 对应 legs[2])
+        // std::cout << "RB err: [" 
+        //           << joints_target.legs[2].joints[0].rad - robot->rb_joint_pos[0] << ", "
+        //           << joints_target.legs[2].joints[1].rad - robot->rb_joint_pos[1] << ", "
+        //           << joints_target.legs[2].joints[2].rad - robot->rb_joint_pos[2] << "]" << std::endl;
+        
+        // std::cout << "=====================================================\n" << std::endl;
+    }
+
+        
+    
 
     return joints_target;
 }
