@@ -114,9 +114,14 @@ void RL_Real::RobotControl() {
     // 获取各个传感器数据，遥控器期望，填写到robot_state中
     this->GetState(&this->robot_state);
 
-    if (remote_cmd.mode != 0) {     //由ROS2上层接管控制
+    if (remote_cmd.mode != 0 && remote_cmd.mode != 5) {     //由ROS2上层接管控制
         this->control.setMode(remote_cmd.mode);
         this->control.setVel(remote_cmd.vx, remote_cmd.vy, remote_cmd.vz);
+    }
+    else if(remote_cmd.mode == 5)
+    {
+        this->control.setMode(5);
+        this->control.setVel(0.2,0.0,0.0);
     }
     else {
         this->control.setMode(0);

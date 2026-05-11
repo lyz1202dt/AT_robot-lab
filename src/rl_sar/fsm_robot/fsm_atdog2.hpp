@@ -308,7 +308,7 @@ public:
         if (rl.fsm.previous_state_->GetStateName() == "RLFSMStateCrosswall")
         {
             cross_enter_time = std::chrono::steady_clock::now();
-            //rl.control.setVel(0.3f, 0.0f, 0.0f);
+            rl.control.setVel(0.3f, 0.0f, 0.0f);
         }
     }
 
@@ -332,7 +332,7 @@ public:
     {
         if(std::chrono::steady_clock::now() - cross_enter_time > std::chrono::milliseconds(1))
         {
-            //rl.control.setVel(0.0f, 0.0f, 0.0f);
+            rl.control.setVel(0.0f, 0.0f, 0.0f);
             return "RLFSMStateCrosswall";
         }
         if (rl.control.current_keyboard == Input::Keyboard::P || rl.control.current_gamepad == Input::Gamepad::LB_X)
@@ -351,6 +351,10 @@ public:
         {
             return "RLFSMStateRLLocomotion";
         }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num5 || rl.control.current_gamepad == Input::Gamepad::RB_DPadDown)
+        {
+            return "RLFSMStateCrosswall";
+        }
 
         //遥控器切换
         if(rl.control.mode==1)   //转到位控站立状态
@@ -364,6 +368,10 @@ public:
         else if(rl.control.mode==4)     //切换到沙石地行走状态
         {
             return "RLFSMStateRLSand";
+        }
+        else if(rl.control.mode==5)     //切换到交叉口状态
+        {
+            return "RLFSMStateCrosswall";
         }
         return state_name_;
     }
