@@ -64,7 +64,6 @@ if(NOT USE_CMAKE)
             joint_state_controller
             robot_state_publisher
             roscpp
-            gazebo_ros
             std_msgs
             tf
             geometry_msgs
@@ -82,18 +81,14 @@ if(NOT USE_CMAKE)
         find_package(joint_state_broadcaster REQUIRED)
         find_package(robot_state_publisher REQUIRED)
         find_package(rclcpp REQUIRED)
-        find_package(gazebo_ros REQUIRED)
         find_package(std_msgs REQUIRED)
         find_package(robot_msgs REQUIRED)
         find_package(robot_joint_controller REQUIRED)
         find_package(rclpy REQUIRED)
-        find_package(gazebo_msgs REQUIRED)
         find_package(std_srvs REQUIRED)
         find_package(geometry_msgs REQUIRED)
         ament_package()
     endif()
-    add_compile_options(${GAZEBO_CXX_FLAGS})
-    find_package(gazebo REQUIRED)
 endif()
 
 # Inference Runtime
@@ -258,16 +253,6 @@ else()
     endif()
 endif()
 
-# Find OSQP and qpOASES for optimization
-find_package(osqp QUIET)
-find_package(OsqpEigen QUIET)
-find_package(qpOASES QUIET)
-if(osqp_FOUND AND OsqpEigen_FOUND AND qpOASES_FOUND)
-    message(STATUS "Found OSQP, OsqpEigen, and qpOASES")
-    add_compile_definitions(HAVE_OSQP HAVE_OSQPEIGEN HAVE_QPOASES)
-else()
-    message(WARNING "OSQP libraries not found. Some optimization features may be unavailable.")
-endif()
 
 # Add Python library path to RPATH
 if(Python3_LIBRARIES)
@@ -489,8 +474,6 @@ target_link_libraries(rl_sdk PUBLIC
     Python3::Module
     TBB::tbb
     Eigen3::Eigen
-    osqp::osqp
-    OsqpEigen::OsqpEigen
 )
 
 # Link KDL libraries if available
@@ -551,12 +534,10 @@ if(NOT USE_CMAKE)
             joint_state_broadcaster
             robot_state_publisher
             rclcpp
-            gazebo_ros
             std_msgs
             robot_msgs
             robot_joint_controller
             rclpy
-            gazebo_msgs
             std_srvs
             geometry_msgs
         )
