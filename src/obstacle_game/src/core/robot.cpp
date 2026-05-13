@@ -12,7 +12,7 @@ using namespace std::chrono_literals;
 Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     : node_(node) {
     node_->declare_parameter<std::string>("scene_path","");
-    node_->declare_parameter<std::string>("yaml_file_path","");
+    node_->declare_parameter<std::string>("yaml_file_path","./record");
 
     auto yaml_path = node_->get_parameter("yaml_file_path").as_string();
     if (yaml_path.empty()) {
@@ -36,19 +36,22 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     // 机器人遥控器指令订阅
     remote_sub_ = node_->create_subscription<robot_msgs::msg::Remote>("remote", 10, [this](const robot_msgs::msg::Remote& msg) {
         // TODO:处理并发布遥控器数据
-        if (check_key_trigger(msg.key,1)) // 手动控制
+        if (!check_key_pressed(msg.key,1)) // 拨杆处于中间位置或向下位置，即手动控制
         {
             if (current_control_mode == 1) {
                 cmd.mode = 1;    // 如果刚才是自动控制，那么切入手动控制时进入位控站立模式(可能是有紧急情况)
+                pilot->reset();
+                pilot->stop();
+                current_control_mode = 0;
+                RCLCPP_INFO(node_->get_logger(), "请求切入手动控制");
             }
-            pilot->reset();
-            pilot->stop();
-            current_control_mode = 0;
-            RCLCPP_INFO(node_->get_logger(), "请求切入手动控制");
         }
-        if (check_key_trigger(msg.key,2)) {
-            current_control_mode = 1;
-            RCLCPP_INFO(node_->get_logger(), "请求切入自动控制");
+        else {      //拨杆处于向上位置，切入自动模式
+            if(current_control_mode==0)
+            {
+                current_control_mode = 1;
+                RCLCPP_INFO(node_->get_logger(), "请求切入自动控制");
+            }
         }
 
         // 只有手动控制模式下可以使用遥控器修改机器人当前使用的策略
@@ -64,13 +67,13 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             }
 
             //摇杆赋值
-            cmd.vy=-(float)std::clamp((double)msg.lx/1600.0,-1.2,1.2);
-            cmd.vx=(float)std::clamp((double)msg.ly/1600.0,-1.2,1.2);
-            cmd.vz=-(float)std::clamp((double)msg.rx/1600.0,-1.0,1.0);
+            cmd.vy=-(float)std::clamp((double)msg.lx/1200.0,-1.2,1.2);
+            cmd.vx=(float)std::clamp((double)msg.ly/1200.0,-1.2,1.2);
+            cmd.vz=-(float)std::clamp((double)msg.rx/1200.0,-1.0,1.0);
 
 
         } else if (current_control_mode == 1) {
-            if (check_key_trigger(msg.key,4)) {
+            if (check_key_trigger(msg.key,4)) {     //复位并停止
                 pilot->reset();
                 pilot->stop();
             } else if (check_key_trigger(msg.key,5)) {
@@ -80,29 +83,35 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             }
         }
 
+        
+        if(check_key_pressed(msg.key, 2))   //表示开始记录周期
+        {
+            if(!record_yaml_opened)
+            {
+                record_yaml_opened=true;
+                const auto now = std::chrono::system_clock::now();
+                const std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+                std::tm local_tm{};
+                localtime_r(&now_time, &local_tm);
 
-        // if(check_key_trigger(msg.key,5))    //开启文件记录
-        // {
-        //     const auto now = std::chrono::system_clock::now();
-        //     const std::time_t now_time = std::chrono::system_clock::to_time_t(now);
-        //     std::tm local_tm{};
-        //     localtime_r(&now_time, &local_tm);
+                std::ostringstream oss;
+                oss << node_->get_parameter("yaml_file_path").as_string()
+                    << std::put_time(&local_tm, "%Y%m%d_%H%M%S") << ".yaml";
+                record->set_output_yaml(oss.str());
+            }
 
-        //     std::ostringstream oss;
-        //     oss << node_->get_parameter("yaml_file_path").as_string()
-        //         << std::put_time(&local_tm, "%Y%m%d_%H%M%S") << ".yaml";
-        //     record->set_output_yaml(oss.str());
-        // }
-        // else if(check_key_trigger(msg.key,6))   //关闭文件记录
-        // {
-        //     record->finishe_record();
-        // }
-        // else if(check_key_trigger(msg.key,7))   //记录点位
-        // {
-        //     Record::PathPoint point;
-        //     point.target_pos[0]=
-        //     record->record_pos(point);
-        // }
+            if(check_key_trigger(msg.key, 14))      //按键按下后记录一次点位
+            {
+                record->finishe_record();
+            }
+        }
+        else {
+            if(record_yaml_opened)
+            {
+                record_yaml_opened=false;
+                record->finishe_record();
+            }
+        }
 
         record_key(msg.key);
     });
@@ -149,6 +158,11 @@ bool Robot::check_key_trigger(uint32_t current_key,int index)
     bool current_is_true=((current_key>>index)&0x0001);
     bool last_is_false=!((last_key>>index)&0x0001);
     return current_is_true&&last_is_false;
+}
+
+bool Robot::check_key_pressed(uint32_t current_key,int index)
+{
+    return ((current_key>>index)&0x0001);
 }
 
 void Robot::record_key(uint32_t current_key)

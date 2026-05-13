@@ -14,6 +14,7 @@ class Robot{
 public:
     Robot(const std::shared_ptr<rclcpp::Node> node);
     bool check_key_trigger(uint32_t current_key,int index);
+    bool check_key_pressed(uint32_t current_key,int index);
     void record_key(uint32_t current_key);
 private:
     rclcpp::Node::SharedPtr node_;
