@@ -148,7 +148,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         if (current_control_mode == 1) {
             geometry_msgs::msg::TransformStamped transfer;
             try {
-                transfer = tf_buffer_->lookupTransform("robot", "world", tf2::TimePointZero, tf2::durationFromSec(0.05));
+                transfer = tf_buffer_->lookupTransform("base_link", "map", tf2::TimePointZero, tf2::durationFromSec(0.05));
                 robot_pos_transfer=transfer;
             } catch (const tf2::TransformException& ex) {
                 RCLCPP_WARN(node_->get_logger(), "获取目标 TF 失败，自动驾驶仪停止运行: %s", ex.what());

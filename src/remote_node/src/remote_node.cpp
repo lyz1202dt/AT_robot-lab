@@ -51,8 +51,7 @@ RemoteNode::RemoteNode()
 
 bool RemoteNode::init_serial()
 {
-    const std::string configured_port = this->get_parameter("remote_dev_port").as_string();
-    const std::string port = resolve_serial_port(configured_port);
+    const std::string port = this->get_parameter("remote_dev_port").as_string();
     constexpr int baudrate = 115200;
 
     if (port.empty()) {
@@ -89,63 +88,6 @@ bool RemoteNode::init_serial()
 
     RCLCPP_INFO(this->get_logger(), "成功打开设备:%s,波特率为%d", port.c_str(), baudrate);
     return true;
-}
-
-std::string RemoteNode::resolve_serial_port(const std::string& configured_port) const
-{
-    namespace fs = std::filesystem;
-
-    if (fs::exists(configured_port)) {
-        return configured_port;
-    }
-
-    const std::vector<std::string> fallback_ports = {
-        "/dev/ttyUSB0",
-        "/dev/ttyUSB1",
-        "/dev/ttyACM0",
-        "/dev/ttyACM1",
-    };
-
-    for (const auto& candidate : fallback_ports) {
-        if (candidate == configured_port) {
-            continue;
-        }
-        if (fs::exists(candidate)) {
-            RCLCPP_WARN(
-                this->get_logger(),
-                "配置的串口 %s 不存在，自动改用检测到的设备 %s",
-                configured_port.c_str(),
-                candidate.c_str());
-            return candidate;
-        }
-    }
-
-    std::ostringstream oss;
-    bool has_any_device = false;
-    for (const auto& candidate : fallback_ports) {
-        if (fs::exists(candidate)) {
-            if (has_any_device) {
-                oss << ", ";
-            }
-            oss << candidate;
-            has_any_device = true;
-        }
-    }
-
-    if (has_any_device) {
-        RCLCPP_ERROR(
-            this->get_logger(),
-            "配置的串口 %s 不存在，可检测到的串口有: %s",
-            configured_port.c_str(),
-            oss.str().c_str());
-    } else {
-        RCLCPP_ERROR(
-            this->get_logger(),
-            "配置的串口 %s 不存在，当前也未检测到常见串口设备 (/dev/ttyUSB* 或 /dev/ttyACM*)",
-            configured_port.c_str());
-    }
-
-    return "";
 }
 
 RemoteNode::~RemoteNode()

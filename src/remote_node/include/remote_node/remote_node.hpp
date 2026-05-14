@@ -56,7 +56,4 @@ private:
 
     // 解析并打开串口，失败时仅记录日志
     bool init_serial();
-
-    // 返回可用的串口设备路径；若找不到则返回空字符串
-    std::string resolve_serial_port(const std::string& configured_port) const;
 };
