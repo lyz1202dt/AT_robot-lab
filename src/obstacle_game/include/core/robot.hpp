@@ -33,4 +33,6 @@ private:
     int current_control_mode{0};
     bool autopilot_available{true};
     bool record_yaml_opened{false};
+
+    geometry_msgs::msg::TransformStamped robot_pos_transfer;
 };

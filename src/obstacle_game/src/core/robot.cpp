@@ -5,6 +5,7 @@
 #include <sstream>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/time.hpp>
+#include "core/record.hpp"
 
 using namespace std::chrono_literals;
 
@@ -58,12 +59,16 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         if (current_control_mode == 0) {
             if (check_key_trigger(msg.key,4)) {         //模式控制
                 cmd.mode = 1; // 位控站立
+                RCLCPP_INFO(node_->get_logger(), "位控站立模式");
             } else if (check_key_trigger(msg.key,5)) {
                 cmd.mode = 2; // 普通行走策略
+                RCLCPP_INFO(node_->get_logger(), "普通行走模式");
             } else if (check_key_trigger(msg.key,6)) {
                 cmd.mode = 3; // 过沙地策略
+                RCLCPP_INFO(node_->get_logger(), "沙地模式");
             } else if (check_key_trigger(msg.key,3)) {
                 cmd.mode = 4; // 上台阶策略
+                RCLCPP_INFO(node_->get_logger(), "台阶模式");
             }
 
             //摇杆赋值
@@ -102,7 +107,20 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
             if(check_key_trigger(msg.key, 14))      //按键按下后记录一次点位
             {
-                record->finishe_record();
+                Record::PathPoint target;
+                target.target_pos[0]=robot_pos_transfer.transform.translation.x;
+                target.target_pos[1]=robot_pos_transfer.transform.translation.y;
+
+                target.target_vel=0.0;          //除了位置信息，其它暂且使用默认参数
+                target.max_accelation=0.4;
+                target.max_velocity=0.6;
+                target.adjust_min_vel=0.2;
+                target.allow_start_dir_error=0.2;
+                target.kp={0.1,0.1,0.1};
+                target.err_allow=0.2;
+                target.policy_id=2;
+
+                record->record_pos(target);
             }
         }
         else {
@@ -131,6 +149,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             geometry_msgs::msg::TransformStamped transfer;
             try {
                 transfer = tf_buffer_->lookupTransform("robot", "world", tf2::TimePointZero, tf2::durationFromSec(0.05));
+                robot_pos_transfer=transfer;
             } catch (const tf2::TransformException& ex) {
                 RCLCPP_WARN(node_->get_logger(), "获取目标 TF 失败，自动驾驶仪停止运行: %s", ex.what());
                 current_control_mode = 0;
