@@ -14,7 +14,7 @@
 RemoteNode::RemoteNode()
     : Node("remote_node"), remote_control_cb_id_(0)
 {
-    this->declare_parameter("remote_dev_port","/dev/ttyUSB0");
+    this->declare_parameter("remote_dev_port","/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0");
     // 创建ROS2发布器
     remote_pub = this->create_publisher<robot_msgs::msg::Remote>(
             "remote", 10);
