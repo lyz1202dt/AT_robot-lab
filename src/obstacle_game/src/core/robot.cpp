@@ -2,6 +2,7 @@
 #include <core/robot.hpp>
 #include <ctime>
 #include <iomanip>
+#include <rclcpp/logging.hpp>
 #include <sstream>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/time.hpp>
@@ -96,6 +97,8 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 oss << node_->get_parameter("yaml_file_path").as_string()
                     << std::put_time(&local_tm, "%Y%m%d_%H%M%S") << ".yaml";
                 record->set_output_yaml(oss.str());
+
+                RCLCPP_INFO(node_->get_logger(),"开始记录");
             }
 
             if(check_key_trigger(msg.key, 14))      //按键按下后记录一次点位
@@ -114,6 +117,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 target.policy_id=2;
 
                 record->record_pos(target);
+                RCLCPP_INFO(node_->get_logger(),"记录点位");
             }
         }
         else {
@@ -121,6 +125,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             {
                 record_yaml_opened=false;
                 record->finishe_record();
+                RCLCPP_INFO(node_->get_logger(),"完成记录");
             }
         }
 
@@ -142,7 +147,13 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         try {
                 transfer = tf_buffer_->lookupTransform("odom","base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));
                 robot_pos_transfer=transfer;
-                RCLCPP_INFO(node_->get_logger(), "pos=(%lf,%lf)",transfer.transform.translation.x,transfer.transform.translation.y);
+                RCLCPP_INFO_THROTTLE(
+                    node_->get_logger(),
+                    *node_->get_clock(),
+                    1000,
+                    "pos=(%lf,%lf)",
+                    transfer.transform.translation.x,
+                    transfer.transform.translation.y);
             } catch (const tf2::TransformException& ex) {
                 RCLCPP_WARN(node_->get_logger(), "获取目标 TF 失败，自动驾驶仪停止运行: %s", ex.what());
                 current_control_mode = 0;
