@@ -12,17 +12,10 @@ using namespace std::chrono_literals;
 
 Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     : node_(node) {
-    node_->declare_parameter<std::string>("scene_path","");
+    node_->declare_parameter<std::string>("scene_path","/home/dog/Desktop/AT_robot-lab/record20260515_211359.yaml");
     node_->declare_parameter<std::string>("yaml_file_path","./record");
 
-    auto yaml_path = node_->get_parameter("yaml_file_path").as_string();
-    if (yaml_path.empty()) {
-        yaml_path = node_->get_parameter("scene_path").as_string();
-    }
-    if (yaml_path.empty()) {
-        autopilot_available = false;
-        RCLCPP_WARN(node_->get_logger(), "无导航点yaml文件路径，自动驾驶不可用");
-    }
+    auto yaml_path = node_->get_parameter("scene_path").as_string();
 
     tf_buffer_   = std::make_shared<tf2_ros::Buffer>(node->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -145,16 +138,27 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     });
 
     control_timer = node_->create_wall_timer(50ms, [this]() {
-        if (current_control_mode == 1) {
-            geometry_msgs::msg::TransformStamped transfer;
-            try {
+        geometry_msgs::msg::TransformStamped transfer;
+        try {
                 transfer = tf_buffer_->lookupTransform("base_link", "map", tf2::TimePointZero, tf2::durationFromSec(0.05));
                 robot_pos_transfer=transfer;
+                RCLCPP_INFO(node_->get_logger(), "pos=(%lf,%lf)",transfer.transform.translation.x,transfer.transform.translation.y);
             } catch (const tf2::TransformException& ex) {
                 RCLCPP_WARN(node_->get_logger(), "获取目标 TF 失败，自动驾驶仪停止运行: %s", ex.what());
                 current_control_mode = 0;
-                return;
+                //return;
             }
+
+        if (current_control_mode == 1) {
+            // geometry_msgs::msg::TransformStamped transfer;
+            // try {
+            //     transfer = tf_buffer_->lookupTransform("base_link", "map", tf2::TimePointZero, tf2::durationFromSec(0.05));
+            //     robot_pos_transfer=transfer;
+            // } catch (const tf2::TransformException& ex) {
+            //     RCLCPP_WARN(node_->get_logger(), "获取目标 TF 失败，自动驾驶仪停止运行: %s", ex.what());
+            //     current_control_mode = 0;
+            //     return;
+            // }
 
             tf2::Quaternion q;
             q.setW(transfer.transform.rotation.w);
