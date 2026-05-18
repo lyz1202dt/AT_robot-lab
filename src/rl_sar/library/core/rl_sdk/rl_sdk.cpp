@@ -472,12 +472,18 @@ void RL::ReadYaml(const std::string& file_path, const std::string& file_name)
     YAML::Node config;
     try
     {
-        config = YAML::LoadFile(config_path)[file_path];
+        YAML::Node root = YAML::LoadFile(config_path);
+        config = root[file_path];
     }
     catch (YAML::BadFile &e)
     {
-        std::cout << LOGGER::ERROR << "The file '" << config_path << "' does not exist" << std::endl;
-        return;
+        throw std::runtime_error("The file '" + config_path + "' does not exist");
+    }
+
+    if (!config || !config.IsMap())
+    {
+        throw std::runtime_error(
+            "Failed to load config section '" + file_path + "' from '" + config_path + "'");
     }
 
     for (auto it = config.begin(); it != config.end(); ++it)

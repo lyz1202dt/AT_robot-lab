@@ -10,7 +10,7 @@
 
 class Pilot {
 public:
-    explicit Pilot(rclcpp::Node::SharedPtr node_, const std::string yaml_path);   //需要一个描述多个路径点的yaml文件比如src/obstacle_game/config/path1.yaml
+    explicit Pilot(rclcpp::Node::SharedPtr node, const std::string yaml_path);   //需要一个描述多个路径点的yaml文件比如src/obstacle_game/config/path1.yaml
     ~Pilot();
 
     //开始执行轨迹

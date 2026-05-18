@@ -64,7 +64,6 @@ if(NOT USE_CMAKE)
             joint_state_controller
             robot_state_publisher
             roscpp
-            gazebo_ros
             std_msgs
             tf
             geometry_msgs
@@ -82,18 +81,14 @@ if(NOT USE_CMAKE)
         find_package(joint_state_broadcaster REQUIRED)
         find_package(robot_state_publisher REQUIRED)
         find_package(rclcpp REQUIRED)
-        find_package(gazebo_ros REQUIRED)
         find_package(std_msgs REQUIRED)
         find_package(robot_msgs REQUIRED)
         find_package(robot_joint_controller REQUIRED)
         find_package(rclpy REQUIRED)
-        find_package(gazebo_msgs REQUIRED)
         find_package(std_srvs REQUIRED)
         find_package(geometry_msgs REQUIRED)
         ament_package()
     endif()
-    add_compile_options(${GAZEBO_CXX_FLAGS})
-    find_package(gazebo REQUIRED)
 endif()
 
 # Inference Runtime
@@ -236,6 +231,29 @@ find_package(Threads REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 find_package(Eigen3 REQUIRED)
 
+# Find KDL parser and orocos_kdl for kinematics
+if(NOT USE_CMAKE)
+    if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+        find_package(kdl_parser REQUIRED)
+        find_package(orocos_kdl REQUIRED)
+        message(STATUS "Found KDL parser and orocos_kdl")
+    elseif($ENV{ROS_DISTRO} MATCHES "noetic")
+        find_package(kdl_parser REQUIRED)
+        find_package(orocos_kdl REQUIRED)
+        message(STATUS "Found KDL parser and orocos_kdl (ROS1)")
+    endif()
+else()
+    # For non-ROS builds, try to find KDL system-wide
+    find_package(kdl_parser QUIET)
+    find_package(orocos_kdl QUIET)
+    if(kdl_parser_FOUND AND orocos_kdl_FOUND)
+        message(STATUS "Found KDL parser and orocos_kdl (system)")
+    else()
+        message(WARNING "KDL libraries not found. Some features may be unavailable.")
+    endif()
+endif()
+
+
 # Add Python library path to RPATH
 if(Python3_LIBRARIES)
     get_filename_component(PYTHON_LIB_DIR "${Python3_LIBRARIES}" DIRECTORY)
@@ -293,6 +311,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
         set(LCM_ENABLE_PYTHON OFF CACHE BOOL "Disable LCM Python bindings" FORCE)
         set(LCM_ENABLE_JAVA OFF CACHE BOOL "Disable LCM Java bindings" FORCE)
         set(LCM_ENABLE_LUA OFF CACHE BOOL "Disable LCM Lua bindings" FORCE)
+        set(LCM_ENABLE_LOGGER_TOOLS OFF CACHE BOOL "Disable LCM logger tools" FORCE)
         set(LCM_INSTALL_M4MACROS OFF CACHE BOOL "Disable LCM M4 install" FORCE)
         set(LCM_INSTALL_PKGCONFIG OFF CACHE BOOL "Disable LCM pkg-config install" FORCE)
         add_subdirectory(library/thirdparty/lcm EXCLUDE_FROM_ALL)
@@ -337,6 +356,15 @@ endif()
 # atdog robot driver
 if(SYSTEM_TYPE STREQUAL "Linux")
 add_subdirectory(library/thirdparty/robot_sdk/atdog/robot_driver)
+if(NOT USE_CMAKE)
+    if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+        install(TARGETS
+            atdog_imu_driver
+            atdog_leg_driver
+            DESTINATION lib/${PROJECT_NAME}
+        )
+    endif()
+endif()
 endif()
 
 # l4w4_sdk
@@ -431,6 +459,11 @@ endif()
 
 # library for motion loader
 add_library(motion_loader library/core/motion_loader/motion_loader.cpp)
+if(NOT USE_CMAKE)
+    if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+        install(TARGETS motion_loader DESTINATION lib/${PROJECT_NAME})
+    endif()
+endif()
 
 # library for rl sdk
 add_library(rl_sdk library/core/rl_sdk/rl_sdk.cpp)
@@ -442,12 +475,35 @@ target_link_libraries(rl_sdk PUBLIC
     TBB::tbb
     Eigen3::Eigen
 )
+
+# Link KDL libraries if available
+if(NOT USE_CMAKE)
+    if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+        target_link_libraries(rl_sdk PUBLIC
+            kdl_parser::kdl_parser
+        )
+    elseif($ENV{ROS_DISTRO} MATCHES "noetic")
+        target_link_libraries(rl_sdk PUBLIC
+            ${kdl_parser_LIBRARIES}
+            ${orocos_kdl_LIBRARIES}
+        )
+    endif()
+else()
+    # For non-ROS builds, link KDL if found
+    if(kdl_parser_FOUND AND orocos_kdl_FOUND)
+        target_link_libraries(rl_sdk PUBLIC
+            kdl_parser::kdl_parser
+        )
+    endif()
+endif()
+
 find_package(Python3 COMPONENTS NumPy)
 if(Python3_NumPy_FOUND)
     target_link_libraries(rl_sdk PUBLIC Python3::NumPy)
 else()
     target_compile_definitions(rl_sdk PUBLIC WITHOUT_NUMPY)
 endif()
+
 if(NOT USE_CMAKE)
     if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
         install(TARGETS rl_sdk DESTINATION lib/${PROJECT_NAME})
@@ -478,12 +534,10 @@ if(NOT USE_CMAKE)
             joint_state_broadcaster
             robot_state_publisher
             rclcpp
-            gazebo_ros
             std_msgs
             robot_msgs
             robot_joint_controller
             rclpy
-            gazebo_msgs
             std_srvs
             geometry_msgs
         )
@@ -612,6 +666,30 @@ if(SYSTEM_TYPE STREQUAL "Linux")
                 robot_msgs
             )
             install(TARGETS rl_real_atdog2 DESTINATION lib/${PROJECT_NAME})
+        endif()
+    endif()
+endif()
+
+# executable for rl real atdog
+if(SYSTEM_TYPE STREQUAL "Linux")
+    add_executable(rl_real_atdog src/rl_real_atdog.cpp)
+    target_link_libraries(rl_real_atdog
+        atdog::imu_driver
+        atdog::leg_driver
+        rl_sdk
+        observation_buffer
+        ${YAML_CPP_LIBRARIES}
+    )
+    if(NOT USE_CMAKE)
+        if($ENV{ROS_DISTRO} MATCHES "noetic")
+            target_link_libraries(rl_real_atdog ${catkin_LIBRARIES})
+        elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+            ament_target_dependencies(rl_real_atdog
+                rclcpp
+                geometry_msgs
+                robot_msgs
+            )
+            install(TARGETS rl_real_atdog DESTINATION lib/${PROJECT_NAME})
         endif()
     endif()
 endif()

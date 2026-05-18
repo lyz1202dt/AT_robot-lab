@@ -13,6 +13,7 @@
 RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
 
     this->node_ = node;
+    this->robot_name = "atdog2";
     this->ReadYaml("atdog2", "base.yaml");
 
     // 创建状态机
@@ -26,7 +27,10 @@ RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
     leg_driver = std::make_unique<LegDriver>();
 
     cmd_sub =
-        node_->create_subscription<robot_msgs::msg::Cmd>("robot_cmd", 10, [this](const robot_msgs::msg::Cmd& msg) { remote_cmd = msg; });
+        node_->create_subscription<robot_msgs::msg::Cmd>("robot_move_cmd", 10, [this](const robot_msgs::msg::Cmd& msg) {
+            remote_cmd = msg;
+            std::cout << "mode=" << msg.mode << std::endl;
+        });
 
 
     // 键盘控制、底层控制、策略推理循环
@@ -183,7 +187,7 @@ void RL_Real::SetCommand(const RobotCommand<float>* command) {
 
     this->leg_driver->set_leg_target(legs_target, (uint32_t)ms);
 
-    std::cout << "dt(ms)=" << ms - time << std::endl;
+    //std::cout << "dt(ms)=" << ms - time << std::endl;
 }
 
 void RL_Real::RunModel() {

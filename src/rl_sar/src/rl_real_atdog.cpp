@@ -11,11 +11,11 @@
 #include <memory>
 
 RL_Real::RL_Real(int argc, char** argv) {
-    this->robot_name = "atdog2";
-    this->ReadYaml("atdog2", "base.yaml");
+    this->robot_name = "atdog";
+    this->ReadYaml("atdog", "base.yaml");
 
     // 创建状态机
-    this->fsm = *FSMManager::GetInstance().CreateFSM("atdog2", this);
+    this->fsm = *FSMManager::GetInstance().CreateFSM("atdog", this);
 
     // 初始化机器人
     this->InitJointNum(this->params.Get<int>("num_of_dofs"));
@@ -73,10 +73,10 @@ void RL_Real::GetState(RobotState<float>* state) {
     //         //std::cout<<"q:"<<rotation<<"\nangular_vel:"<<angular_velocity<<"\nacc:"<<acceleration<<std::endl;
     //     }
     // }
-    std::array<float, 4> q;
-    std::array<float, 3> w;
-    auto ret = leg_driver->get_imu_state(q, w);
-    if (ret == true) {
+    std::array<float, 4> q{};
+    std::array<float, 3> w{};
+    const bool has_imu_state = this->leg_driver != nullptr && this->leg_driver->get_imu_state(q, w);
+    if (has_imu_state) {
         state->imu.quaternion[0] = static_cast<float>(q[0]);
         state->imu.quaternion[1] = static_cast<float>(q[1]);
         state->imu.quaternion[2] = static_cast<float>(q[2]);
@@ -85,9 +85,6 @@ void RL_Real::GetState(RobotState<float>* state) {
         state->imu.gyroscope[0] = static_cast<float>(w[0]);
         state->imu.gyroscope[1] = static_cast<float>(w[1]);
         state->imu.gyroscope[2] = static_cast<float>(w[2]);
-
-        std::cout<<"imu:"<<state->imu.quaternion;
-        
     } else {
         state->imu.quaternion[0] = 1.0;
         state->imu.quaternion[1] = 0.0;
@@ -99,6 +96,10 @@ void RL_Real::GetState(RobotState<float>* state) {
         state->imu.gyroscope[2] = 0.0;
     }
 
+    if (this->leg_driver == nullptr || dof_count <= 0) {
+        return;
+    }
+
     std::array<LegState_t, 4> legs_state{};
     if (!this->leg_driver->get_leg_state(legs_state)) {
         return;
@@ -106,19 +107,25 @@ void RL_Real::GetState(RobotState<float>* state) {
 
     const auto joint_mapping = this->params.Get<std::vector<int>>("joint_mapping");
     for (int i = 0; i < dof_count; ++i) {
-        const int hw_index    = (i < static_cast<int>(joint_mapping.size())) ? joint_mapping[i] : i;
-        const int leg_index   = hw_index / 3;
-        const int joint_index = hw_index % 3;
+        const int hw_index       = (i < static_cast<int>(joint_mapping.size())) ? joint_mapping[i] : i;
+        const int leg_index      = hw_index / 3;
+        const int actuator_index = hw_index % 3;
         if (leg_index < 0 || leg_index >= static_cast<int>(legs_state.size())) {
             continue;
         }
 
-        state->motor_state.q[i]       = legs_state[leg_index].joint[joint_index].rad;
-        state->motor_state.dq[i]      = legs_state[leg_index].joint[joint_index].omega;
-        state->motor_state.tau_est[i] = legs_state[leg_index].joint[joint_index].torque;
+        if (i<12) {
+            state->motor_state.q[i]       = legs_state[leg_index].joint[actuator_index].rad;
+            state->motor_state.dq[i]      = legs_state[leg_index].joint[actuator_index].omega;
+            state->motor_state.tau_est[i] = legs_state[leg_index].joint[actuator_index].torque;
+        }
+        else {
+            state->motor_state.dq[i]      = legs_state[i-12].wheel.omega;
+            state->motor_state.tau_est[i] = legs_state[i-12].wheel.torque;
+        }
     }
 
-    // std::cout<<"cur_pos:"<<state->motor_state.q<<std::endl;
+    //std::cout<<"cur_pos:"<<state->motor_state.q<<std::endl;
 }
 
 void RL_Real::RobotControl() {
@@ -157,47 +164,35 @@ void RL_Real::SetCommand(const RobotCommand<float>* command) {
     const auto joint_mapping = this->params.Get<std::vector<int>>("joint_mapping");
 
     for (int dof = 0; dof < dof_count; ++dof) {
-        const int hw_index    = (dof < static_cast<int>(joint_mapping.size())) ? joint_mapping[dof] : dof;
-        const int leg_index   = hw_index / 4;
-        const int joint_index = hw_index % 4;
-        if (leg_index < 0 || leg_index >= 4 || joint_index < 0 || joint_index >= 4) {
-            continue;
-        }
+        const int hw_index       = (dof < static_cast<int>(joint_mapping.size())) ? joint_mapping[dof] : dof;
+        const int leg_index      = hw_index / 3;
+        const int actuator_index = hw_index % 3;
 
-        if (joint_index == 4) { // 如果该关节是轮子，那么赋值到轮子
-            legs_target[leg_index].wheel.omega  = command->motor_command.dq[dof];
-            legs_target[leg_index].wheel.torque = command->motor_command.tau[dof];
-            // legs_target[leg_index].wheel.kd = command->motor_command.kd[dof];
-            continue;
-        }
-
-        if (dof < static_cast<int>(command->motor_command.q.size())) {
-            legs_target[leg_index].joint[joint_index].rad = command->motor_command.q[dof]; // 这些参数在下位机转到电机输出轴
-        }
-        if (dof < static_cast<int>(command->motor_command.dq.size())) {
-            legs_target[leg_index].joint[joint_index].omega = command->motor_command.dq[dof];
-        }
-        if (dof < static_cast<int>(command->motor_command.tau.size())) {
-            legs_target[leg_index].joint[joint_index].torque = command->motor_command.tau[dof];
-        }
-        if (dof < static_cast<int>(command->motor_command.kp.size())) {
-            legs_target[leg_index].joint[joint_index].kp = command->motor_command.kp[dof];
-        }
-        if (dof < static_cast<int>(command->motor_command.kd.size())) {
-            legs_target[leg_index].joint[joint_index].kd = command->motor_command.kd[dof];
+        if (dof >= 12) {            //给足端赋值
+            legs_target[dof - 12].wheel.omega  = command->motor_command.dq[dof];
+            legs_target[dof - 12].wheel.torque = command->motor_command.tau[dof];
+        } else {
+            if (dof < static_cast<int>(command->motor_command.q.size())) {
+                legs_target[leg_index].joint[actuator_index].rad = command->motor_command.q[dof];
+            }
+            if (dof < static_cast<int>(command->motor_command.dq.size())) {
+                legs_target[leg_index].joint[actuator_index].omega = command->motor_command.dq[dof];
+            }
+            if (dof < static_cast<int>(command->motor_command.tau.size())) {
+                legs_target[leg_index].joint[actuator_index].torque = command->motor_command.tau[dof];
+            }
+            if (dof < static_cast<int>(command->motor_command.kp.size())) {
+                legs_target[leg_index].joint[actuator_index].kp = command->motor_command.kp[dof];
+            }
+            if (dof < static_cast<int>(command->motor_command.kd.size())) {
+                legs_target[leg_index].joint[actuator_index].kd = command->motor_command.kd[dof];
+            }
         }
     }
 
-    std::array<LegState_t, 4> legs_state;
-    uint32_t time;
-    leg_driver->get_leg_state(legs_state, time);
-
-    auto now = std::chrono::steady_clock::now();
-    auto ms  = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-
-    this->leg_driver->set_leg_target(legs_target, (uint32_t)ms);
-
-    std::cout << "dt(ms)=" << ms - time << std::endl;
+    const auto now = std::chrono::steady_clock::now();
+    const auto ms  = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    this->leg_driver->set_leg_target(legs_target, static_cast<uint32_t>(ms));
 }
 
 void RL_Real::RunModel() {

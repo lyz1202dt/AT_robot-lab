@@ -43,6 +43,10 @@ public:
         {
             return "RLFSMStateGetUp";
         }
+        if(rl.control.mode==1)  //检查切换到位控站立
+        {
+            return "RLFSMStateGetUp";
+        }
         return state_name_;
     }
 };
@@ -113,6 +117,21 @@ public:
             {
                 return "RLFSMStateGetDown";
             }
+
+            //std::cout<<"检查切换\n";
+            if(rl.control.mode==2)   //转到位控站立状态
+            {
+                std::cout<<"切入普通行走状态\n";
+                return "RLFSMStateRLLocomotion";
+            }
+            else if(rl.control.mode==3)     //切换到爬台阶状态
+            {
+                return "RLFSMStateRLStairs";
+            }
+            else if(rl.control.mode==4)     //切换到沙石地行走状态
+            {
+                return "RLFSMStateRLSand";
+            }
         }
         return state_name_;
     }
@@ -148,178 +167,22 @@ public:
         {
             return "RLFSMStateGetUp";
         }
+
+        if (rl.control.mode==1)
+        {
+            return "RLFSMStateGetUp";
+        }
         return state_name_;
     }
 };
 
 class RLFSMStateCrosswall : public RLFSMState
 {
-private:
-    typedef struct {
-        double a;
-        double b;
-        double c;
-        double d;
-        double e;
-        double f;
-    } QuinticLineParam_t;
 
-    typedef struct {
-        QuinticLineParam_t x;
-        QuinticLineParam_t y;
-        QuinticLineParam_t z;
-        double time;
-    } StepTrajectory_t;
-
-    class Cross_Step {
-    private:
-        StepTrajectory_t traj;
-        double T;
-        static void set_quintic(QuinticLineParam_t& seg,
-                            double p0, double v0, double a0,
-                            double pT, double vT, double aT,
-                            double T)
-        {
-            double T2 = T * T;
-            double T3 = T2 * T;
-            double T4 = T3 * T;
-            double T5 = T4 * T;
-
-            seg.a = p0;
-            seg.b = v0;
-            seg.c = 0.5 * a0;
-
-            seg.d = (10 * (pT - p0) - (6 * v0 + 4 * vT) * T - (1.5 * a0 - 0.5 * aT) * T2) / T3;
-            seg.e = (-15 * (pT - p0) + (8 * v0 + 7 * vT) * T + (1.5 * a0 - aT) * T2) / T4;
-            seg.f = (6 * (pT - p0) - (3 * v0 + 3 * vT) * T - (0.5 * a0 - 0.5 * aT) * T2) / T5;
-        }
-
-        static inline double get_quintic_value(const QuinticLineParam_t& line, double t)
-        {
-            return line.a
-                + line.b * t
-                + line.c * t * t
-                + line.d * t * t * t
-                + line.e * t * t * t * t
-                + line.f * t * t * t * t * t;
-        }
-
-        static inline double get_quintic_dt(const QuinticLineParam_t& line, double t)
-        {
-            return line.b
-                + 2.0 * line.c * t
-                + 3.0 * line.d * t * t
-                + 4.0 * line.e * t * t * t
-                + 5.0 * line.f * t * t * t * t;
-        }
-
-        static inline double get_quintic_dtdt(const QuinticLineParam_t& line, double t)
-        {
-            return 2.0 * line.c
-                + 6.0 * line.d * t
-                + 12.0 * line.e * t * t
-                + 20.0 * line.f * t * t * t;
-        }
-
-    public:
-
-        inline void update_support_trajectory(const Eigen::Vector3d & cur_pos, const Eigen::Vector3d  final_pos, double time)
-        {
-            traj.time = time;
-            T = time;
-
-            for (int i = 0; i < 3; i++)
-            {
-                double p0 = cur_pos[i];
-                double pT = final_pos[i];
-
-                // ⭐ Quintic：直接保证平滑
-                double v0 = 0.0;
-                double vT = 0.0;
-                double a0 = 0.0;
-                double aT = 0.0;
-
-                if (i == 0)
-                    set_quintic(traj.x, p0, v0, a0, pT, vT, aT, time);
-                else if (i == 1)
-                    set_quintic(traj.y, p0, v0, a0, pT, vT, aT, time);
-                else
-                    set_quintic(traj.z, p0, v0, a0, pT, vT, aT, time);
-            }
-
-        }
-        inline std::tuple<Eigen::Vector3d , Eigen::Vector3d , Eigen::Vector3d > get_target(double time,bool &success)
-        {
-            Eigen::Vector3d  pos, vel, acc;
-
-            if (time >= T)
-            {
-                time = T;
-                success = false;
-            }
-            else
-            {
-                success = true;
-            }
-
-            pos[0] = get_quintic_value(traj.x, time);
-            vel[0] = get_quintic_dt(traj.x, time);
-            acc[0] = get_quintic_dtdt(traj.x, time);
-
-            pos[1] = get_quintic_value(traj.y, time);
-            vel[1] = get_quintic_dt(traj.y, time);
-            acc[1] = get_quintic_dtdt(traj.y, time);
-
-            pos[2] = get_quintic_value(traj.z, time);
-            vel[2] = get_quintic_dt(traj.z, time);
-            acc[2] = get_quintic_dtdt(traj.z, time);
-
-            return {pos, vel, acc};
-        }
-
-    };
     
 public:
     RLFSMStateCrosswall(RL *rl) : RLFSMState(*rl, "RLFSMStateCrosswall") {}
 
-    int cross_wall_stage{-1};
-
-    Eigen::Vector3d  wall_lf_foot_pos{0,0,0}, wall_rf_foot_pos{0,0,0}, wall_lb_foot_pos{0,0,0}, wall_rb_foot_pos{0,0,0};
-    Eigen::Vector3d  lf_foot_exp_pos{0,0,0}, rf_foot_exp_pos{0,0,0}, lb_foot_exp_pos{0,0,0}, rb_foot_exp_pos{0,0,0};
-    Eigen::Vector3d  lf_foot_exp_force{0,0,0}, rf_foot_exp_force{0,0,0}, lb_foot_exp_force{0,0,0}, rb_foot_exp_force{0,0,0};
-    Eigen::Vector3d  lf_foot_exp_vel{0,0,0}, rf_foot_exp_vel{0,0,0}, lb_foot_exp_vel{0,0,0}, rb_foot_exp_vel{0,0,0};
-    Eigen::Vector3d  lf_foot_exp_acc{0,0,0}, rf_foot_exp_acc{0,0,0}, lb_foot_exp_acc{0,0,0}, rb_foot_exp_acc{0,0,0};
-    Eigen::Vector3d  lf_forward_torque{0,0,0}, rf_forward_torque{0,0,0}, lb_forward_torque{0,0,0}, rb_forward_torque{0,0,0};
-
-    //使用关节角度
-    Eigen::Vector3d  lf_joint_exp_pos_{0,0,0},rf_joint_exp_pos_{0,0,0},
-             lb_joint_exp_pos_{0,0,0},rb_joint_exp_pos_{0,0,0};
-    Eigen::Vector3d  lf_joint_omega{0,0,0}, rf_joint_omega{0,0,0},
-             lb_joint_omega{0,0,0},rb_joint_omega{0,0,0};
-    Eigen::Vector3d  lf_joint_torque{0,0,0},rf_joint_torque{0,0,0},
-             lb_joint_torque{0,0,0},rb_joint_torque{0,0,0};
-
-    double lf_wheel_vel{0.0},rf_wheel_vel{0.0},lb_wheel_vel{0.0},rb_wheel_vel{0.0};
-    double lf_wheel_force{0.0},rf_wheel_force{0.0},lb_wheel_force{0.0},rb_wheel_force{0.0};
-
-    bool stopping = false;
-    double stop_t = 0.0;
-    double stop_T = 0.3;   // 建议 0.3~0.6
-
-    double lf_vel_start, rf_vel_start, lb_vel_start, rb_vel_start;
-    double lf_force_start, rf_force_start, lb_force_start, rb_force_start;
-    
-    double time_s{1.0};
-    bool change_flag{true};
-    bool allow_vel{true};
-
-    float k_F{1.0f};
-
-    //力变量
-    Eigen::Vector2d mass_center_pos;
-    double mass;
-
-    Cross_Step lf_step, rf_step, lb_step, rb_step;
     
 
     void Enter() override
@@ -407,6 +270,181 @@ public:
         {
             return "RLFSMStateRLLocomotion";
         }
+
+        //遥控器切换
+        if(rl.control.mode==1)   //转到位控站立状态
+        {
+            return "RLFSMStateGetUp";
+        }
+        else if(rl.control.mode==3)     //切换到爬台阶状态
+        {
+            return "RLFSMStateRLStairs";
+        }
+        else if(rl.control.mode==4)     //切换到沙石地行走状态
+        {
+            return "RLFSMStateRLSand";
+        }
+        return state_name_;
+    }
+};
+
+
+class RLFSMStateRLStairs : public RLFSMState
+{
+public:
+    RLFSMStateRLStairs(RL *rl) : RLFSMState(*rl, "RLFSMStateRLStairs") {}
+
+    float percent_transition = 0.0f;
+
+    void Enter() override
+    {
+        percent_transition = 0.0f;
+        rl.episode_length_buf = 0;
+
+        // read params from yaml
+        rl.config_name = "robot_lab_stairs";
+        std::string robot_config_path = rl.robot_name + "/" + rl.config_name;
+        try
+        {
+            rl.InitRL(robot_config_path);
+            rl.now_state = *fsm_state;
+        }
+        catch (const std::exception& e)
+        {
+            std::cout << LOGGER::ERROR << "InitRL() failed: " << e.what() << std::endl;
+            rl.rl_init_done = false;
+            rl.fsm.RequestStateChange("RLFSMStatePassive");
+        }
+    }
+
+    void Run() override
+    {
+        // position transition from last default_dof_pos to current default_dof_pos
+        // if (Interpolate(percent_transition, rl.now_state.motor_state.q, rl.params.Get<std::vector<float>>("default_dof_pos"), 0.5f, "Policy transition", true)) return;
+
+        if (!rl.rl_init_done) rl.rl_init_done = true;
+
+        std::cout << "\r\033[K" << std::flush << LOGGER::INFO << "RL Controller [" << rl.config_name << "] x:" << rl.control.x << " y:" << rl.control.y << " yaw:" << rl.control.yaw << std::flush;
+        RLControl();
+    }
+
+    void Exit() override
+    {
+        rl.rl_init_done = false;
+    }
+
+    std::string CheckChange() override
+    {
+        if (rl.control.current_keyboard == Input::Keyboard::P || rl.control.current_gamepad == Input::Gamepad::LB_X)
+        {
+            return "RLFSMStatePassive";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num9 || rl.control.current_gamepad == Input::Gamepad::B)
+        {
+            return "RLFSMStateGetDown";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num0 || rl.control.current_gamepad == Input::Gamepad::A)
+        {
+            return "RLFSMStateGetUp";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num1 || rl.control.current_gamepad == Input::Gamepad::RB_DPadUp)
+        {
+            return "RLFSMStateRLLocomotion";
+        }
+
+        //遥控器切换
+        if(rl.control.mode==1)   //转到位控站立状态
+        {
+            return "RLFSMStateGetUp";
+        }
+        else if(rl.control.mode==2)     //切换到普通行走模式
+        {
+            return "RLFSMStateRLLocomotion";
+        }
+        else if(rl.control.mode==4)     //切换到沙石地行走状态
+        {
+            return "RLFSMStateRLSand";
+        }
+        return state_name_;
+    }
+};
+
+class RLFSMStateRLSand : public RLFSMState
+{
+public:
+    RLFSMStateRLSand(RL *rl) : RLFSMState(*rl, "RLFSMStateRLSand") {}
+
+    float percent_transition = 0.0f;
+
+    void Enter() override
+    {
+        percent_transition = 0.0f;
+        rl.episode_length_buf = 0;
+
+        // read params from yaml
+        rl.config_name = "robot_lab_sand";
+        std::string robot_config_path = rl.robot_name + "/" + rl.config_name;
+        try
+        {
+            rl.InitRL(robot_config_path);
+            rl.now_state = *fsm_state;
+        }
+        catch (const std::exception& e)
+        {
+            std::cout << LOGGER::ERROR << "InitRL() failed: " << e.what() << std::endl;
+            rl.rl_init_done = false;
+            rl.fsm.RequestStateChange("RLFSMStatePassive");
+        }
+    }
+
+    void Run() override
+    {
+        // position transition from last default_dof_pos to current default_dof_pos
+        // if (Interpolate(percent_transition, rl.now_state.motor_state.q, rl.params.Get<std::vector<float>>("default_dof_pos"), 0.5f, "Policy transition", true)) return;
+
+        if (!rl.rl_init_done) rl.rl_init_done = true;
+
+        std::cout << "\r\033[K" << std::flush << LOGGER::INFO << "RL Controller [" << rl.config_name << "] x:" << rl.control.x << " y:" << rl.control.y << " yaw:" << rl.control.yaw << std::flush;
+        RLControl();
+    }
+
+    void Exit() override
+    {
+        rl.rl_init_done = false;
+    }
+
+    std::string CheckChange() override
+    {
+        if (rl.control.current_keyboard == Input::Keyboard::P || rl.control.current_gamepad == Input::Gamepad::LB_X)
+        {
+            return "RLFSMStatePassive";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num9 || rl.control.current_gamepad == Input::Gamepad::B)
+        {
+            return "RLFSMStateGetDown";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num0 || rl.control.current_gamepad == Input::Gamepad::A)
+        {
+            return "RLFSMStateGetUp";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num1 || rl.control.current_gamepad == Input::Gamepad::RB_DPadUp)
+        {
+            return "RLFSMStateRLLocomotion";
+        }
+
+        //遥控器切换
+        if(rl.control.mode==1)   //转到位控站立状态
+        {
+            return "RLFSMStateGetUp";
+        }
+        else if(rl.control.mode==2)     //切换到普通行走模式
+        {
+            return "RLFSMStateRLLocomotion";
+        }
+        else if(rl.control.mode==3)     //切换到爬台阶状态
+        {
+            return "RLFSMStateRLStairs";
+        }
         return state_name_;
     }
 };
@@ -428,6 +466,10 @@ public:
             return std::make_shared<atdog2_fsm::RLFSMStateGetDown>(rl);
         else if (state_name == "RLFSMStateRLLocomotion")
             return std::make_shared<atdog2_fsm::RLFSMStateRLLocomotion>(rl);
+        else if (state_name == "RLFSMStateRLStairs")
+            return std::make_shared<atdog2_fsm::RLFSMStateRLStairs>(rl);
+        else if (state_name == "RLFSMStateRLSand")
+            return std::make_shared<atdog2_fsm::RLFSMStateRLSand>(rl);
         else if (state_name == "RLFSMStateCrosswall")
             return std::make_shared<atdog2_fsm::RLFSMStateCrosswall>(rl);
         return nullptr;
@@ -440,6 +482,8 @@ public:
             "RLFSMStateGetUp",
             "RLFSMStateGetDown",
             "RLFSMStateRLLocomotion",
+            "RLFSMStateRLStairs",
+            "RLFSMStateRLSand",
             "RLFSMStateCrosswall"
         };
     }

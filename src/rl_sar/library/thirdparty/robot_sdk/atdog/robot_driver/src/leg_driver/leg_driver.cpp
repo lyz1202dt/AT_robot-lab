@@ -102,6 +102,7 @@ LegDriver::LegDriver(uint16_t vid, uint16_t pid) {
 }
 
 bool LegDriver::get_imu_state(std::array<float,4> &q,std::array<float,3> &w) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
     if (!imu_updated)
         return false;
     q[0]=imu.w;
@@ -128,8 +129,9 @@ LegDriver::~LegDriver() {
 }
 
 bool LegDriver::get_leg_state(std::array<LegState_t, 4>& legs_state, uint32_t& last_time) {
-    get_leg_state(legs_state);
+    const bool has_state = get_leg_state(legs_state);
     last_time = this->last_time;
+    return has_state;
 }
 
 bool LegDriver::set_leg_target(const std::array<LegTarget_t, 4>& legs_target, uint32_t time) {

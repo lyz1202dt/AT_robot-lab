@@ -16,6 +16,11 @@
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
   <depend>robot_msgs</depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>remote_node</exec_depend>
+  <exec_depend>rl_sar</exec_depend>
 
 
   <test_depend>ament_lint_auto</test_depend>
