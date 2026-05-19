@@ -6,14 +6,17 @@
 #include <memory>
 #include <rclcpp/logging.hpp>
 #include <sstream>
+#include <memory>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/time.hpp>
+
+#include "actions/move_to.hpp"
 
 using namespace std::chrono_literals;
 
 
 Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
-    : node_(node),fsm(this, "setup") {
+    : node_(node),action(this, "move_to_action") {
 
     tf_buffer_   = std::make_shared<tf2_ros::Buffer>(node->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -68,6 +71,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         result.successful = true;
         RCLCPP_INFO(node_->get_logger(), "更新参数");
         for (const auto& param : params) {
+            (void)param;
             // TODO:处理参数更新
         }
         return result;
@@ -109,18 +113,18 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     });
 
     //注册动作
-    //fsm.register_state(std::make_unique<BaseState<Robot>>("setup"))
-    fsm_thread=std::make_shared<std::thread>([this](){
+    action.register_action(std::make_unique<MoveToAction>());
+    action_thread=std::make_shared<std::thread>([this](){
         while(rclcpp::ok())     //每个状态都是执行阻塞执行一次的动作，执行完毕后自然根据分支切下一个不同的动作
         {
-            fsm.run();
+            action.run();
         }
     });
 }
 
 Robot::~Robot(){
-    if(fsm_thread->joinable())  //子线程退出
-        fsm_thread->join();
+    if(action_thread->joinable())  //子线程退出
+        action_thread->join();
 }
 
 bool Robot::check_key_trigger(uint32_t current_key,int index)

@@ -8,7 +8,7 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 #include "core/pilot.hpp"
-#include "states/fsm.hpp"
+#include "actions/action.hpp"
 
 class Robot{
 public:
@@ -32,8 +32,8 @@ private:
 
     std::shared_ptr<Pilot> pilot;
     robot_msgs::msg::Cmd cmd;
-    FSM<Robot> fsm;
-    std::shared_ptr<std::thread> fsm_thread;
+    Action<Robot> action;
+    std::shared_ptr<std::thread> action_thread;
 
     uint32_t last_key{0};
     int current_control_mode{0};

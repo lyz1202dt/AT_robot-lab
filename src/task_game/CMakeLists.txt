@@ -40,6 +40,7 @@ add_executable(robot_control
   src/main.cpp
   src/core/robot.cpp
   src/core/pilot.cpp
+  src/states/move_to.cpp
 )
 
 add_executable(test_node
