@@ -15,17 +15,6 @@
 
 class Record {
 public:
-    struct PathPoint {
-        int32_t policy_id{0};
-        Eigen::Vector2d target_pos{Eigen::Vector2d::Zero()};
-        double target_vel{0.0};
-        double max_velocity{0.0};
-        double max_accelation{0.0};
-        Eigen::Vector3d kp{Eigen::Vector3d::Zero()};
-        double allow_start_dir_error{0.0};
-        double err_allow{0.0};
-        double adjust_min_vel{0.0};
-    };
 
     Record(rclcpp::Node::SharedPtr node);
 
@@ -33,7 +22,7 @@ public:
     bool set_output_yaml(const std::string file_path);
 
     // 记录位置
-    bool record_pos(const PathPoint &target_info);
+    bool record_pos(const Eigen::Vector3d &target_info);
 
     // 完成记录并关闭当前文件
     int finishe_record();
@@ -41,7 +30,7 @@ public:
 private:
     void close_current_file();
     void write_yaml_header();
-    void write_path_point(const PathPoint &target_info);
+    void write_path_point(const Eigen::Vector3d &target_info);
 
     rclcpp::Node::SharedPtr node_;
     std::ofstream yaml_out_;

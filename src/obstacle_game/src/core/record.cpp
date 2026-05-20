@@ -42,7 +42,7 @@ bool Record::set_output_yaml(const std::string file_path)
     return true;
 }
 
-bool Record::record_pos(const PathPoint &target_info)
+bool Record::record_pos(const Eigen::Vector3d &target_info)
 {
     if (!yaml_out_.is_open()) {
         RCLCPP_WARN(node_->get_logger(), "尚未设置输出yaml文件，record_pos被忽略");
@@ -80,26 +80,14 @@ void Record::close_current_file()
 
 void Record::write_yaml_header()
 {
-    yaml_out_ << "#policy_id表示机器人执行这段路径时使用的策略，0表示上电策略，不用；1表示位控站立，一般也不用；\n";
-    yaml_out_ << "#2表示walk策略，3表示sand策略，4表示stair策略\n";
-    yaml_out_ << "\n";
     yaml_out_ << "paths:\n";
 }
 
-void Record::write_path_point(const PathPoint &target_info)
+void Record::write_path_point(const Eigen::Vector3d &target_info)
 {
-    yaml_out_ << "  - policy_id: " << target_info.policy_id << "\n";
+    yaml_out_ << "  - update_policy: false \n";
+    yaml_out_ << "    params:" "\n";
     yaml_out_ << "    target_pos:\n";
-    yaml_out_ << "      x: " << target_info.target_pos.x() << "\n";
-    yaml_out_ << "      y: " << target_info.target_pos.y() << "\n";
-    yaml_out_ << "    target_vel: " << target_info.target_vel << "\n";
-    yaml_out_ << "    max_velocity: " << target_info.max_velocity << "\n";
-    yaml_out_ << "    max_accelation: " << target_info.max_accelation << "\n";
-    yaml_out_ << "    kp:\n";
-    yaml_out_ << "      x: " << target_info.kp.x() << "\n";
-    yaml_out_ << "      y: " << target_info.kp.y() << "\n";
-    yaml_out_ << "      yaw: " << target_info.kp.z() << "\n";
-    yaml_out_ << "    allow_start_dir_error: " << target_info.allow_start_dir_error << "\n";
-    yaml_out_ << "    err_allow: " << target_info.err_allow << "\n";
-    yaml_out_ << "    adjust_min_vel: " << target_info.adjust_min_vel << "\n";
+    yaml_out_ << "      x: " <<  target_info[0]  << "\n";
+    yaml_out_ << "      y: " << target_info[1] << "\n";
 }

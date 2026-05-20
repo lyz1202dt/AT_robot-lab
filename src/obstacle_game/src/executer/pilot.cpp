@@ -1,4 +1,4 @@
-#include <core/pilot.hpp>
+#include <executer/pilot.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -7,11 +7,13 @@
 namespace {
 
 constexpr double kEpsilon = 1e-6;
+constexpr int kWalkMode = 2;
 
 }  // namespace
 
-Pilot::Pilot(rclcpp::Node::SharedPtr node)
-    : node_(std::move(node))
+Pilot::Pilot(rclcpp::Node::SharedPtr node):
+    BaseExecuter(node),
+    node_(std::move(node))
 {
 }
 
@@ -39,13 +41,17 @@ bool Pilot::stop()
     return true;
 }
 
-bool Pilot::set_target(const TargetPoint &target)
+bool Pilot::set_target(const Eigen::Vector3d &target,std::string &params)
 {
-    if (!target_config_valid(target)) {
+    TargetPoint point;
+    point.target_pos[0]=target[0];
+    point.target_pos[1]=target[1];
+    point.target_yaw=target[2];
+    if (!target_config_valid(point)) {
         return false;
     }
 
-    target_ = target;
+    target_ = point;
     has_target_ = true;
     phase_ = is_running_ ? ControlPhase::kMoveToPosition : ControlPhase::kIdle;
     current_linear_speed_ = 0.0;

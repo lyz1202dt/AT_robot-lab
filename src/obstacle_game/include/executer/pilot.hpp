@@ -1,15 +1,11 @@
 #pragma once
 
-#include <chrono>
-#include <functional>
+#include "executer/base_executer.hpp"
 
-#include <Eigen/Dense>
-#include <rclcpp/rclcpp.hpp>
-#include <robot_msgs/msg/cmd.hpp>
-
-class Pilot {
+class Pilot :public BaseExecuter{
 public:
     struct TargetPoint {
+        int policy_id{2};
         Eigen::Vector2d target_pos{Eigen::Vector2d::Zero()};
         float target_yaw{0.0f};                // 机器人轨迹执行完毕后应该指向的方向
         bool constraint_target_yaw{false};    // 是否约束机器人轨迹执行完毕后指向特定的方向
@@ -30,21 +26,23 @@ public:
     ~Pilot()=default;
 
     // 开始执行，让机器人行走到目标(到达目标后执行一次finished_cb)
-    bool start(std::function<void(int success)> finished_cb);
+    bool start(std::function<void(int success)> finished_cb) override;
 
     // 进入位控站立
-    bool stop();
+    bool stop() override;
 
     // 设置机器人目标位姿
-    bool set_target(const TargetPoint &target);
+    bool set_target(const Eigen::Vector3d &target,std::string &params) override;
 
     // 设置机器人当前状态
-    void set_state(const Eigen::Vector2d &pos, const float &yaw);
+    void set_state(const Eigen::Vector2d &pos, const float &yaw) override;
 
     // 获取当前机器人的速度指令输出
-    robot_msgs::msg::Cmd get_command(std::chrono::time_point<std::chrono::high_resolution_clock> time);
+    robot_msgs::msg::Cmd get_command(std::chrono::time_point<std::chrono::high_resolution_clock> time) override;
 
-private:
+    std::string get_executer_name() override {return "default";} 
+
+protected:
     enum class ControlPhase {
         kIdle,
         kMoveToPosition,

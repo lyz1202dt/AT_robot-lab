@@ -16,13 +16,15 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     node_->declare_parameter<std::string>("scene_path","/home/dog/Desktop/AT_robot-lab/record20260515_211359.yaml");
     node_->declare_parameter<std::string>("yaml_file_path","./record");
 
+    node_->declare_parameter<int>("current_obstacle_id",0); //0，默认平地行走模式
+
     auto yaml_path = node_->get_parameter("scene_path").as_string();
 
     tf_buffer_   = std::make_shared<tf2_ros::Buffer>(node->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
 
-    pilot = std::make_shared<Pilot>(node_, yaml_path);
+    autopilot = std::make_shared<AutoRun>(node_,yaml_path);
     record=std::make_shared<Record>(node_);
 
     // 机器人运动控制指令发布
@@ -35,8 +37,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         {
             if (current_control_mode == 1) {
                 cmd.mode = 1;    // 如果刚才是自动控制，那么切入手动控制时进入位控站立模式(可能是有紧急情况)
-                pilot->reset();
-                pilot->stop();
+                autopilot->stop();
                 current_control_mode = 0;
                 RCLCPP_INFO(node_->get_logger(), "请求切入手动控制");
             }
@@ -73,12 +74,11 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
         } else if (current_control_mode == 1) {
             if (check_key_trigger(msg.key,4)) {     //复位并停止
-                pilot->reset();
-                pilot->stop();
+                autopilot->reset();
             } else if (check_key_trigger(msg.key,5)) {
-                pilot->start();        // 开始执行自动控制
-            } else if (check_key_trigger(msg.key,6)) {
-                pilot->stop();         //  自动控制执行暂停
+                autopilot->start();        // 开始执行自动跑点
+            }else if (check_key_trigger(msg.key,6)) {
+                autopilot->stop();        // 暂停自动驾驶仪
             }
         }
 
@@ -103,20 +103,8 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
             if(check_key_trigger(msg.key, 14))      //按键按下后记录一次点位
             {
-                Record::PathPoint target;
-                target.target_pos[0]=robot_pos_transfer.transform.translation.x;
-                target.target_pos[1]=robot_pos_transfer.transform.translation.y;
 
-                target.target_vel=0.0;          //除了位置信息，其它暂且使用默认参数
-                target.max_accelation=0.4;
-                target.max_velocity=0.6;
-                target.adjust_min_vel=0.2;
-                target.allow_start_dir_error=0.2;
-                target.kp={0.1,0.1,0.1};
-                target.err_allow=0.2;
-                target.policy_id=2;
-
-                record->record_pos(target);
+                record->record_pos({robot_pos_transfer.transform.translation.x,robot_pos_transfer.transform.translation.y,0.0});
                 RCLCPP_INFO(node_->get_logger(),"记录点位");
             }
         }
@@ -161,15 +149,6 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             }
 
         if (current_control_mode == 1) {
-            // geometry_msgs::msg::TransformStamped transfer;
-            // try {
-            //     transfer = tf_buffer_->lookupTransform("base_link", "map", tf2::TimePointZero, tf2::durationFromSec(0.05));
-            //     robot_pos_transfer=transfer;
-            // } catch (const tf2::TransformException& ex) {
-            //     RCLCPP_WARN(node_->get_logger(), "获取目标 TF 失败，自动驾驶仪停止运行: %s", ex.what());
-            //     current_control_mode = 0;
-            //     return;
-            // }
 
             tf2::Quaternion q;
             q.setW(transfer.transform.rotation.w);
@@ -179,9 +158,9 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             double cur_roll, cur_pitch, cur_yaw;
             tf2::Matrix3x3(q).getRPY(cur_roll, cur_pitch, cur_yaw);
 
-            pilot->set_state(Eigen::Vector2d(transfer.transform.translation.x, transfer.transform.translation.y), cur_yaw);
+            autopilot->set_robot_state(Eigen::Vector2d(transfer.transform.translation.x, transfer.transform.translation.y), cur_yaw);
 
-            cmd = pilot->get_command(std::chrono::high_resolution_clock::now());
+            cmd = autopilot->get_command(std::chrono::high_resolution_clock::now());
         }
         cmd_pub_->publish(cmd);
     });

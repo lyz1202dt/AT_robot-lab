@@ -1,0 +1,13 @@
+paths:
+  - executer: "default"
+    params: ""
+    target_pos:           #目标点位置
+      x: 0.0
+      y: 0.0
+      yaw: 0.0
+  - executer: "vision"
+    params: ""
+    target_pos:           #目标点位置
+      x: 0.0
+      y: 0.0
+      yaw: 0.0

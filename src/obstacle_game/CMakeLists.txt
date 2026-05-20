@@ -39,7 +39,8 @@ endif()
 add_executable(robot_control
   src/main.cpp
   src/core/robot.cpp
-  src/core/pilot.cpp
+  src/executer/pilot.cpp
+  src/core/autorun.cpp
   src/core/record.cpp
 )
 

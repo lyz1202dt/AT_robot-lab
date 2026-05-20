@@ -5,10 +5,11 @@
 #include <rclcpp/rclcpp.hpp>
 #include <robot_msgs/msg/cmd.hpp>
 #include <robot_msgs/msg/remote.hpp>
-#include <core/pilot.hpp>
+#include <executer/pilot.hpp>
 #include <core/record.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
+#include "core/autorun.hpp"
 
 class Robot{
 public:
@@ -26,7 +27,7 @@ private:
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
     std::shared_ptr<Record> record;
-    std::shared_ptr<Pilot> pilot;
+    std::shared_ptr<AutoRun> autopilot;
     robot_msgs::msg::Cmd cmd;
 
     uint32_t last_key{0};
