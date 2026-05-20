@@ -13,8 +13,9 @@
 
 #include "nodes/catch_box.hpp"
 #include "nodes/generate_plan.hpp"
-#include "nodes/handle_plan.hpp"
 #include "nodes/place_box.hpp"
+#include "nodes/arrive_to_box.hpp"
+#include "nodes/arrive_to_target.hpp"
 
 using namespace std::chrono_literals;
 
@@ -120,7 +121,6 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     bt.set_context(this);
     bt.rgister(std::make_shared<BT::SequenceNode>("root"));
     bt.rgister(std::make_shared<GeneratePlaneAction>(), "root");
-    bt.rgister(std::make_shared<HandlePlaneAction>(), "root");
     bt.rgister(std::make_shared<CatchBoxAction>(), "root");
     bt.rgister(std::make_shared<PlaceBoxAction>(), "root");
     bt.set_root("root");

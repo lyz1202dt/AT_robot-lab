@@ -7,6 +7,7 @@
 namespace {
 
 constexpr double kEpsilon = 1e-6;
+constexpr double kWalkMode=2;
 
 }  // namespace
 
