@@ -40,7 +40,11 @@ add_executable(robot_control
   src/main.cpp
   src/core/robot.cpp
   src/core/pilot.cpp
-  src/states/move_to.cpp
+  src/core/behavior_tree.cpp
+  src/nodes/generate_plan.cpp
+  src/nodes/handle_plan.cpp
+  src/nodes/catch_box.cpp
+  src/nodes/place_box.cpp
 )
 
 add_executable(test_node

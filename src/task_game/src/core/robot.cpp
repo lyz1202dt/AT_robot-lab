@@ -1,22 +1,26 @@
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <core/robot.hpp>
 #include <ctime>
 #include <iomanip>
 #include <memory>
+#include <thread>
 #include <rclcpp/logging.hpp>
 #include <sstream>
-#include <memory>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/time.hpp>
 
-#include "actions/move_to.hpp"
+#include "nodes/catch_box.hpp"
+#include "nodes/generate_plan.hpp"
+#include "nodes/handle_plan.hpp"
+#include "nodes/place_box.hpp"
 
 using namespace std::chrono_literals;
 
 
 Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
-    : node_(node),action(this, "move_to_action") {
+    : node_(node) {
 
     tf_buffer_   = std::make_shared<tf2_ros::Buffer>(node->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -112,18 +116,24 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         cmd_pub_->publish(cmd);
     });
 
-    //注册动作
-    action.register_action(std::make_unique<MoveToAction>());
-    action_thread=std::make_shared<std::thread>([this](){
-        while(rclcpp::ok())     //每个状态都是执行阻塞执行一次的动作，执行完毕后自然根据分支切下一个不同的动作
-        {
-            action.run();
+    //行为树注册
+    bt.set_context(this);
+    bt.rgister(std::make_shared<BT::SequenceNode>("root"));
+    bt.rgister(std::make_shared<GeneratePlaneAction>(), "root");
+    bt.rgister(std::make_shared<HandlePlaneAction>(), "root");
+    bt.rgister(std::make_shared<CatchBoxAction>(), "root");
+    bt.rgister(std::make_shared<PlaceBoxAction>(), "root");
+    bt.set_root("root");
+
+    action_thread = std::make_shared<std::thread>([this]() {
+        while (rclcpp::ok()) {
+            bt.run();
         }
     });
 }
 
 Robot::~Robot(){
-    if(action_thread->joinable())  //子线程退出
+    if (action_thread && action_thread->joinable())  //子线程退出
         action_thread->join();
 }
 

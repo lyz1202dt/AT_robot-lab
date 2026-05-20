@@ -14,15 +14,15 @@ public:
         float target_yaw{0.0f};                // 机器人轨迹执行完毕后应该指向的方向
         bool constraint_target_yaw{false};    // 是否约束机器人轨迹执行完毕后指向特定的方向
         float target_vel{0.0f};               // 到达目标点后应具有的速度
-        float max_velocity{0.0f};             // 路线最大速度
-        float max_accelation{0.0f};           // 路线最大加速度
-        float max_omega{0.0f};                // 自旋最大角速度
-        Eigen::Vector3d kp{Eigen::Vector3d::Zero()};  // 用于闭环控制的Kp参数
-        float allow_start_dir_error{0.0f};    // 允许开始行走时的角度误差
-        float allow_final_dir_error{0.0f};    // 允许最终角度误差
-        float allow_final_pos_allow{0.0f};    // 允许最终位置误差
-        float adjust_min_vel{0.0f};           // 微调时的最小速度
-        float adjust_min_omega{0.0f};         // 微调时的最小角速度
+        float max_velocity{0.7f};             // 路线最大速度
+        float max_accelation{0.25f};           // 路线最大加速度
+        float max_omega{1.0f};                // 自旋最大角速度
+        Eigen::Vector3d kp{0.2,0.2,0.5};  // 用于闭环控制的Kp参数
+        float allow_start_dir_error{0.2f};    // 允许开始行走时的角度误差
+        float allow_final_dir_error{0.2f};    // 允许最终角度误差
+        float allow_final_pos_allow{0.2f};    // 允许最终位置误差
+        float adjust_min_vel{0.25f};           // 微调时的最小速度
+        float adjust_min_omega{0.15f};         // 微调时的最小角速度
         bool allow_y_vel{false};              // 是否允许较大的y向速度
     };
 

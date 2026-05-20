@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <thread>
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <robot_msgs/msg/cmd.hpp>
@@ -8,7 +9,7 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 #include "core/pilot.hpp"
-#include "actions/action.hpp"
+#include "core/behavior_tree.hpp"
 
 class Robot{
 public:
@@ -17,8 +18,13 @@ public:
     bool check_key_trigger(uint32_t current_key,int index);
     bool check_key_pressed(uint32_t current_key,int index);
     void record_key(uint32_t current_key);
-private:
+
+    std::shared_ptr<Pilot> pilot;
+    robot_msgs::msg::Cmd cmd;
     rclcpp::Node::SharedPtr node_;
+    BT bt;
+private:
+    
     rclcpp::TimerBase::SharedPtr control_timer;
     rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_server_;
     rclcpp::Subscription<robot_msgs::msg::Remote>::SharedPtr remote_sub_;
@@ -30,9 +36,8 @@ private:
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
     geometry_msgs::msg::TransformStamped robot_pos_transfer;
 
-    std::shared_ptr<Pilot> pilot;
-    robot_msgs::msg::Cmd cmd;
-    Action<Robot> action;
+    
+    
     std::shared_ptr<std::thread> action_thread;
 
     uint32_t last_key{0};

@@ -1,0 +1,18 @@
+/**
+@note 调用海康相机识别并计算算术题，得到结果，调用USB相机扫描环境箱子位置，将箱子位置和高分区域入栈，切入
+*/
+
+
+#pragma once
+
+#include "core/behavior_tree.hpp"
+
+class Robot;
+
+class GeneratePlaneAction : public BT::ActionNode {
+public:
+    GeneratePlaneAction();
+
+protected:
+    BT::Status execute(BT& tree) override;
+};
