@@ -15,4 +15,7 @@ public:
 
 protected:
     BT::Status execute(BT& tree) override;
+
+private:
+    bool generated{false};
 };
