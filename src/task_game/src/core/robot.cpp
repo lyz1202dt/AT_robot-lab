@@ -31,6 +31,12 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     // 机器人运动控制指令发布
     cmd_pub_ = node_->create_publisher<robot_msgs::msg::Cmd>("robot_move_cmd", 10);
 
+    arm_cmd_pub = node_->create_publisher<robot_interfaces::msg::Armmode>("arm_cmd", 10);
+    
+    arm_state_back = node_->create_subscription<robot_interfaces::msg::Armmode>(
+        "arm_cmd_state", 10, std::bind(&ArmTaskNode::arm_cmd_callback, this, std::placeholders::_1));
+
+
     // 机器人遥控器指令订阅
     remote_sub_ = node_->create_subscription<robot_msgs::msg::Remote>("remote", 10, [this](const robot_msgs::msg::Remote& msg) {
         if (!check_key_pressed(msg.key, 1)) {
@@ -153,3 +159,12 @@ void Robot::record_key(uint32_t current_key)
 {
     last_key=current_key;
 }
+
+void Robot::arm_state_callback(
+    const robot_interfaces::msg::Armmode::SharedPtr msg)
+{
+    arm_state = msg->mode;
+
+    
+}
+

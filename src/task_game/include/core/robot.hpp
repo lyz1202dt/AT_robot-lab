@@ -18,6 +18,7 @@ public:
     bool check_key_trigger(uint32_t current_key,int index);
     bool check_key_pressed(uint32_t current_key,int index);
     void record_key(uint32_t current_key);
+    void arm_state_callback(const robot_interfaces::msg::Armmode::SharedPtr msg)
 
     std::shared_ptr<Pilot> pilot;
     robot_msgs::msg::Cmd cmd;
@@ -29,6 +30,8 @@ private:
     rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_server_;
     rclcpp::Subscription<robot_msgs::msg::Remote>::SharedPtr remote_sub_;
     rclcpp::Publisher<robot_msgs::msg::Cmd>::SharedPtr cmd_pub_;
+    rclcpp::Publisher<robot_interfaces::msg::Armmode>::SharedPtr arm_cmd_pub;
+    rclcpp::Subscription<robot_interfaces::msg::Armmode>::SharedPtr arm_state_back;
     //TODO:操作机械臂的话题，相机数据采集的话题等等
 
     //TF  获取机器人位置
@@ -36,6 +39,7 @@ private:
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
     geometry_msgs::msg::TransformStamped robot_pos_transfer;
 
+    std::atomic<int> arm_state{0};
     
     
     std::shared_ptr<std::thread> action_thread;
