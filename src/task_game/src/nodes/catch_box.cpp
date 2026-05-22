@@ -3,6 +3,7 @@
 #include "nodes/msg.hpp"
 #include <rclcpp/logging.hpp>
 #include <thread>
+#include <robot_interfaces/msg/armmode.hpp>
 
 using namespace std::chrono_literals;
 
@@ -27,7 +28,7 @@ BT::Status CatchBoxAction::execute(BT& tree)
 
     std::this_thread::sleep_for(50ms);
 
-    robot_interfaces::msg::Armmode msg;
+    //robot_interfaces::msg::Armmode msg;
     msg.mode = 0;
     context->arm_cmd_pub->publish(msg);
 

@@ -17,6 +17,7 @@ if($ENV{ROS_DISTRO} MATCHES "noetic")
     RobotCommand.msg
     RobotState.msg
     IMU.msg
+    Armmode.msg
   )
   generate_messages(
     DEPENDENCIES
@@ -51,6 +52,7 @@ elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
     "msg/IMU.msg"
     "msg/Cmd.msg"
     "msg/Remote.msg"
+    "msg/Armmode.msg"
     DEPENDENCIES builtin_interfaces std_msgs geometry_msgs sensor_msgs
   )
   ament_export_dependencies(rosidl_default_runtime)
