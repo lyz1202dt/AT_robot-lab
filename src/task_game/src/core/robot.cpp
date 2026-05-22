@@ -11,6 +11,8 @@
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/time.hpp>
 
+#include "nodes/arrive_to_box.hpp"
+#include "nodes/arrive_to_target.hpp"
 #include "nodes/catch_box.hpp"
 #include "nodes/generate_plan.hpp"
 #include "nodes/place_box.hpp"
@@ -119,13 +121,16 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     bt.set_context(this);
     bt.rgister(std::make_shared<BT::SequenceNode>("root"));
     bt.rgister(std::make_shared<GeneratePlaneAction>(), "root");
+    bt.rgister(std::make_shared<ArriveToBoxAction>(), "root");
     bt.rgister(std::make_shared<CatchBoxAction>(), "root");
+    bt.rgister(std::make_shared<ArriveToTargetAction>(), "root");
     bt.rgister(std::make_shared<PlaceBoxAction>(), "root");
     bt.set_root("root");
 
     action_thread = std::make_shared<std::thread>([this]() {
         while (rclcpp::ok()) {
             bt.run();
+            std::this_thread::sleep_for(50ms);
         }
     });
 }

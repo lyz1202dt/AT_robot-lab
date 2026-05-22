@@ -116,6 +116,9 @@ void RL_Real::RobotControl() {
 
     if (remote_cmd.mode != 0) {     //由ROS2上层接管控制
         this->control.setMode(remote_cmd.mode);
+        std::clamp(remote_cmd.vx, -0.5f, 1.5f);
+        std::clamp(remote_cmd.vy, -0.5f, 1.0f);
+        std::clamp(remote_cmd.vz, -0.5f, 1.5f);
         this->control.setVel(remote_cmd.vx, remote_cmd.vy, remote_cmd.vz);
     }
     else {

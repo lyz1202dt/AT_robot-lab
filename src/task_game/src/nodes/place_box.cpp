@@ -3,6 +3,7 @@
 #include "core/robot.hpp"
 #include <rclcpp/logging.hpp>
 #include <thread>
+#include <vector>
 
 using namespace std::chrono_literals;
 
@@ -15,15 +16,22 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    MoveBoxPlan plan;
-    std::size_t current_plan_index = 0;
-    if (!tree.read_msg("active_move_plan", plan)) {
-        RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: 缺少 active_move_plan");
+    std::vector<MoveBoxPlan> move_plan;
+    int plan_index = 0;
+    if (!tree.read_msg("move_plan", move_plan)) {
+        RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: 缺少 move_plan");
+        return BT::FAILED;
+    }
+    if (!tree.read_msg("plan_index", plan_index)) {
+        RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: 缺少 plan_index");
+        return BT::FAILED;
+    }
+    if (plan_index < 0 || plan_index >= static_cast<int>(move_plan.size())) {
+        RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: plan_index=%d 越界", plan_index);
         return BT::FAILED;
     }
 
-    tree.read_msg("current_plan_index", current_plan_index);
-    tree.write_msg("current_plan_index", current_plan_index + 1);
+    const auto& plan = move_plan[plan_index];
 
     RCLCPP_INFO(
         context->node_->get_logger(),
@@ -32,5 +40,11 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         plan.dst_box_pos[0],
         plan.dst_box_pos[1]);
     std::this_thread::sleep_for(100ms);
+    std::this_thread::sleep_for(10s);
+    if (plan_index + 1 < static_cast<int>(move_plan.size())) {
+        tree.write_msg("plan_index", plan_index + 1);
+    } else {
+        RCLCPP_INFO(context->node_->get_logger(), "PlaceBoxAction: 全部搬箱计划执行完成");
+    }
     return BT::SUCCESS;
 }
