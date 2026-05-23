@@ -1,14 +1,23 @@
 #include "nodes/catch_box.hpp"
+
 #include "core/robot.hpp"
 #include "nodes/msg.hpp"
+
 #include <rclcpp/logging.hpp>
-#include <thread>
-#include <robot_interfaces/msg/armmode.hpp>
 
 using namespace std::chrono_literals;
 
 CatchBoxAction::CatchBoxAction()
-    : BT::ActionNode("catch_box_action") {}
+    : BT::ActionNode("catch_box_action")
+{
+    
+}
+
+void CatchBoxAction::arm_cmd_callback(
+    const robot_interfaces::msg::Armmode::SharedPtr msg)
+{
+    arm_state_ = msg->mode;
+}
 
 BT::Status CatchBoxAction::execute(BT& tree)
 {
@@ -18,55 +27,72 @@ BT::Status CatchBoxAction::execute(BT& tree)
         return BT::FAILED;
     }
 
-    // 先清状态
-    context->arm_state = 0;
+    // 只初始化一次
+    if (!ros_initialized_) {
+
+        arm_cmd_pub_ =
+            context->node_->create_publisher<
+                robot_interfaces::msg::Armmode>(
+                    "arm_cmd",
+                    10);
+
+        arm_state_sub_ =
+            context->node_->create_subscription<
+                robot_interfaces::msg::Armmode>(
+                    "arm_cmd_state",
+                    10,
+                    std::bind(
+                        &CatchBoxAction::arm_cmd_callback,
+                        this,
+                        std::placeholders::_1));
+
+        ros_initialized_ = true;
+    }
+
+   
 
     // 发送抓取命令
     robot_interfaces::msg::Armmode msg;
     msg.mode = 1;
-    context->arm_cmd_pub->publish(msg);
 
-    std::this_thread::sleep_for(50ms);
-
-    //robot_interfaces::msg::Armmode msg;
-    msg.mode = 0;
-    context->arm_cmd_pub->publish(msg);
-
+    arm_cmd_pub_->publish(msg);
 
     RCLCPP_INFO(
         context->node_->get_logger(),
         "等待机械臂抓取完成");
 
-    // 最多等待20秒
     auto start = std::chrono::steady_clock::now();
 
     while (rclcpp::ok()) {
 
         // 成功
-        if (context->arm_state == 1) {
+        if (arm_state_ == 1) {
 
             RCLCPP_INFO(
                 context->node_->get_logger(),
                 "抓取成功");
 
-            break;
+            arm_state_ = 0;
+
+            return BT::SUCCESS;
         }
 
         // 失败
-        if (context->arm_state == -1) {
+        if (arm_state_ == -1) {
 
             RCLCPP_ERROR(
                 context->node_->get_logger(),
                 "抓取失败");
 
+            arm_state_ = 0;
+
             return BT::FAILED;
         }
 
         // 超时
-        auto now = std::chrono::steady_clock::now();
-
-        if (now - start > 20s) {
-
+        if (std::chrono::steady_clock::now() - start
+            > 20s)
+        {
             RCLCPP_ERROR(
                 context->node_->get_logger(),
                 "机械臂任务超时");
@@ -77,5 +103,5 @@ BT::Status CatchBoxAction::execute(BT& tree)
         std::this_thread::sleep_for(50ms);
     }
 
-    return BT::SUCCESS;
+    return BT::FAILED;
 }

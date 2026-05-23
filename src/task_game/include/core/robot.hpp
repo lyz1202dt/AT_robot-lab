@@ -30,8 +30,7 @@ private:
     rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_server_;
     rclcpp::Subscription<robot_msgs::msg::Remote>::SharedPtr remote_sub_;
     rclcpp::Publisher<robot_msgs::msg::Cmd>::SharedPtr cmd_pub_;
-    rclcpp::Publisher<robot_interfaces::msg::Armmode>::SharedPtr arm_cmd_pub;
-    rclcpp::Subscription<robot_interfaces::msg::Armmode>::SharedPtr arm_state_back;
+   
     //TODO:操作机械臂的话题，相机数据采集的话题等等
 
     //TF  获取机器人位置
@@ -39,12 +38,13 @@ private:
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
     geometry_msgs::msg::TransformStamped robot_pos_transfer;
 
-    std::atomic<int> arm_state{0};
+    
     
     
     std::shared_ptr<std::thread> action_thread;
 
     uint32_t last_key{0};
+    uint32_t catch_request_id{0};
     int current_control_mode{0};
     bool autopilot_available{true};
 };
