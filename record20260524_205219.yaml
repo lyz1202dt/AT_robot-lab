@@ -1,0 +1,229 @@
+#policy_id表示机器人执行这段路径时使用的策略，0表示上电策略，不用；1表示位控站立，一般也不用；
+#2表示walk策略，3表示sand策略，4表示stair策略
+
+paths:
+  - policy_id: 2
+    target_pos:
+      x: -0.0430132
+      y: -0.294606
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 4
+    target_pos:
+      x: 2.78852
+      y: -0.807503
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 4
+    target_pos:
+      x: 4.73043
+      y: -1.02225
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 2
+    target_pos:
+      x: 6.84848
+      y: -1.2201
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 2
+    target_pos:
+      x: 7.90721
+      y: 1.14218
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 2
+    target_pos:
+      x: 7.93676
+      y: 2.67729
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 2
+    target_pos:
+      x: 5.55243
+      y: 2.74655
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 2
+    target_pos:
+      x: 5.4196
+      y: 1.19727
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 2
+    target_pos:
+      x: 4.45029
+      y: 1.27294
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 2
+    target_pos:
+      x: 4.21391
+      y: 2.30288
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 2
+    target_pos:
+      x: 2.4202
+      y: 1.77247
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 3
+    target_pos:
+      x: -3.08736
+      y: 1.74899
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 3
+    target_pos:
+      x: -3.00232
+      y: 3.59757
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 3
+    target_pos:
+      x: -2.30126
+      y: 4.00703
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 1
+    target_pos:
+      x: -0.930338
+      y: 3.80469
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
