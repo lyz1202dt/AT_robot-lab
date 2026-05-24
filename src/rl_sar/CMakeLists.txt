@@ -476,6 +476,13 @@ target_link_libraries(rl_sdk PUBLIC
     Eigen3::Eigen
 )
 
+if(osqp_FOUND AND OsqpEigen_FOUND)
+    target_link_libraries(rl_sdk PUBLIC
+        osqp::osqp
+        OsqpEigen::OsqpEigen
+    )
+endif()
+
 # Link KDL libraries if available
 if(NOT USE_CMAKE)
     if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
@@ -646,17 +653,17 @@ if(SYSTEM_TYPE STREQUAL "Linux")
     endif()
 endif()
 
-# executable for rl real atdog2
+# executable for rl real atdog2 (ROS2 dependent)
 if(SYSTEM_TYPE STREQUAL "Linux")
-    add_executable(rl_real_atdog2 src/rl_real_atdog2.cpp)
-    target_link_libraries(rl_real_atdog2
-        atdog::imu_driver
-        atdog::leg_driver
-        rl_sdk
-        observation_buffer
-        ${YAML_CPP_LIBRARIES}
-    )
     if(NOT USE_CMAKE)
+        add_executable(rl_real_atdog2 src/rl_real_atdog2.cpp)
+        target_link_libraries(rl_real_atdog2
+            atdog::imu_driver
+            atdog::leg_driver
+            rl_sdk
+            observation_buffer
+            ${YAML_CPP_LIBRARIES}
+        )
         if($ENV{ROS_DISTRO} MATCHES "noetic")
             target_link_libraries(rl_real_atdog2 ${catkin_LIBRARIES})
         elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
@@ -670,17 +677,17 @@ if(SYSTEM_TYPE STREQUAL "Linux")
     endif()
 endif()
 
-# executable for rl real atdog
+# executable for rl real atdog (ROS2 dependent)
 if(SYSTEM_TYPE STREQUAL "Linux")
-    add_executable(rl_real_atdog src/rl_real_atdog.cpp)
-    target_link_libraries(rl_real_atdog
-        atdog::imu_driver
-        atdog::leg_driver
-        rl_sdk
-        observation_buffer
-        ${YAML_CPP_LIBRARIES}
-    )
     if(NOT USE_CMAKE)
+        add_executable(rl_real_atdog src/rl_real_atdog.cpp)
+        target_link_libraries(rl_real_atdog
+            atdog::imu_driver
+            atdog::leg_driver
+            rl_sdk
+            observation_buffer
+            ${YAML_CPP_LIBRARIES}
+        )
         if($ENV{ROS_DISTRO} MATCHES "noetic")
             target_link_libraries(rl_real_atdog ${catkin_LIBRARIES})
         elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
