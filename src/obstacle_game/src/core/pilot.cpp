@@ -276,12 +276,22 @@ double Pilot::compute_feedforward_speed(const PathPoint &path, double distance, 
 bool Pilot::advance_if_current_target_reached()
 {
     while (current_path_index_ < paths_.size()) {
-        const double distance = (paths_[current_path_index_].target_pos - current_pos_).norm();
-        if (distance > paths_[current_path_index_].err_allow) {
+        const PathPoint &path = paths_[current_path_index_];
+        const double distance = (path.target_pos - current_pos_).norm();
+        if (distance > path.err_allow) {
             return false;
         }
 
-        current_linear_speed_ = paths_[current_path_index_].target_vel;
+        RCLCPP_INFO(
+            node_->get_logger(),
+            "目标点%zu/%zu执行完成: target=(%.3f, %.3f), policy_id=%d",
+            current_path_index_ + 1,
+            paths_.size(),
+            path.target_pos.x(),
+            path.target_pos.y(),
+            path.policy_id);
+
+        current_linear_speed_ = path.target_vel;
         ++current_path_index_;
         reset_segment_progress();
 
