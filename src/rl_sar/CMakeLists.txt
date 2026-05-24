@@ -647,7 +647,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
 endif()
 
 # executable for rl real atdog2
-if(SYSTEM_TYPE STREQUAL "Linux")
+if(SYSTEM_TYPE STREQUAL "Linux" AND NOT USE_CMAKE AND $ENV{ROS_DISTRO} MATCHES "foxy|humble")
     add_executable(rl_real_atdog2 src/rl_real_atdog2.cpp)
     target_link_libraries(rl_real_atdog2
         atdog::imu_driver
@@ -656,22 +656,16 @@ if(SYSTEM_TYPE STREQUAL "Linux")
         observation_buffer
         ${YAML_CPP_LIBRARIES}
     )
-    if(NOT USE_CMAKE)
-        if($ENV{ROS_DISTRO} MATCHES "noetic")
-            target_link_libraries(rl_real_atdog2 ${catkin_LIBRARIES})
-        elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
-            ament_target_dependencies(rl_real_atdog2
-                rclcpp
-                geometry_msgs
-                robot_msgs
-            )
-            install(TARGETS rl_real_atdog2 DESTINATION lib/${PROJECT_NAME})
-        endif()
-    endif()
+    ament_target_dependencies(rl_real_atdog2
+        rclcpp
+        geometry_msgs
+        robot_msgs
+    )
+    install(TARGETS rl_real_atdog2 DESTINATION lib/${PROJECT_NAME})
 endif()
 
 # executable for rl real atdog
-if(SYSTEM_TYPE STREQUAL "Linux")
+if(SYSTEM_TYPE STREQUAL "Linux" AND NOT USE_CMAKE AND $ENV{ROS_DISTRO} MATCHES "foxy|humble")
     add_executable(rl_real_atdog src/rl_real_atdog.cpp)
     target_link_libraries(rl_real_atdog
         atdog::imu_driver
@@ -680,18 +674,12 @@ if(SYSTEM_TYPE STREQUAL "Linux")
         observation_buffer
         ${YAML_CPP_LIBRARIES}
     )
-    if(NOT USE_CMAKE)
-        if($ENV{ROS_DISTRO} MATCHES "noetic")
-            target_link_libraries(rl_real_atdog ${catkin_LIBRARIES})
-        elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
-            ament_target_dependencies(rl_real_atdog
-                rclcpp
-                geometry_msgs
-                robot_msgs
-            )
-            install(TARGETS rl_real_atdog DESTINATION lib/${PROJECT_NAME})
-        endif()
-    endif()
+    ament_target_dependencies(rl_real_atdog
+        rclcpp
+        geometry_msgs
+        robot_msgs
+    )
+    install(TARGETS rl_real_atdog DESTINATION lib/${PROJECT_NAME})
 endif()
 
 # executable for rl real l4w4
