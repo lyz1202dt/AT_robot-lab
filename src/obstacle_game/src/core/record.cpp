@@ -102,4 +102,5 @@ void Record::write_path_point(const PathPoint &target_info)
     yaml_out_ << "    allow_start_dir_error: " << target_info.allow_start_dir_error << "\n";
     yaml_out_ << "    err_allow: " << target_info.err_allow << "\n";
     yaml_out_ << "    adjust_min_vel: " << target_info.adjust_min_vel << "\n";
+    yaml_out_ << "    min_omega: " << target_info.min_omega << "\n";
 }

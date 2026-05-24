@@ -53,15 +53,19 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         if (current_control_mode == 0) {
             if (check_key_trigger(msg.key,4)) {         //模式控制
                 cmd.mode = 1; // 位控站立
+                current_record_policy_id = 1;
                 RCLCPP_INFO(node_->get_logger(), "位控站立模式");
             } else if (check_key_trigger(msg.key,5)) {
                 cmd.mode = 2; // 普通行走策略
+                current_record_policy_id = 2;
                 RCLCPP_INFO(node_->get_logger(), "普通行走模式");
             } else if (check_key_trigger(msg.key,6)) {
                 cmd.mode = 3; // 过沙地策略
+                current_record_policy_id = 3;
                 RCLCPP_INFO(node_->get_logger(), "沙地模式");
             } else if (check_key_trigger(msg.key,3)) {
                 cmd.mode = 4; // 上台阶策略
+                current_record_policy_id = 4;
                 RCLCPP_INFO(node_->get_logger(), "台阶模式");
             }
 
@@ -111,13 +115,14 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 target.max_accelation=0.4;
                 target.max_velocity=0.6;
                 target.adjust_min_vel=0.2;
+                target.min_omega=0.2;
                 target.allow_start_dir_error=0.2;
                 target.kp={0.1,0.1,0.1};
                 target.err_allow=0.2;
-                target.policy_id=2;
+                target.policy_id=current_record_policy_id;
 
                 record->record_pos(target);
-                RCLCPP_INFO(node_->get_logger(),"记录点位");
+                RCLCPP_INFO(node_->get_logger(),"记录点位, policy_id=%d", target.policy_id);
             }
         }
         else {

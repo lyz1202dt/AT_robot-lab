@@ -181,11 +181,19 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
         current_linear_speed_ = 0.0;
     }
 
+    double yaw_rate = clamp_abs(path.kp.z() * yaw_err, kMaxYawRate);
+    if (std::abs(yaw_err) > 1e-6 && path.min_omega > 0.0) {
+        const double min_omega = std::min(path.min_omega, kMaxYawRate);
+        if (std::abs(yaw_rate) < min_omega) {
+            yaw_rate = std::copysign(min_omega, yaw_err);
+        }
+    }
+
     const double cos_yaw = std::cos(current_yaw_);
     const double sin_yaw = std::sin(current_yaw_);
     cmd.vx = static_cast<float>(cos_yaw * desired_world_vel.x() + sin_yaw * desired_world_vel.y());
     cmd.vy = static_cast<float>(-sin_yaw * desired_world_vel.x() + cos_yaw * desired_world_vel.y());
-    cmd.vz = static_cast<float>(clamp_abs(path.kp.z() * yaw_err, kMaxYawRate));
+    cmd.vz = static_cast<float>(yaw_rate);
     cmd.mode = path.policy_id;
     cmd.wheel_vel = 0.0f;
 
@@ -218,6 +226,7 @@ bool Pilot::load_paths(const std::string &yaml_path)
             point.allow_start_dir_error = path_node["allow_start_dir_error"].as<double>();
             point.err_allow = path_node["err_allow"].as<double>();
             point.adjust_min_vel = path_node["adjust_min_vel"].as<double>();
+            point.min_omega = path_node["min_omega"] ? path_node["min_omega"].as<double>() : 0.0;
             paths_.push_back(point);
         }
 
