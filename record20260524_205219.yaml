@@ -17,7 +17,7 @@ paths:
     err_allow: 0.2
     adjust_min_vel: 0.2
     min_omega: 0.2
-  - policy_id: 4
+  - policy_id: 2
     target_pos:
       x: 2.78852
       y: -0.807503
@@ -47,7 +47,7 @@ paths:
     err_allow: 0.2
     adjust_min_vel: 0.2
     min_omega: 0.2
-  - policy_id: 2
+  - policy_id: 4
     target_pos:
       x: 6.84848
       y: -1.2201
@@ -167,7 +167,7 @@ paths:
     err_allow: 0.2
     adjust_min_vel: 0.2
     min_omega: 0.2
-  - policy_id: 3
+  - policy_id: 2
     target_pos:
       x: -3.08736
       y: 1.74899
@@ -212,7 +212,7 @@ paths:
     err_allow: 0.2
     adjust_min_vel: 0.2
     min_omega: 0.2
-  - policy_id: 1
+  - policy_id: 3
     target_pos:
       x: -0.930338
       y: 3.80469
