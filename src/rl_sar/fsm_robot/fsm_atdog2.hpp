@@ -124,11 +124,11 @@ public:
                 std::cout<<"切入普通行走状态\n";
                 return "RLFSMStateRLLocomotion";
             }
-            else if(rl.control.mode==3)     //切换到爬台阶状态
+            else if(rl.control.mode==4)     //切换到爬台阶状态
             {
                 return "RLFSMStateRLStairs";
             }
-            else if(rl.control.mode==4)     //切换到沙石地行走状态
+            else if(rl.control.mode==3)     //切换到沙石地行走状态
             {
                 return "RLFSMStateRLSand";
             }
@@ -280,11 +280,11 @@ public:
         {
             return "RLFSMStateGetUp";
         }
-        else if(rl.control.mode==3)     //切换到爬台阶状态
+        else if(rl.control.mode==4)     //切换到爬台阶状态
         {
             return "RLFSMStateRLStairs";
         }
-        else if(rl.control.mode==4)     //切换到沙石地行走状态
+        else if(rl.control.mode==3)     //切换到沙石地行走状态
         {
             return "RLFSMStateRLSand";
         }
@@ -365,7 +365,7 @@ public:
         {
             return "RLFSMStateRLLocomotion";
         }
-        else if(rl.control.mode==4)     //切换到沙石地行走状态
+        else if(rl.control.mode==3)     //切换到沙石地行走状态
         {
             return "RLFSMStateRLSand";
         }
@@ -449,7 +449,7 @@ public:
         {
             return "RLFSMStateRLLocomotion";
         }
-        else if(rl.control.mode==3)     //切换到爬台阶状态
+        else if(rl.control.mode==4)     //切换到爬台阶状态
         {
             return "RLFSMStateRLStairs";
         }
@@ -531,11 +531,11 @@ public:
         {
             return "RLFSMStateRLLocomotion";
         }
-        else if(rl.control.mode==3)     //切换到爬台阶状态
+        else if(rl.control.mode==4)     //切换到爬台阶状态
         {
             return "RLFSMStateRLStairs";
         }
-        else if(rl.control.mode==4)     //切换到沙石地行走状态
+        else if(rl.control.mode==3)     //切换到沙石地行走状态
         {
             return "RLFSMStateRLSand";
         }
