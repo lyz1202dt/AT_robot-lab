@@ -258,16 +258,7 @@ else()
     endif()
 endif()
 
-# Find OSQP and qpOASES for optimization
-find_package(osqp QUIET)
-find_package(OsqpEigen QUIET)
-find_package(qpOASES QUIET)
-if(osqp_FOUND AND OsqpEigen_FOUND AND qpOASES_FOUND)
-    message(STATUS "Found OSQP, OsqpEigen, and qpOASES")
-    add_compile_definitions(HAVE_OSQP HAVE_OSQPEIGEN HAVE_QPOASES)
-else()
-    message(WARNING "OSQP libraries not found. Some optimization features may be unavailable.")
-endif()
+
 
 # Add Python library path to RPATH
 if(Python3_LIBRARIES)
@@ -489,8 +480,6 @@ target_link_libraries(rl_sdk PUBLIC
     Python3::Module
     TBB::tbb
     Eigen3::Eigen
-    osqp::osqp
-    OsqpEigen::OsqpEigen
 )
 
 # Link KDL libraries if available
