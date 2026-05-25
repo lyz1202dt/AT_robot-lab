@@ -8,11 +8,11 @@ paths:
       y: -0.294606
     target_vel: 0
     max_velocity: 0.6
-    max_accelation: 0.4
+    max_accelation: 0.3
     kp:
       x: 0.1
       y: 0.2
-      yaw: 0.4
+      yaw: 0.3
     allow_start_dir_error: 0.1
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -23,11 +23,11 @@ paths:
       y: -0.807503
     target_vel: 0
     max_velocity: 0.6
-    max_accelation: 0.4
+    max_accelation: 0.3
     kp:
       x: 0.1
       y: 0.2
-      yaw: 0.4
+      yaw: 0.3
     allow_start_dir_error: 0.1
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -38,11 +38,11 @@ paths:
       y: -1.02225
     target_vel: 0
     max_velocity: 0.6
-    max_accelation: 0.4
+    max_accelation: 0.3
     kp:
       x: 0.1
       y: 0.2
-      yaw: 0.4
+      yaw: 0.3
     allow_start_dir_error: 0.1
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -53,11 +53,11 @@ paths:
       y: -1.2201
     target_vel: 0
     max_velocity: 0.6
-    max_accelation: 0.4
+    max_accelation: 0.3
     kp:
       x: 0.1
       y: 0.2
-      yaw: 0.4
+      yaw: 0.3
     allow_start_dir_error: 0.1
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -68,11 +68,11 @@ paths:
       y: 1.14218
     target_vel: 0
     max_velocity: 0.6
-    max_accelation: 0.4
+    max_accelation: 0.3
     kp:
       x: 0.1
       y: 0.2
-      yaw: 0.4
+      yaw: 0.3
     allow_start_dir_error: 0.1
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -83,11 +83,11 @@ paths:
       y: 2.67729
     target_vel: 0
     max_velocity: 0.6
-    max_accelation: 0.4
+    max_accelation: 0.3
     kp:
       x: 0.1
       y: 0.2
-      yaw: 0.4
+      yaw: 0.3
     allow_start_dir_error: 0.1
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -98,11 +98,11 @@ paths:
       y: 2.74655
     target_vel: 0
     max_velocity: 0.6
-    max_accelation: 0.4
+    max_accelation: 0.3
     kp:
       x: 0.1
       y: 0.2
-      yaw: 0.4
+      yaw: 0.3
     allow_start_dir_error: 0.1
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -113,12 +113,12 @@ paths:
       y: 1.19727
     target_vel: 0
     max_velocity: 0.6
-    max_accelation: 0.4
+    max_accelation: 0.3
     kp:
       x: 0.1
       y: 0.2
-      yaw: 0.4
-    allow_start_dir_error: 0.4
+      yaw: 0.3
+    allow_start_dir_error: 0.3
     err_allow: 0.2
     adjust_min_vel: 0.2
     min_omega: 0.2
@@ -128,11 +128,11 @@ paths:
       y: 1.27294
     target_vel: 0
     max_velocity: 0.6
-    max_accelation: 0.4
+    max_accelation: 0.3
     kp:
       x: 0.1
       y: 0.2
-      yaw: 0.4
+      yaw: 0.3
     allow_start_dir_error: 0.1
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -143,11 +143,11 @@ paths:
       y: 2.30288
     target_vel: 0
     max_velocity: 0.6
-    max_accelation: 0.4
+    max_accelation: 0.3
     kp:
       x: 0.1
       y: 0.2
-      yaw: 0.4
+      yaw: 0.3
     allow_start_dir_error: 0.1
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -158,11 +158,11 @@ paths:
       y: 1.77247
     target_vel: 0
     max_velocity: 0.6
-    max_accelation: 0.4
+    max_accelation: 0.3
     kp:
       x: 0.1
       y: 0.2
-      yaw: 0.4
+      yaw: 0.3
     allow_start_dir_error: 0.1
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -173,11 +173,11 @@ paths:
       y: 1.74899
     target_vel: 0
     max_velocity: 0.6
-    max_accelation: 0.4
+    max_accelation: 0.3
     kp:
       x: 0.1
       y: 0.2
-      yaw: 0.4
+      yaw: 0.3
     allow_start_dir_error: 0.1
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -188,11 +188,11 @@ paths:
       y: 3.59757
     target_vel: 0
     max_velocity: 0.6
-    max_accelation: 0.4
+    max_accelation: 0.3
     kp:
       x: 0.1
       y: 0.2
-      yaw: 0.4
+      yaw: 0.3
     allow_start_dir_error: 0.1
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -203,11 +203,11 @@ paths:
       y: 4.00703
     target_vel: 0
     max_velocity: 0.6
-    max_accelation: 0.4
+    max_accelation: 0.3
     kp:
       x: 0.1
       y: 0.2
-      yaw: 0.4
+      yaw: 0.3
     allow_start_dir_error: 0.1
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -218,11 +218,11 @@ paths:
       y: 3.80469
     target_vel: 0
     max_velocity: 0.6
-    max_accelation: 0.4
+    max_accelation: 0.3
     kp:
       x: 0.1
       y: 0.2
-      yaw: 0.4
+      yaw: 0.3
     allow_start_dir_error: 0.1
     err_allow: 0.2
     adjust_min_vel: 0.2

@@ -13,7 +13,7 @@ using namespace std::chrono_literals;
 
 Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     : node_(node) {
-    node_->declare_parameter<std::string>("scene_path","/home/dog/Desktop/AT_robot-lab/record20260524_110559.yaml");
+    node_->declare_parameter<std::string>("scene_path","/home/dog/Desktop/AT_robot-lab/record20260524_205219.yaml");
     node_->declare_parameter<std::string>("yaml_file_path","./record");
 
     auto yaml_path = node_->get_parameter("scene_path").as_string();
