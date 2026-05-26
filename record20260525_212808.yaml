@@ -4,30 +4,30 @@
 paths:
   - policy_id: 2
     target_pos:
-      x: 1.54323
+      x: 0.54323
       y: 0.440463
     target_vel: 0
     max_velocity: 0.6
     max_accelation: 0.4
     kp:
       x: 0.1
-      y: 0.1
-      yaw: 0.1
+      y: 0.2
+      yaw: 0.3
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
     min_omega: 0.2
   - policy_id: 2
     target_pos:
-      x: 1.53884
+      x: 0.53884
       y: 2.22979
     target_vel: 0
     max_velocity: 0.6
     max_accelation: 0.4
     kp:
       x: 0.1
-      y: 0.1
-      yaw: 0.1
+      y: 0.2
+      yaw: 0.3
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
