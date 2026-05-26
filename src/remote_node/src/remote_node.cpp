@@ -4,6 +4,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <cstring>
 #include <robot_msgs/msg/detail/remote__struct.hpp>
+#include <algorithm>
 #include <sstream>
 #include <iomanip>
 #include <chrono>
@@ -20,10 +21,6 @@ RemoteNode::RemoteNode()
             "remote", 10);
     
     RCLCPP_INFO(this->get_logger(), "遥控器数据发布器已创建");
-
-    if (!init_serial()) {
-        return;
-    }
     
     // 初始化通信协议处理器
     remote_comm_ = std::make_unique<RemoteComm>();
@@ -39,6 +36,10 @@ RemoteNode::RemoteNode()
         CMD_REMOTE_CONTROL,
         this
     );
+
+    if (!init_serial()) {
+        RCLCPP_WARN(this->get_logger(), "启动时未连接到遥控器串口，接收线程将持续尝试重连");
+    }
 
     // 启动串口接收线程
     serial_recv_thread_ = std::make_unique<std::thread>([this]() { serial_recv_task(); });
@@ -61,10 +62,18 @@ bool RemoteNode::init_serial()
         return false;
     }
 
+    std::lock_guard<std::mutex> lock(serial_mutex_);
+
     try {
         // 使用较短超时以更快响应输入变化。
-        serial_ = std::make_unique<serial::Serial>(
+        if (serial_ && serial_->isOpen()) {
+            serial_->close();
+        }
+        serial_.reset();
+
+        auto serial = std::make_unique<serial::Serial>(
             port, baudrate, serial::Timeout::simpleTimeout(10));
+        serial_ = std::move(serial);
     } catch (const serial::IOException& e) {
         RCLCPP_ERROR(
             this->get_logger(),
@@ -90,83 +99,117 @@ bool RemoteNode::init_serial()
     return true;
 }
 
+void RemoteNode::close_serial()
+{
+    std::lock_guard<std::mutex> lock(serial_mutex_);
+    if (serial_ && serial_->isOpen()) {
+        serial_->close();
+    }
+    serial_.reset();
+}
+
 RemoteNode::~RemoteNode()
 {
-    // 先停止看门狗线程
     thread_running_ = false;
-    
+
+    if (serial_recv_thread_) {
+        if (serial_recv_thread_->joinable()) {
+            serial_recv_thread_->join();
+        }
+    }
+
+    close_serial();
+
     if (remote_comm_) {
         remote_comm_->unregister_recv_cb(remote_control_cb_id_);
     }
-    
-    if (serial_ && serial_->isOpen())
-        serial_->close();
-    
+
     if (watchdog_thread_) {
-        if (watchdog_thread_->joinable())
+        if (watchdog_thread_->joinable()) {
             watchdog_thread_->join();
-    }
-    
-    if (serial_recv_thread_) {
-        if (serial_recv_thread_->joinable())
-            serial_recv_thread_->join();
+        }
     }
 }
 
 void RemoteNode::serial_recv_task()
 {
+    constexpr int MAX_ERRORS_BEFORE_RECONNECT = 3;
+    constexpr auto IDLE_SLEEP = std::chrono::milliseconds(1);
+    constexpr auto RECONNECT_DELAY = std::chrono::seconds(1);
+    constexpr auto NO_DATA_RECONNECT_TIMEOUT = std::chrono::seconds(1);
+
     int error_count = 0;
-    const int MAX_ERRORS = 5;
     uint8_t buffer[512];  // 更大的批量读取缓冲区
-    auto last_print_time = std::chrono::steady_clock::now();
+    auto last_data_time = std::chrono::steady_clock::now();
     
-    while (rclcpp::ok()) {
-        if (!serial_ || !serial_->isOpen()) {
-            break;
+    while (thread_running_ && rclcpp::ok()) {
+        bool serial_ready = false;
+        {
+            std::lock_guard<std::mutex> lock(serial_mutex_);
+            serial_ready = serial_ && serial_->isOpen();
+        }
+
+        if (!serial_ready) {
+            if (!init_serial()) {
+                std::this_thread::sleep_for(RECONNECT_DELAY);
+                continue;
+            }
+            error_count = 0;
+            last_data_time = std::chrono::steady_clock::now();
         }
 
         try {
-            // 批量读取多个字节以提高性能
-            size_t bytes_available = serial_->available();
-            if (bytes_available > 0) {
-                size_t bytes_to_read = std::min(bytes_available, size_t(512));
-                size_t bytes_read = serial_->read(buffer, bytes_to_read);
-                
-                if (bytes_read > 0) {
-                    error_count = 0;
-                    // 逐字节传入通信协议处理器，每接收到一批数据立即处理
-                    for (size_t i = 0; i < bytes_read; i++) {
-                        remote_comm_->process_recv_byte(buffer[i]);
-                        // RCLCPP_INFO(this->get_logger(), "接收到数据: 0x%02X", buffer[i]);
-                    }
-                    last_print_time = std::chrono::steady_clock::now();
-                    
-                    // 更新看门狗心跳
-                    watchdog_heartbeat_++;
+            size_t bytes_read = 0;
+            {
+                std::lock_guard<std::mutex> lock(serial_mutex_);
+                if (!serial_ || !serial_->isOpen()) {
+                    throw std::runtime_error("串口未打开");
                 }
-            } else {
-                // 无数据时，加入极短的睡眠(100微秒)避免CPU 100%占用导致系统卡死
-                // 这个延迟相比690ms的消息间隔可以忽略不计
-                std::this_thread::sleep_for(std::chrono::microseconds(100));
+
+                size_t bytes_available = serial_->available();
+                if (bytes_available > 0) {
+                    size_t bytes_to_read = std::min(bytes_available, size_t(512));
+                    bytes_read = serial_->read(buffer, bytes_to_read);
+                }
             }
-            
-            // 定期检查线程是否响应（看门狗机制）
-            auto now = std::chrono::steady_clock::now();
-            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_print_time);
-            if (elapsed.count() > 30) {
-                RCLCPP_WARN(this->get_logger(), "[看门狗] 30秒无新数据，检查遥控器连接");
-                last_print_time = now;
+
+            // 批量读取多个字节以提高性能
+            if (bytes_read > 0) {
+                error_count = 0;
+                // 逐字节传入通信协议处理器，每接收到一批数据立即处理
+                for (size_t i = 0; i < bytes_read; i++) {
+                    remote_comm_->process_recv_byte(buffer[i]);
+                }
+
+                last_data_time = std::chrono::steady_clock::now();
+
+                // 更新看门狗心跳
+                watchdog_heartbeat_++;
+            } else {
+                auto now = std::chrono::steady_clock::now();
+                if (now - last_data_time >= NO_DATA_RECONNECT_TIMEOUT) {
+                    RCLCPP_WARN(this->get_logger(), "超过6秒未收到遥控器数据，正在重新初始化串口");
+                    close_serial();
+                    error_count = 0;
+                    std::this_thread::sleep_for(RECONNECT_DELAY);
+                    continue;
+                }
+
+                std::this_thread::sleep_for(IDLE_SLEEP);
             }
         } catch (const std::exception& e) {
             error_count++;
-            if (error_count == 1) {
-                RCLCPP_ERROR(this->get_logger(), "[异常] 串口读取错误: %s", e.what());
+            close_serial();
+
+            if (error_count == 1 || error_count % MAX_ERRORS_BEFORE_RECONNECT == 0) {
+                RCLCPP_ERROR(
+                    this->get_logger(),
+                    "串口读取异常: %s。正在尝试重新连接遥控器 (连续错误次数=%d)",
+                    e.what(),
+                    error_count);
             }
-            if (error_count >= MAX_ERRORS) {
-                RCLCPP_ERROR(this->get_logger(), "[严重错误] 串口连续出错%d次，可能串口断开，退出接收线程", MAX_ERRORS);
-                break;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+            std::this_thread::sleep_for(RECONNECT_DELAY);
         }
     }
 }
@@ -228,16 +271,16 @@ void RemoteNode::watchdog_task()
         uint64_t current_heartbeat = watchdog_heartbeat_.load();
         
         if (current_heartbeat == last_heartbeat) {
-            // 没有收到新的心跳，可能线程卡死了
+            // 没有收到新的心跳，可能暂时没有遥控器数据或正在重连
             heartbeat_miss_count++;
             
             if (heartbeat_miss_count == 1) {
                 RCLCPP_WARN(this->get_logger(), 
-                    "[看门狗] 未接收到新数据 (心跳停止)，系统可能卡死。心跳值=%lu", 
+                    "[看门狗] 未接收到新遥控器数据，接收线程将继续重连。心跳值=%lu", 
                     current_heartbeat);
             } else if (heartbeat_miss_count == 3) {
                 RCLCPP_ERROR(this->get_logger(), 
-                    "[看门狗] 6秒无心跳更新！系统已卡死。建议重启节点。心跳值=%lu", 
+                    "[看门狗] 6秒无新数据，当前仍在自动恢复流程中。心跳值=%lu", 
                     current_heartbeat);
             }
         } else {
