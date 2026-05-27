@@ -304,7 +304,7 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         const std::array<float, 3> src = {
             box_info.positions[position_row][col].first,
             box_info.positions[position_row][col].second,
-            0.0f};
+            -M_PI_2f};
         const std::array<float, 3> dst = {
             box_info.positions[0][box_id].first,
             box_info.positions[0][box_id].second,

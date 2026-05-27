@@ -90,7 +90,7 @@ BT::Status ArriveToTargetAction::execute(BT& tree) {
                 "ArriveToTargetAction: 设置第 %zu 个轨迹点失败",
                 point_index);
             context->pilot->stop();
-            return BT::FAILED;
+            //return BT::FAILED;
         }
 
         bool finished = false;
@@ -104,7 +104,7 @@ BT::Status ArriveToTargetAction::execute(BT& tree) {
                 "ArriveToTargetAction: 启动第 %zu 个轨迹点失败",
                 point_index);
             context->pilot->stop();
-            return BT::FAILED;
+            //return BT::FAILED;
         }
 
         RCLCPP_INFO(
@@ -122,7 +122,7 @@ BT::Status ArriveToTargetAction::execute(BT& tree) {
 
         if (!rclcpp::ok() || !context->auto_pilot_enabled.load()) {
             context->pilot->stop();
-            return BT::FAILED;
+            //return BT::FAILED;
         }
 
         if (!success) {
@@ -131,7 +131,7 @@ BT::Status ArriveToTargetAction::execute(BT& tree) {
                 "ArriveToTargetAction: 第 %zu 个轨迹点执行失败",
                 point_index);
             context->pilot->stop();
-            return BT::FAILED;
+            //return BT::FAILED;
         }
     }
 
