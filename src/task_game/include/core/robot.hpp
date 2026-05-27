@@ -36,7 +36,7 @@ public:
     BT bt;
     std::atomic_bool auto_pilot_enabled{false};
     std::atomic_int32_t tree_start_key{kTreeIdle};
-    std::atomic_bool tree_debug_mode{false};
+    std::atomic_bool tree_debug_mode{true};
 private:
     
     rclcpp::TimerBase::SharedPtr control_timer;

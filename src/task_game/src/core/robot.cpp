@@ -26,6 +26,13 @@ void set_manual_mode(Robot* robot) {
     robot->cmd.vy = 0.0f;
     robot->cmd.vz = 0.0f;
     robot->pilot->stop();
+    robot->bt.write_msg<std::vector<MoveBoxPlan>>("move_plan", {});
+    robot->bt.write_msg<int>("plan_index", 0);
+    if (const auto node = robot->bt.get_node("generate_plan_action")) {
+        if (const auto action = std::dynamic_pointer_cast<GeneratePlaneAction>(node)) {
+            action->reset_generated();
+        }
+    }
     robot->tree_start_key = Robot::kTreeIdle;
     robot->auto_pilot_enabled = false;
 }

@@ -24,6 +24,7 @@ class GeneratePlaneAction : public BT::ActionNode {
 public:
     GeneratePlaneAction();
     ~GeneratePlaneAction() override;
+    void reset_generated();
 
 protected:
     BT::Status execute(BT& tree) override;

@@ -161,6 +161,10 @@ GeneratePlaneAction::~GeneratePlaneAction() {
     sem_destroy(&box_id_grid_sem_);
 }
 
+void GeneratePlaneAction::reset_generated() {
+    generated = false;
+}
+
 // 初始化 ROS 订阅，只创建一次订阅者，等待后续消息填充规划输入。
 void GeneratePlaneAction::init_subscriptions(const rclcpp::Node::SharedPtr& node) {
     if (subscriptions_ready_) {
