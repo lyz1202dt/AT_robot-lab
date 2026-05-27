@@ -15,4 +15,6 @@ public:
 
 protected:
     BT::Status execute(BT& tree) override;
+    std::array<float, 2> dst_box_pos_;
+    bool place_at_second_floor_ = false;
 };
