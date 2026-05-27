@@ -16,9 +16,21 @@
 #include "nodes/catch_box.hpp"
 #include "nodes/generate_plan.hpp"
 #include "nodes/place_box.hpp"
-
 using namespace std::chrono_literals;
 
+namespace {
+
+void set_manual_mode(Robot* robot) {
+    robot->cmd.mode = 1;
+    robot->cmd.vx = 0.0f;
+    robot->cmd.vy = 0.0f;
+    robot->cmd.vz = 0.0f;
+    robot->pilot->stop();
+    robot->tree_start_key = Robot::kTreeIdle;
+    robot->auto_pilot_enabled = false;
+}
+
+}  // namespace
 
 Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     : node_(node) {
@@ -26,6 +38,9 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     tf_buffer_   = std::make_shared<tf2_ros::Buffer>(node->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
+
+    node_->declare_parameter<bool>("tree_debug_mode", false);
+    set_tree_debug_mode(node_->get_parameter("tree_debug_mode").as_bool());
 
     pilot = std::make_shared<Pilot>(node_);
 
@@ -36,14 +51,15 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     remote_sub_ = node_->create_subscription<robot_msgs::msg::Remote>("remote", 10, [this](const robot_msgs::msg::Remote& msg) {
         if (!check_key_pressed(msg.key, 1)) {
             if (current_control_mode == 1) {
-                cmd.mode = 1;
-                pilot->stop();
+                set_manual_mode(this);
                 current_control_mode = 0;
                 RCLCPP_INFO(node_->get_logger(), "请求切入手动控制");
             }
         } else {
             if (current_control_mode == 0) {
                 current_control_mode = 1;
+                auto_pilot_enabled = true;
+                tree_start_key = kTreeGeneratePlan;
                 RCLCPP_INFO(node_->get_logger(), "请求切入自动控制");
             }
         }
@@ -61,10 +77,8 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             cmd.vx = static_cast<float>(std::clamp(static_cast<double>(msg.ly) / 1200.0, -1.2, 1.2));
             cmd.vz = -static_cast<float>(std::clamp(static_cast<double>(msg.rx) / 1200.0, -1.0, 1.0));
         } else if (current_control_mode == 1) {
-            if (check_key_trigger(msg.key, 4)) {
-                pilot->stop();
-            } else if (check_key_trigger(msg.key, 5)) {
-                // pilot->start();
+            if (tree_debug_mode.load() && check_key_trigger(msg.key, 4)) {
+                advance_tree_stage();
             }
         }
 
@@ -76,8 +90,9 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         result.successful = true;
         RCLCPP_INFO(node_->get_logger(), "更新参数");
         for (const auto& param : params) {
-            (void)param;
-            // TODO:处理参数更新
+            if (param.get_name() == "tree_debug_mode") {
+                set_tree_debug_mode(param.as_bool());
+            }
         }
         return result;
     });
@@ -96,8 +111,10 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                     transfer.transform.translation.y);
             } catch (const tf2::TransformException& ex) {
                 RCLCPP_WARN(node_->get_logger(), "获取目标 TF 失败，自动驾驶仪停止运行: %s", ex.what());
-                current_control_mode = 0;
-                //return;
+                if (current_control_mode == 1) {
+                    set_manual_mode(this);
+                    current_control_mode = 0;
+                }
             }
 
         if (current_control_mode == 1) {
@@ -129,7 +146,9 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
     action_thread = std::make_shared<std::thread>([this]() {
         while (rclcpp::ok()) {
-            bt.run();
+            if (auto_pilot_enabled.load()) {
+                bt.run();
+            }
             std::this_thread::sleep_for(50ms);
         }
     });
@@ -138,6 +157,35 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 Robot::~Robot(){
     if (action_thread && action_thread->joinable())  //子线程退出
         action_thread->join();
+}
+
+void Robot::advance_tree_stage() {
+    const int32_t stage = tree_start_key.load();
+    if (stage < kTreeGeneratePlan || stage > kTreePlaceBox) {
+        tree_start_key = kTreeArriveToBox;
+        return;
+    }
+
+    if (stage == kTreeGeneratePlan) {
+        tree_start_key = kTreeArriveToBox;
+        return;
+    }
+
+    if (stage == kTreePlaceBox) {
+        tree_start_key = kTreeArriveToBox;
+        return;
+    }
+
+    tree_start_key = stage + 1;
+}
+
+void Robot::set_tree_debug_mode(bool enabled) {
+    tree_debug_mode = enabled;
+    RCLCPP_INFO(node_->get_logger(), "行为树调试模式: %s", enabled ? "开启" : "关闭");
+}
+
+bool Robot::is_tree_debug_mode() const {
+    return tree_debug_mode.load();
 }
 
 bool Robot::check_key_trigger(uint32_t current_key,int index)

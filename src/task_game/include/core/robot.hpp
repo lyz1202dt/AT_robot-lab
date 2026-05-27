@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <thread>
 #include <rclcpp/publisher.hpp>
@@ -13,16 +14,29 @@
 
 class Robot{
 public:
+    static constexpr int32_t kTreeIdle = -2;
+    static constexpr int32_t kTreeGeneratePlan = -1;
+    static constexpr int32_t kTreeArriveToBox = 0;
+    static constexpr int32_t kTreeCatchBox = 1;
+    static constexpr int32_t kTreeArriveToTarget = 2;
+    static constexpr int32_t kTreePlaceBox = 3;
+
     Robot(const std::shared_ptr<rclcpp::Node> node);
     ~Robot();
     bool check_key_trigger(uint32_t current_key,int index);
     bool check_key_pressed(uint32_t current_key,int index);
     void record_key(uint32_t current_key);
+    void advance_tree_stage();
+    void set_tree_debug_mode(bool enabled);
+    bool is_tree_debug_mode() const;
 
     std::shared_ptr<Pilot> pilot;
     robot_msgs::msg::Cmd cmd;
     rclcpp::Node::SharedPtr node_;
     BT bt;
+    std::atomic_bool auto_pilot_enabled{false};
+    std::atomic_int32_t tree_start_key{kTreeIdle};
+    std::atomic_bool tree_debug_mode{false};
 private:
     
     rclcpp::TimerBase::SharedPtr control_timer;

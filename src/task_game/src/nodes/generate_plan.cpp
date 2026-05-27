@@ -18,6 +18,28 @@ namespace {
 
 constexpr auto kSemaphoreTimeout = 10s;
 
+bool wait_for_stage(Robot* context, int32_t expected_stage) {
+    while (rclcpp::ok() && context->auto_pilot_enabled.load() && context->tree_start_key.load() != expected_stage) {
+        std::this_thread::sleep_for(50ms);
+    }
+
+    return rclcpp::ok() && context->auto_pilot_enabled.load();
+}
+
+bool wait_with_interrupt(Robot* context, const std::chrono::milliseconds duration) {
+    auto remaining = duration;
+    while (remaining.count() > 0) {
+        if (!rclcpp::ok() || !context->auto_pilot_enabled.load()) {
+            return false;
+        }
+        const auto step = std::min(remaining, 50ms);
+        std::this_thread::sleep_for(step);
+        remaining -= step;
+    }
+
+    return true;
+}
+
 bool wait_semaphore_with_timeout(sem_t* sem, const std::chrono::seconds timeout) {
     timespec deadline{};
     if (clock_gettime(CLOCK_REALTIME, &deadline) != 0) {
@@ -183,6 +205,22 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
 
     init_subscriptions(context->node_);
 
+    if (!wait_for_stage(context, Robot::kTreeGeneratePlan)) {
+        return BT::FAILED;
+    }
+
+    if (!wait_with_interrupt(context, 3s)) {
+        return BT::FAILED;
+    }
+    if (context->auto_pilot_enabled.load()) {
+        context->cmd.mode = 1;
+    }
+    if (!wait_with_interrupt(context, 5s)) {
+        return BT::FAILED;
+    }
+
+    //此处有个话题用来发布摄像头功能，暂定，无需改动
+
     if (!wait_semaphore_with_timeout(&vip_box_id_sem_, kSemaphoreTimeout)) {
         RCLCPP_ERROR(context->node_->get_logger(), "等待 vip_box_id 超时");
         return BT::FAILED;
@@ -326,5 +364,8 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         move_plan.size());
 
     generated=true;
+    if (!context->is_tree_debug_mode()) {
+        context->advance_tree_stage();
+    }
     return BT::SUCCESS;
 }

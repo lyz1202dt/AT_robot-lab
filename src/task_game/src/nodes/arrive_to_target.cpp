@@ -2,12 +2,23 @@
 #include "nodes/msg.hpp"
 #include "core/robot.hpp"
 
+#include <chrono>
 #include <cmath>
 #include <rclcpp/logging.hpp>
 #include <thread>
 #include <vector>
-
 using namespace std::chrono_literals;
+namespace {
+
+bool wait_for_stage(Robot* context, int32_t expected_stage) {
+    while (rclcpp::ok() && context->auto_pilot_enabled.load() && context->tree_start_key.load() != expected_stage) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+
+    return rclcpp::ok() && context->auto_pilot_enabled.load();
+}
+
+}  // namespace
 
 ArriveToTargetAction::ArriveToTargetAction()
     : BT::ActionNode("arrive_to_target_action") {}
@@ -16,6 +27,15 @@ BT::Status ArriveToTargetAction::execute(BT& tree) {
     auto* context = tree.get_context<Robot>();
     if (!context) {
         return BT::FAILED;
+    }
+
+    if (!wait_for_stage(context, Robot::kTreeArriveToTarget)) {
+        context->pilot->stop();
+        return BT::FAILED;
+    }
+
+    if (context->auto_pilot_enabled.load()) {
+        context->cmd.mode = 2;
     }
 
     std::vector<MoveBoxPlan> move_plan;
@@ -96,11 +116,11 @@ BT::Status ArriveToTargetAction::execute(BT& tree) {
             point[2]);
 
         // 等待 Pilot 执行完当前目标点；控制指令由 Robot 的定时器持续调用 get_command 输出。
-        while (rclcpp::ok() && !finished) {
-            std::this_thread::sleep_for(50ms);
+        while (rclcpp::ok() && context->auto_pilot_enabled.load() && !finished) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
 
-        if (!rclcpp::ok()) {
+        if (!rclcpp::ok() || !context->auto_pilot_enabled.load()) {
             context->pilot->stop();
             return BT::FAILED;
         }
@@ -116,6 +136,10 @@ BT::Status ArriveToTargetAction::execute(BT& tree) {
     }
 
     context->pilot->stop();
+
+    if (!context->is_tree_debug_mode()) {
+        context->advance_tree_stage();
+    }
 
     // 到达放置位后，交给后续放箱动作继续处理。
     // 注意：这里不推进 plan_index，索引应由完整完成一次“抓取+放置”后再更新。

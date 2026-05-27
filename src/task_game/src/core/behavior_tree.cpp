@@ -151,7 +151,7 @@ BT::Status BT::ActionNode::tick(BT& tree) {
     last_status_ = execute(tree);
     // Actions always end the current traversal so the next BT::run()
     // reevaluates the tree from the root.
-    tree.request_restart_from_root();
+    //tree.request_restart_from_root();
     return last_status_;
 }
 
