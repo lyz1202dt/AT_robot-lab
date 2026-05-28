@@ -13,13 +13,13 @@ CatchBoxAction::CatchBoxAction()
 
      arm_cmd_pub_ =
             context->node_->create_publisher<
-                robot_interfaces::msg::Armmode>(
+                robot_msgs::msg::Armmode>(
                     "arm_cmd",
                     10);
 
         arm_state_sub_ =
             context->node_->create_subscription<
-                robot_interfaces::msg::Armmode>(
+                robot_msgs::msg::Armmode>(
                     "arm_cmd_state",
                     10,
                     std::bind(
@@ -30,7 +30,7 @@ CatchBoxAction::CatchBoxAction()
 }
 
 void CatchBoxAction::arm_cmd_callback(
-    const robot_interfaces::msg::Armmode::SharedPtr msg)
+    const robot_msgs::msg::Armmode::SharedPtr msg)
 {
     arm_state_ = msg->mode;
 }
@@ -45,7 +45,7 @@ BT::Status CatchBoxAction::execute(BT& tree)
 
     
     // 发送抓取命令
-    robot_interfaces::msg::Armmode msg;
+    robot_msgs::msg::Armmode msg;
     msg.mode = 1;
 
     arm_cmd_pub_->publish(msg);

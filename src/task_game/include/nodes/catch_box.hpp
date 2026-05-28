@@ -5,7 +5,7 @@
 #include <atomic>
 
 #include <rclcpp/rclcpp.hpp>
-#include <robot_interfaces/msg/armmode.hpp>
+#include <robot_msgs/msg/armmode.hpp>
 
 class Robot;
 
@@ -15,7 +15,7 @@ public:
     CatchBoxAction();
 
     void arm_cmd_callback(
-        const robot_interfaces::msg::Armmode::SharedPtr msg);
+        const robot_msgs::msg::Armmode::SharedPtr msg);
 
 protected:
 
@@ -24,10 +24,10 @@ protected:
 private:
 
     rclcpp::Publisher<
-        robot_interfaces::msg::Armmode>::SharedPtr arm_cmd_pub_;
+        robot_msgs::msg::Armmode>::SharedPtr arm_cmd_pub_;
 
     rclcpp::Subscription<
-        robot_interfaces::msg::Armmode>::SharedPtr arm_state_sub_;
+        robot_msgs::msg::Armmode>::SharedPtr arm_state_sub_;
 
     std::atomic<int> arm_state_{0};
 
