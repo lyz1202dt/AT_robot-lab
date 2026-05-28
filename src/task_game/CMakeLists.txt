@@ -46,6 +46,7 @@ add_executable(robot_control
   src/nodes/catch_box.cpp
   src/nodes/arrive_to_target.cpp
   src/nodes/place_box.cpp
+  src/nodes/lift_search.cpp
 )
 
 add_executable(test_node

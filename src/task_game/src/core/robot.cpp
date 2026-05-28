@@ -16,6 +16,7 @@
 #include "nodes/catch_box.hpp"
 #include "nodes/generate_plan.hpp"
 #include "nodes/place_box.hpp"
+#include "nodes/lift_search.hpp"
 using namespace std::chrono_literals;
 
 namespace {

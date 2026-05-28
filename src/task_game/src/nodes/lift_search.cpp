@@ -1,4 +1,4 @@
-#include "nodes/catch_box.hpp"
+#include "nodes/lift_search.hpp"
 
 #include "core/robot.hpp"
 #include "nodes/msg.hpp"
@@ -7,8 +7,8 @@
 
 using namespace std::chrono_literals;
 
-CatchBoxAction::CatchBoxAction()
-    : BT::ActionNode("catch_box_action")
+LiftSearchAction::LiftSearchAction()
+    : BT::ActionNode("lift_search_action")
 {
 
      arm_cmd_pub_ =
@@ -20,7 +20,7 @@ CatchBoxAction::CatchBoxAction()
         arm_state_sub_ =
             context->node_->create_subscription<
                 robot_interfaces::msg::Armmode>(
-                    "arm_cmd_state",
+                    "arm_search_state",
                     10,
                     std::bind(
                         &CatchBoxAction::arm_cmd_callback,
@@ -32,7 +32,7 @@ CatchBoxAction::CatchBoxAction()
 void CatchBoxAction::arm_cmd_callback(
     const robot_interfaces::msg::Armmode::SharedPtr msg)
 {
-    arm_state_ = msg->mode;
+    arm_search_state_ = msg->mode;
 }
 
 BT::Status CatchBoxAction::execute(BT& tree)
@@ -46,7 +46,7 @@ BT::Status CatchBoxAction::execute(BT& tree)
     
     // 发送抓取命令
     robot_interfaces::msg::Armmode msg;
-    msg.mode = 1;
+    msg.mode = 4;
 
     arm_cmd_pub_->publish(msg);
 
@@ -59,25 +59,25 @@ BT::Status CatchBoxAction::execute(BT& tree)
     while (rclcpp::ok()) {
 
         // 成功
-        if (arm_state_ == 1) {
+        if (arm_search_state_ == 1) {
 
             RCLCPP_INFO(
                 context->node_->get_logger(),
                 "抓取成功");
 
-            arm_state_ = 0;
+            arm_search_state_ = 0;
 
             return BT::SUCCESS;
         }
 
         // 失败
-        if (arm_state_ == -1) {
+        if (arm_search_state_ == -1) {
 
             RCLCPP_ERROR(
                 context->node_->get_logger(),
                 "抓取失败");
 
-            arm_state_ = 0;
+            arm_search_          state_ = 0;
 
             return BT::FAILED;
         }
@@ -93,6 +93,7 @@ BT::Status CatchBoxAction::execute(BT& tree)
             return BT::FAILED;
         }
 
+        
     }
 
     return BT::FAILED;
