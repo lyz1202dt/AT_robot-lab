@@ -163,6 +163,7 @@ private:
     std::vector<double> look_left_position_{-1.0, 1.5, 2.45, 2.48};
     std::vector<double> look_middle_position_{0.0, 1.5, 2.45, 2.48};
     std::vector<double> look_right_position_{1.0, 1.5, 2.45, 2.48};
+    std::vector<double> grasp_finish_position{0.0, 0.0, 0.0, -0.3};
 
 
 

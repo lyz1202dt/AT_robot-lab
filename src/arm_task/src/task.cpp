@@ -370,7 +370,7 @@ void ArmTaskNode::execute_grasp_flow() {
 
     // 6. Move back to ready position
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(home_position_, trajectory_duration_);
+    execute_joint_space_trajectory(grasp_finish_position, trajectory_duration_);
     std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 500));
 
 
@@ -1086,7 +1086,7 @@ void ArmTaskNode::arm_cmd_callback(const robot_msgs::msg::Armmode& msg) {
 
 
 
-    //current_mode = msg.mode;
+    current_mode = msg.mode;
 
 
 
