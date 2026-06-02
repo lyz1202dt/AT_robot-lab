@@ -29,75 +29,76 @@ BT::Status CatchBoxAction::execute(BT& tree)
         return BT::FAILED;
     }
 
-    arm_cmd_pub_ =
-            context->node_->create_publisher<
-                robot_msgs::msg::Armmode>(
-                    "arm_cmd",
-                    10);
+    // arm_cmd_pub_ =
+    //         context->node_->create_publisher<
+    //             robot_msgs::msg::Armmode>(
+    //                 "arm_cmd",
+    //                 10);
 
-    arm_state_sub_ =
-            context->node_->create_subscription<
-                robot_msgs::msg::Armmode>(
-                    "arm_cmd_state",
-                    10,
-                    std::bind(
-                        &CatchBoxAction::arm_cmd_callback,
-                        this,
-                        std::placeholders::_1));
+    // arm_state_sub_ =
+    //         context->node_->create_subscription<
+    //             robot_msgs::msg::Armmode>(
+    //                 "arm_cmd_state",
+    //                 10,
+    //                 std::bind(
+    //                     &CatchBoxAction::arm_cmd_callback,
+    //                     this,
+    //                     std::placeholders::_1));
 
     
-    // 发送抓取命令
-    robot_msgs::msg::Armmode msg;
-    msg.mode = 1;
+    // // 发送抓取命令
+    // robot_msgs::msg::Armmode msg;
+    // msg.mode = 1;
 
-    arm_cmd_pub_->publish(msg);
+    // arm_cmd_pub_->publish(msg);
 
-    RCLCPP_INFO(
-        context->node_->get_logger(),
-        "等待机械臂抓取完成");
+    // RCLCPP_INFO(
+    //     context->node_->get_logger(),
+    //     "等待机械臂抓取完成");
 
-    auto start = std::chrono::steady_clock::now();
+    // auto start = std::chrono::steady_clock::now();
 
-    while (rclcpp::ok()) {
+    // while (rclcpp::ok()) {
 
-        // 成功
-        if (arm_state_ == 1) {
+    //     // 成功
+    //     if (arm_state_ == 1) {
 
-            RCLCPP_INFO(
-                context->node_->get_logger(),
-                "抓取成功");
+    //         RCLCPP_INFO(
+    //             context->node_->get_logger(),
+    //             "抓取成功");
 
-            arm_state_ = 0;
+    //         arm_state_ = 0;
 
-            return BT::SUCCESS;
-        }
+    //         return BT::SUCCESS;
+    //     }
 
-        // 失败
-        if (arm_state_ == -1) {
+    //     // 失败
+    //     if (arm_state_ == -1) {
 
-            RCLCPP_ERROR(
-                context->node_->get_logger(),
-                "抓取失败");
+    //         RCLCPP_ERROR(
+    //             context->node_->get_logger(),
+    //             "抓取失败");
 
-            arm_state_ = 0;
+    //         arm_state_ = 0;
 
-            return BT::FAILED;
-        }
+    //         return BT::FAILED;
+    //     }
 
-        // 超时
-        if (std::chrono::steady_clock::now() - start
-            > 20s)
-        {
-            RCLCPP_ERROR(
-                context->node_->get_logger(),
-                "机械臂任务超时");
+    //     // 超时
+    //     if (std::chrono::steady_clock::now() - start
+    //         > 20s)
+    //     {
+    //         RCLCPP_ERROR(
+    //             context->node_->get_logger(),
+    //             "机械臂任务超时");
 
-            return BT::FAILED;
-        }
+    //         return BT::FAILED;
+    //     }
 
-        std::this_thread::sleep_for(5ms);
+    //     std::this_thread::sleep_for(5ms);
 
-    }
+    // }
 
+    std::this_thread::sleep_for(5s);
     return BT::FAILED;
 }
