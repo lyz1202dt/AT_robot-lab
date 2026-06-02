@@ -11,21 +11,7 @@ CatchBoxAction::CatchBoxAction()
     : BT::ActionNode("catch_box_action")
 {
 
-     arm_cmd_pub_ =
-            context->node_->create_publisher<
-                robot_msgs::msg::Armmode>(
-                    "arm_cmd",
-                    10);
-
-        arm_state_sub_ =
-            context->node_->create_subscription<
-                robot_msgs::msg::Armmode>(
-                    "arm_cmd_state",
-                    10,
-                    std::bind(
-                        &CatchBoxAction::arm_cmd_callback,
-                        this,
-                        std::placeholders::_1));
+     
     
 }
 
@@ -42,6 +28,22 @@ BT::Status CatchBoxAction::execute(BT& tree)
     if (!context) {
         return BT::FAILED;
     }
+
+    arm_cmd_pub_ =
+            context->node_->create_publisher<
+                robot_msgs::msg::Armmode>(
+                    "arm_cmd",
+                    10);
+
+    arm_state_sub_ =
+            context->node_->create_subscription<
+                robot_msgs::msg::Armmode>(
+                    "arm_cmd_state",
+                    10,
+                    std::bind(
+                        &CatchBoxAction::arm_cmd_callback,
+                        this,
+                        std::placeholders::_1));
 
     
     // 发送抓取命令
@@ -92,6 +94,8 @@ BT::Status CatchBoxAction::execute(BT& tree)
 
             return BT::FAILED;
         }
+
+        std::this_thread::sleep_for(5ms);
 
     }
 

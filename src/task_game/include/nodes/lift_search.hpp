@@ -9,10 +9,10 @@
 
 class Robot;
 
-class CatchBoxAction : public BT::ActionNode {
+class LiftSearchAction : public BT::ActionNode {
 public:
 
-    CatchBoxAction();
+    LiftSearchAction();
 
     void arm_cmd_callback(
         const robot_msgs::msg::Armmode::SharedPtr msg);

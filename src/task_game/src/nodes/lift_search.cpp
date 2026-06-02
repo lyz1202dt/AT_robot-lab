@@ -11,37 +11,38 @@ LiftSearchAction::LiftSearchAction()
     : BT::ActionNode("lift_search_action")
 {
 
-     arm_cmd_pub_ =
-            context->node_->create_publisher<
-                robot_msgs::msg::Armmode>(
-                    "arm_cmd",
-                    10);
-
-        arm_state_sub_ =
-            context->node_->create_subscription<
-                robot_msgs::msg::Armmode>(
-                    "arm_search_state",
-                    10,
-                    std::bind(
-                        &CatchBoxAction::arm_cmd_callback,
-                        this,
-                        std::placeholders::_1));
+     
     
 }
 
-void CatchBoxAction::arm_cmd_callback(
+void LiftSearchAction::arm_cmd_callback(
     const robot_msgs::msg::Armmode::SharedPtr msg)
 {
     arm_search_state_ = msg->mode;
 }
 
-BT::Status CatchBoxAction::execute(BT& tree)
+BT::Status LiftSearchAction::execute(BT& tree)
 {
     auto* context = tree.get_context<Robot>();
 
     if (!context) {
         return BT::FAILED;
     }
+    arm_cmd_pub_ =
+            context->node_->create_publisher<
+                robot_msgs::msg::Armmode>(
+                    "arm_cmd",
+                    10);
+
+    arm_state_sub_ =
+            context->node_->create_subscription<
+                robot_msgs::msg::Armmode>(
+                    "arm_search_state",
+                    10,
+                    std::bind(
+                        &LiftSearchAction::arm_cmd_callback,
+                        this,
+                        std::placeholders::_1));
 
     
     // 发送抓取命令
@@ -77,7 +78,7 @@ BT::Status CatchBoxAction::execute(BT& tree)
                 context->node_->get_logger(),
                 "抓取失败");
 
-            arm_search_          state_ = 0;
+            arm_search_state_ = 0;
 
             return BT::FAILED;
         }
@@ -93,7 +94,7 @@ BT::Status CatchBoxAction::execute(BT& tree)
             return BT::FAILED;
         }
 
-        
+        std::this_thread::sleep_for(5ms);
     }
 
     return BT::FAILED;

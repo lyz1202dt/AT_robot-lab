@@ -4,6 +4,8 @@
 #include <rclcpp/logging.hpp>
 #include <thread>
 #include <vector>
+#include <rclcpp/rclcpp.hpp>
+#include <atomic>
 
 using namespace std::chrono_literals;
 
@@ -58,19 +60,7 @@ float distance_sq(const std::array<float, 2>& a, const std::array<float, 2>& b) 
 PlaceBoxAction::PlaceBoxAction()
     : BT::ActionNode("place_box_action") {
 
-    // 初始化话题通信
-    place_pos_up_pub   = context->node_->template create_publisher<robot_msgs::msg::Vis>("place_position_up", 10);
-    place_pos_down_pub = context->node_->template create_publisher<robot_msgs::msg::Vis>("place_position_down", 10);
-    arm_cmd_pub_       = context->node_->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
-    arm_state_sub =
-            context->node_->create_subscription<
-                robot_msgs::msg::Armmode>(
-                    "arm_cmd_place_state",
-                    10,
-                    std::bind(
-                        &PlaceBoxAction::arm_place_cmd_callback,
-                        this,
-                        std::placeholders::_1));
+    
 }
 
 void PlaceBoxAction::arm_place_cmd_callback(
@@ -89,11 +79,27 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
+     // 初始化话题通信
+    place_pos_up_pub   = context->node_->template create_publisher<robot_msgs::msg::Vis>("place_position_up", 10);
+    place_pos_down_pub = context->node_->template create_publisher<robot_msgs::msg::Vis>("place_position_down", 10);
+    arm_cmd_pub_       = context->node_->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
+    arm_state_sub =
+            context->node_->create_subscription<
+                robot_msgs::msg::Armmode>(
+                    "arm_cmd_place_state",
+                    10,
+                    std::bind(
+                        &PlaceBoxAction::arm_place_cmd_callback,
+                        this,
+                        std::placeholders::_1));
+
 
     // 2. 等待进入“放箱子阶段”
     if (!wait_for_stage(context, Robot::kTreePlaceBox)) {
         return BT::FAILED;
     }
+
+   
 
 
     // 3. 如果自动模式开启，发送自动控制命令
@@ -170,27 +176,27 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         relative_target[0] = relative_target[0] + 0.0f;  
         relative_target[1] = relative_target[1] + 0.0f;
 
-        robot_msgs::msg::Vis msg;
-        msg.x = relative_target[0];
-        msg.y = relative_target[1];
-        place_pos_down_pub->publish(msg);
+        robot_msgs::msg::Vis msg_Vis;
+        msg_Vis.x = relative_target[0];
+        msg_Vis.y = relative_target[1];
+        place_pos_down_pub->publish(msg_Vis);
 
-        robot_msgs::msg::Armmode msg;
-        msg.mode = 2;
-        arm_cmd_pub_->publish(msg);
+        robot_msgs::msg::Armmode msg_Armmode;
+        msg_Armmode.mode = 2;
+        arm_cmd_pub_->publish(msg_Armmode);
 
     } else if (place_at_second_floor_) {
         relative_target[0] = relative_target[0] + 0.0f;  
         relative_target[1] = relative_target[1] + 0.0f;
 
-        robot_msgs::msg::Vis msg;
-        msg.x = relative_target[0];
-        msg.y = relative_target[1];
-        place_pos_up_pub->publish(msg);
+        robot_msgs::msg::Vis msg_Vis;
+        msg_Vis.x = relative_target[0];
+        msg_Vis.y = relative_target[1];
+        place_pos_up_pub->publish(msg_Vis);
 
-        robot_msgs::msg::Armmode msg;
-        msg.mode = 2;
-        arm_cmd_pub_->publish(msg);
+        robot_msgs::msg::Armmode msg_Armmode;
+        msg_Armmode.mode = 2;
+        arm_cmd_pub_->publish(msg_Armmode);
 
     } 
 

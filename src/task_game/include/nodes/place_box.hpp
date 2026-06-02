@@ -7,7 +7,9 @@
 
 #include "core/behavior_tree.hpp"
 #include <robot_msgs/msg/vis.hpp>
-
+#include <robot_msgs/msg/armmode.hpp>
+#include <atomic>
+#include <rclcpp/rclcpp.hpp>
 class Robot;
 
 class PlaceBoxAction : public BT::ActionNode {
