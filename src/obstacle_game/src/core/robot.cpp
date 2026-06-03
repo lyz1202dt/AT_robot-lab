@@ -160,7 +160,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                     transfer.transform.translation.x,
                     transfer.transform.translation.y);
             } catch (const tf2::TransformException& ex) {
-                RCLCPP_WARN(node_->get_logger(), "获取目标 TF 失败，自动驾驶仪停止运行: %s", ex.what());
+                RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 500, "获取目标 TF 失败，自动驾驶仪停止运行: %s", ex.what());
                 current_control_mode = 0;
                 //return;
             }
