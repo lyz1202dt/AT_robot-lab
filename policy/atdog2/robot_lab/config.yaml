@@ -3,9 +3,9 @@
 
 atdog2/robot_lab:
   model_name: "policy.pt"
-  num_observations: 225
+  num_observations: 450
   observations: ["ang_vel", "gravity_vec", "commands", "dof_pos", "dof_vel", "actions"]
-  observations_history: [4,3,2,1,0]  # 0 is the latest observation
+  observations_history: [9,8,7,6,5,4,3,2,1,0]  # 0 is the latest observation
   observations_history_priority: "term"  # "time" or "term" priority
   clip_obs: 100.0
   clip_actions_lower: [-100.0, -100.0, -100.0,
