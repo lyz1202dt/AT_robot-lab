@@ -16,6 +16,7 @@
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
   <depend>robot_msgs</depend>
+  <depend>yaml-cpp</depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>ament_index_python</exec_depend>

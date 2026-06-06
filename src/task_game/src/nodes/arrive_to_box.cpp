@@ -61,6 +61,16 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
     }
 
     const auto& current_plan = move_plan[plan_index];
+    const size_t expected_target_point_count =
+        current_plan.catch_trajectory.size() + current_plan.place_trajectory.size();
+    if (current_plan.target_point.size() != expected_target_point_count) {
+        RCLCPP_ERROR(
+            context->node_->get_logger(),
+            "ArriveToBoxAction: target_point 数量=%zu 与轨迹点总数=%zu 不一致",
+            current_plan.target_point.size(),
+            expected_target_point_count);
+        return BT::FAILED;
+    }
 
     RCLCPP_INFO(
         context->node_->get_logger(),
@@ -72,17 +82,41 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
 
     for (size_t point_index = 0; point_index < current_plan.catch_trajectory.size(); ++point_index) {
         const auto& point = current_plan.catch_trajectory[point_index];
-        const bool is_last = (point_index + 1 == current_plan.catch_trajectory.size());
 
+        if (point_index >= current_plan.target_point.size()) {
+            RCLCPP_ERROR(
+                context->node_->get_logger(),
+                "ArriveToBoxAction: 第 %zu 个轨迹点缺少 target_point 参数",
+                point_index);
+            context->pilot->stop();
+            return BT::FAILED;
+        }
+
+        // const bool is_last = (point_index + 1 == current_plan.catch_trajectory.size());
+
+        const auto& plan_target_point = current_plan.target_point[point_index];
         Pilot::TargetPoint target_point;
         target_point.target_pos = Eigen::Vector2d(point[0], point[1]);
-        target_point.target_vel = is_last ? 0.0f : 0.25f;
+        target_point.target_yaw = point[2];
+        target_point.constraint_target_yaw = plan_target_point.constraint_target_yaw;
+        target_point.target_vel = plan_target_point.target_vel;
+        target_point.max_velocity = plan_target_point.max_velocity;
+        target_point.max_accelation = plan_target_point.max_accelation;
+        target_point.max_omega = plan_target_point.max_omega;
+        target_point.kp = plan_target_point.kp;
+        target_point.allow_start_dir_error = plan_target_point.allow_start_dir_error;
+        target_point.allow_final_dir_error = plan_target_point.allow_final_dir_error;
+        target_point.allow_final_pos_allow = plan_target_point.allow_final_pos_allow;
+        target_point.adjust_min_vel = plan_target_point.adjust_min_vel;
+        target_point.adjust_min_omega = plan_target_point.adjust_min_omega;
+        target_point.allow_y_vel = plan_target_point.allow_y_vel;
 
+        //target_point.target_vel = is_last ? 0.0f : 0.25f;
         // 最后一个轨迹点要求机器人面向箱子，方便后续抓取动作衔接。
-        if (is_last) {
-            target_point.target_yaw = -static_cast<float>(M_PI);
-            target_point.constraint_target_yaw = true;
-        }
+        // if (is_last) {
+        //     target_point.target_yaw = -static_cast<float>(M_PI);
+        //     target_point.constraint_target_yaw = true;
+        // }
 
         if (!context->pilot->set_target(target_point)) {
             RCLCPP_ERROR(

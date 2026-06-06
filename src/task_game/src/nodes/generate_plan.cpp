@@ -6,9 +6,14 @@
 #include <cerrno>
 #include <cmath>
 #include <ctime>
+#include <thread>
 #include <functional>
 #include <limits>
+#include <stdexcept>
+#include <string>
+#include <tuple>
 #include <rclcpp/logging.hpp>
+#include <yaml-cpp/yaml.h>
 #include <utility>
 #include <vector>
 
@@ -17,6 +22,7 @@ using namespace std::chrono_literals;
 namespace {
 
 constexpr auto kSemaphoreTimeout = 10s;
+constexpr const char* kGeneratePlanConfigParam = "generate_plan_config";
 
 bool wait_for_stage(Robot* context, int32_t expected_stage) {
     while (rclcpp::ok() && context->auto_pilot_enabled.load() && context->tree_start_key.load() != expected_stage) {
@@ -59,7 +65,24 @@ bool wait_semaphore_with_timeout(sem_t* sem, const std::chrono::seconds timeout)
 }
 
 // 三行四列的位置表：第 0 行为放置区，第 1/2 行为两排抓取区。
-using PositionGrid = std::array<std::array<std::pair<float, float>, 4>, 3>;
+using PositionGrid = std::array<std::array<std::tuple<float, float, float>, 4>, 3>;
+
+struct RoutePoints {
+    std::array<float, 3> a1{};
+    std::array<float, 3> a2{};
+};
+
+struct PlanConfig {
+    PositionGrid positions{};
+    RoutePoints route_a{};
+    RoutePoints route_c{};
+    RoutePoints route_e{};
+    TargetPoint start_to_a1{};
+    TargetPoint a1_to_a2{};
+    TargetPoint a2_to_src{};
+    TargetPoint src_to_dst{};
+    TargetPoint dst_to_src{};
+};
 
 // 箱子布局、位置和 VIP ID 的聚合信息。
 struct BoxInfo {
@@ -92,6 +115,98 @@ struct BoxInfo {
     }
 };
 
+std::tuple<float, float, float> read_point3_tuple(const YAML::Node& node, const std::string& name) {
+    if (!node || !node.IsSequence() || node.size() != 3) {
+        throw std::runtime_error(name + " 必须是长度为 3 的数组");
+    }
+    return {node[0].as<float>(), node[1].as<float>(), node[2].as<float>()};
+}
+
+std::array<float, 3> read_point3(const YAML::Node& node, const std::string& name) {
+    if (!node || !node.IsSequence() || node.size() != 3) {
+        throw std::runtime_error(name + " 必须是长度为 3 的数组");
+    }
+    return {node[0].as<float>(), node[1].as<float>(), node[2].as<float>()};
+}
+
+std::array<std::tuple<float, float, float>, 4> read_point3_row(const YAML::Node& node, const std::string& name) {
+    if (!node || !node.IsSequence() || node.size() != 4) {
+        throw std::runtime_error(name + " 必须包含 4 个点");
+    }
+
+    std::array<std::tuple<float, float, float>, 4> row{};
+    for (size_t i = 0; i < row.size(); ++i) {
+        row[i] = read_point3_tuple(node[i], name + "[" + std::to_string(i) + "]");
+    }
+    return row;
+}
+
+TargetPoint read_target_point(const YAML::Node& node, const std::string& name) {
+    if (!node || !node.IsMap()) {
+        throw std::runtime_error(name + " 必须是对象");
+    }
+
+    const auto kp_node = node["kp"];
+    if (!kp_node || !kp_node.IsSequence() || kp_node.size() != 3) {
+        throw std::runtime_error(name + ".kp 必须是长度为 3 的数组");
+    }
+
+    TargetPoint target_point;
+    target_point.constraint_target_yaw = node["constraint_target_yaw"].as<bool>();
+    target_point.target_vel = node["target_vel"].as<float>();
+    target_point.max_velocity = node["max_velocity"].as<float>();
+    target_point.max_accelation = node["max_accelation"].as<float>();
+    target_point.max_omega = node["max_omega"].as<float>();
+    target_point.kp = Eigen::Vector3d(kp_node[0].as<double>(), kp_node[1].as<double>(), kp_node[2].as<double>());
+    target_point.allow_start_dir_error = node["allow_start_dir_error"].as<float>();
+    target_point.allow_final_dir_error = node["allow_final_dir_error"].as<float>();
+    target_point.allow_final_pos_allow = node["allow_final_pos_allow"].as<float>();
+    target_point.adjust_min_vel = node["adjust_min_vel"].as<float>();
+    target_point.adjust_min_omega = node["adjust_min_omega"].as<float>();
+    target_point.allow_y_vel = node["allow_y_vel"].as<bool>();
+    return target_point;
+}
+
+RoutePoints select_route_points(const PlanConfig& config, char plan_case) {
+    if (plan_case == 'A') {
+        return config.route_a;
+    }
+    if (plan_case == 'C') {
+        return config.route_c;
+    }
+    return config.route_e;
+}
+
+PlanConfig load_plan_config(const std::string& yaml_path) {
+    const YAML::Node root = YAML::LoadFile(yaml_path);
+
+    const auto box_positions = root["box_positions"];
+    const auto routes = root["routes"];
+    const auto target_points = root["target_points"];
+    if (!box_positions || !routes || !target_points) {
+        throw std::runtime_error("generate_plan.yaml 缺少 box_positions/routes/target_points");
+    }
+
+    PlanConfig config;
+    config.positions[0] = read_point3_row(box_positions["place"], "box_positions.place");
+    config.positions[1] = read_point3_row(box_positions["pick_row_0"], "box_positions.pick_row_0");
+    config.positions[2] = read_point3_row(box_positions["pick_row_1"], "box_positions.pick_row_1");
+
+    config.route_a.a1 = read_point3(routes["A"]["a1"], "routes.A.a1");
+    config.route_a.a2 = read_point3(routes["A"]["a2"], "routes.A.a2");
+    config.route_c.a1 = read_point3(routes["C"]["a1"], "routes.C.a1");
+    config.route_c.a2 = read_point3(routes["C"]["a2"], "routes.C.a2");
+    config.route_e.a1 = read_point3(routes["E"]["a1"], "routes.E.a1");
+    config.route_e.a2 = read_point3(routes["E"]["a2"], "routes.E.a2");
+
+    config.start_to_a1 = read_target_point(target_points["start_to_a1"], "target_points.start_to_a1");
+    config.a1_to_a2 = read_target_point(target_points["a1_to_a2"], "target_points.a1_to_a2");
+    config.a2_to_src = read_target_point(target_points["a2_to_src"], "target_points.a2_to_src");
+    config.src_to_dst = read_target_point(target_points["src_to_dst"], "target_points.src_to_dst");
+    config.dst_to_src = read_target_point(target_points["dst_to_src"], "target_points.dst_to_src");
+    return config;
+}
+
 // 计算两点之间的欧几里得距离（仅考虑 x, y）
 float calc_distance(const std::array<float, 3>& point, const std::pair<float, float>& target) {
     float dx = point[0] - target.first;
@@ -116,7 +231,9 @@ NearestInfo find_nearest_box(const std::array<float, 3>& point,
             continue;
         }
 
-        const float dist = calc_distance(point, box_info.positions[position_row][col]);
+        const float dist = calc_distance(point, {
+            std::get<0>(box_info.positions[position_row][col]),
+            std::get<1>(box_info.positions[position_row][col])});
         if (dist < result.dist) {
             result.dist = dist;
             result.col = col;
@@ -172,6 +289,7 @@ void GeneratePlaneAction::init_subscriptions(const rclcpp::Node::SharedPtr& node
     }
 
     node_ = node;
+    node_->declare_parameter<std::string>(kGeneratePlanConfigParam, "");
     vip_box_id_sub_ = node_->create_subscription<robot_msgs::msg::Int>(
         "vip_box_id", 10,
         [this](const robot_msgs::msg::Int& msg) {
@@ -234,17 +352,24 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
+    const auto config_path = context->node_->get_parameter(kGeneratePlanConfigParam).as_string();
+    if (config_path.empty()) {
+        RCLCPP_ERROR(context->node_->get_logger(), "GeneratePlaneAction: generate_plan_config 为空");
+        return BT::FAILED;
+    }
+
+    PlanConfig plan_config;
+    try {
+        plan_config = load_plan_config(config_path);
+    } catch (const std::exception& e) {
+        RCLCPP_ERROR(context->node_->get_logger(), "GeneratePlaneAction: 加载配置失败: %s", e.what());
+        return BT::FAILED;
+    }
+
     BoxInfo box_info;
 
     //位置数据
-    box_info.positions = {{
-        //放置区位置
-        {std::make_pair(15.0f, -10.0f), std::make_pair(15.0f, -5.0f), std::make_pair(15.0f, 5.0f), std::make_pair(15.0f, 10.0f)},
-        //抓取区位置，第一行
-        {std::make_pair(10.0f, -10.0f), std::make_pair(10.0f, -5.0f), std::make_pair(10.0f, 5.0f), std::make_pair(10.0f, 10.0f)},
-        //抓取区位置，第二行
-        {std::make_pair(10.0f, -10.0f), std::make_pair(10.0f, -5.0f), std::make_pair(5.0f, 5.0f), std::make_pair(10.0f, 10.0f)}
-    }};
+    box_info.positions = plan_config.positions;
 
     //箱子ID数据
     box_info.box_ids = box_id_grid_;
@@ -262,22 +387,18 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     const bool vip_in_first_row = box_info.is_vip_in_first_row();
     //判断VIP箱子列的信息
     const char plan_case = detect_case(box_info.box_ids, box_info.vip_box_id);
+    const auto route_points = select_route_points(plan_config, plan_case);
 
-    std::array<float, 3> a1, a2;
+    std::array<float, 3> a1 = route_points.a1;
+    std::array<float, 3> a2 = route_points.a2;
 
     // 根据进入路线设置机器人先到达的两个过渡点。
     if (plan_case == 'A') {
         RCLCPP_INFO(context->node_->get_logger(), "执行道路 A");
-        a1 = {0.0f, -15.0f, 0.0f}; //待改数据
-        a2 = {0.0f, -15.0f, 0.0f}; //待改数据
     } else if (plan_case == 'C') {
         RCLCPP_INFO(context->node_->get_logger(), "执行道路 C");
-        a1 = {0.0f, 0.0f, 0.0f}; //待改数据
-        a2 = {10.0f, 0.0f, 0.0f}; //待改数据
     } else if (plan_case == 'E') {
         RCLCPP_INFO(context->node_->get_logger(), "执行道路 E");
-        a1 = {0.0f, 15.0f, 0.0f}; //待改数据
-        a2 = {10.0f, 15.0f, 0.0f}; //待改数据
     }
 
     //此时走到第一排箱子区域
@@ -302,23 +423,30 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         const int position_row = box_row + 1;
         const int box_id = box_info.box_ids[box_row][col];
         const std::array<float, 3> src = {
-            box_info.positions[position_row][col].first,
-            box_info.positions[position_row][col].second,
-            -M_PI_2f};
+            std::get<0>(box_info.positions[position_row][col]),
+            std::get<1>(box_info.positions[position_row][col]),
+            std::get<2>(box_info.positions[position_row][col])};
         const std::array<float, 3> dst = {
-            box_info.positions[0][box_id].first,
-            box_info.positions[0][box_id].second,
-            0.0f};
+            std::get<0>(box_info.positions[0][box_id]),
+            std::get<1>(box_info.positions[0][box_id]),
+            std::get<2>(box_info.positions[0][box_id])};
 
         MoveBoxPlan plan;
         if (!dog_to_middle) {
             plan.catch_trajectory.push_back(a1);
+            plan.target_point.push_back(plan_config.start_to_a1);
             plan.catch_trajectory.push_back(a2);
+            plan.target_point.push_back(plan_config.a1_to_a2);
+            plan.catch_trajectory.push_back(src);
+            plan.target_point.push_back(plan_config.a2_to_src);
             dog_to_middle = true;
+        } else {
+            plan.catch_trajectory.push_back(src);
+            plan.target_point.push_back(plan_config.dst_to_src);
         }
 
-        plan.catch_trajectory.push_back(src);
         plan.place_trajectory.push_back(dst);
+        plan.target_point.push_back(plan_config.src_to_dst);
         plan.src_box_pos = {src[0], src[1]};
         plan.dst_box_pos = {dst[0], dst[1]};
         plan.place_at_second_floor = placed_count[box_id] > 0;
