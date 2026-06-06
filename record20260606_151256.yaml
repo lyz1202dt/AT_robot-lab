@@ -1,0 +1,19 @@
+#policy_id表示机器人执行这段路径时使用的策略，0表示上电策略，不用；1表示位控站立，一般也不用；
+#2表示walk策略，3表示sand策略，4表示stair策略
+
+paths:
+  - policy_id: 2
+    target_pos:
+      x: 5.21632
+      y: 1.93045
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
