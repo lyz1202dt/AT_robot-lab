@@ -14,7 +14,6 @@
 #include "observation_buffer.hpp"
 #include "inference_runtime.hpp"
 #include "leg_driver/leg_driver.hpp"
-#include "imu_driver/imu_driver.hpp"
 
 #include <csignal>
 #include <memory>
@@ -51,7 +50,6 @@ private:
     void Plot();
 
     //real_port
-    std::unique_ptr<IMUDriver> imu_driver;
     std::unique_ptr<LegDriver> leg_driver;
     
     // others

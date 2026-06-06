@@ -5,7 +5,6 @@
 
 #include "rl_real_atdog3.hpp"
 #include "fsm_atdog3.hpp"
-#include "imu_driver/imu_driver.hpp"
 
 #include <array>
 #include <memory>
@@ -23,7 +22,6 @@ RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
     this->InitJointNum(this->params.Get<int>("num_of_dofs"));
     // Shut down motion control-related service
 
-    imu_driver = std::make_unique<IMUDriver>();
     leg_driver = std::make_unique<LegDriver>();
 
     cmd_sub =
@@ -62,26 +60,27 @@ void RL_Real::GetState(RobotState<float>* state) {
         state->motor_state.resize(static_cast<size_t>(dof_count));
     }
 
-    if (this->imu_driver) {
-        Eigen::Vector3d angular_velocity;
-        Eigen::Vector3d acceleration;
-        Eigen::Quaterniond rotation;
-        if (this->imu_driver->get_imu_state(angular_velocity, acceleration, rotation)) {
-            state->imu.quaternion[0] = static_cast<float>(rotation.w());
-            state->imu.quaternion[1] = static_cast<float>(rotation.x());
-            state->imu.quaternion[2] = static_cast<float>(rotation.y());
-            state->imu.quaternion[3] = static_cast<float>(rotation.z());
+    std::array<float, 4> q{};
+    std::array<float, 3> w{};
+    const bool has_imu_state = this->leg_driver != nullptr && this->leg_driver->get_imu_state(q, w);
+    if (has_imu_state) {
+        state->imu.quaternion[0] = static_cast<float>(q[0]);
+        state->imu.quaternion[1] = static_cast<float>(q[1]);
+        state->imu.quaternion[2] = static_cast<float>(q[2]);
+        state->imu.quaternion[3] = static_cast<float>(q[3]);
 
-            state->imu.gyroscope[0] = static_cast<float>(angular_velocity.x());
-            state->imu.gyroscope[1] = static_cast<float>(angular_velocity.y());
-            state->imu.gyroscope[2] = static_cast<float>(angular_velocity.z());
+        state->imu.gyroscope[0] = static_cast<float>(w[0]);
+        state->imu.gyroscope[1] = static_cast<float>(w[1]);
+        state->imu.gyroscope[2] = static_cast<float>(w[2]);
+    } else {
+        state->imu.quaternion[0] = 1.0;
+        state->imu.quaternion[1] = 0.0;
+        state->imu.quaternion[2] = 0.0;
+        state->imu.quaternion[3] = 0.0;
 
-            // state->imu.accelerometer[0] = static_cast<float>(acceleration.x());
-            // state->imu.accelerometer[1] = static_cast<float>(acceleration.y());
-            // state->imu.accelerometer[2] = static_cast<float>(acceleration.z());
-
-            // std::cout<<"q:"<<rotation<<"\nangular_vel:"<<angular_velocity<<"\nacc:"<<acceleration<<std::endl;
-        }
+        state->imu.gyroscope[0] = 0.0;
+        state->imu.gyroscope[1] = 0.0;
+        state->imu.gyroscope[2] = 0.0;
     }
 
     if (this->leg_driver == nullptr || dof_count <= 0) {
