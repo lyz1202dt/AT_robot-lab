@@ -116,5 +116,8 @@ BT::Status CatchBoxAction::execute(BT& tree)
     // }
 
     std::this_thread::sleep_for(1s);
-    return BT::FAILED;
+    RCLCPP_INFO(
+        context->node_->get_logger(),
+        "机械臂抓取完成");
+    return BT::SUCCESS;
 }

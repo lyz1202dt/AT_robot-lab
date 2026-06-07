@@ -128,13 +128,13 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         try {
                 transfer = tf_buffer_->lookupTransform("map","base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));
                 robot_pos_transfer=transfer;
-                RCLCPP_INFO_THROTTLE(
-                    node_->get_logger(),
-                    *node_->get_clock(),
-                    1000,
-                    "pos=(%lf,%lf)",
-                    transfer.transform.translation.x,
-                    transfer.transform.translation.y);
+                // RCLCPP_INFO_THROTTLE(
+                //     node_->get_logger(),
+                //     *node_->get_clock(),
+                //     1000,
+                //     "pos=(%lf,%lf)",
+                //     transfer.transform.translation.x,
+                //     transfer.transform.translation.y);
             } catch (const tf2::TransformException& ex) {
                 RCLCPP_WARN(node_->get_logger(), "获取目标 TF 失败，自动驾驶仪停止运行: %s", ex.what());
                 if (current_control_mode == 1) {

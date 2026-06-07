@@ -14,9 +14,9 @@
 
 start_to_a1_target_point: &start_to_a1_target_point
   # 是否要求机器人到点后朝向 target_yaw
-  constraint_target_yaw: false
+  constraint_target_yaw: true
   # 到达目标点后的期望速度
-  target_vel: 0.25
+  target_vel: 0.0
   # 该段路线的最大平移速度
   max_velocity: 0.7
   # 该段路线的最大平移加速度
@@ -24,7 +24,7 @@ start_to_a1_target_point: &start_to_a1_target_point
   # 该段路线的最大角速度
   max_omega: 1.0
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [0.2, 0.2, 0.55]
+  kp: [0.2, 0.2, 0.6]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.2
   # 最终允许的朝向误差
@@ -34,9 +34,9 @@ start_to_a1_target_point: &start_to_a1_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.15
+  adjust_min_omega: 0.2
   # 是否允许较大的 y 向速度
-  allow_y_vel: false
+  allow_y_vel: true
 
 a1_to_a2_target_point: &a1_to_a2_target_point
   # 是否要求机器人到点后朝向 target_yaw
@@ -50,7 +50,7 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 该段路线的最大角速度
   max_omega: 1.0
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [0.2, 0.2, 0.55]
+  kp: [0.2, 0.2, 0.65]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.2
   # 最终允许的朝向误差
@@ -60,7 +60,7 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.15
+  adjust_min_omega: 0.2
   # 是否允许较大的 y 向速度
   allow_y_vel: false
 
@@ -76,7 +76,7 @@ a2_to_src_target_point: &a2_to_src_target_point
   # 该段路线的最大角速度
   max_omega: 1.0
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [0.2, 0.2, 0.55]
+  kp: [0.2, 0.2, 0.6]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.2
   # 最终允许的朝向误差
@@ -86,9 +86,9 @@ a2_to_src_target_point: &a2_to_src_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.15
+  adjust_min_omega: 0.2
   # 是否允许较大的 y 向速度
-  allow_y_vel: false
+  allow_y_vel: true
 
 src_to_dst_target_point: &src_to_dst_target_point
   # 是否要求机器人到点后朝向 target_yaw
@@ -102,7 +102,7 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 该段路线的最大角速度
   max_omega: 1.0
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [0.2, 0.2, 0.55]
+  kp: [0.2, 0.2, 0.6]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.2
   # 最终允许的朝向误差
@@ -112,7 +112,7 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.15
+  adjust_min_omega: 0.2
   # 是否允许较大的 y 向速度
   allow_y_vel: false
 
@@ -128,7 +128,7 @@ dst_to_src_target_point: &dst_to_src_target_point
   # 该段路线的最大角速度
   max_omega: 1.0
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [0.2, 0.2, 0.55]
+  kp: [0.2, 0.2, 0.6]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.2
   # 最终允许的朝向误差
@@ -138,7 +138,7 @@ dst_to_src_target_point: &dst_to_src_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.15
+  adjust_min_omega: 0.2
   # 是否允许较大的 y 向速度
   allow_y_vel: false
 

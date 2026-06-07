@@ -119,36 +119,36 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
 
 
 
-    // // 4. 准备读取搬箱计划
-    // std::vector<MoveBoxPlan> move_plan;
+    // 4. 准备读取搬箱计划
+    std::vector<MoveBoxPlan> move_plan;
 
-    // // 当前执行到第几个搬箱计划
-    // int plan_index = 0;
-
-
-    // // 5. 从行为树黑板读取 move_plan
-    // if (!tree.read_msg("move_plan", move_plan)) {
-    //     RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: 缺少 move_plan");
-    //     return BT::FAILED;
-    // }
+    // 当前执行到第几个搬箱计划
+    int plan_index = 0;
 
 
-    // // 6. 从行为树黑板读取当前执行索引
-    // if (!tree.read_msg("plan_index", plan_index)) {
-    //     RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: 缺少 plan_index");
-    //     return BT::FAILED;
-    // }
+    // 5. 从行为树黑板读取 move_plan
+    if (!tree.read_msg("move_plan", move_plan)) {
+        RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: 缺少 move_plan");
+        return BT::FAILED;
+    }
 
 
-    // // 7. 检查索引是否合法，防止数组越界
-    // if (plan_index < 0 || plan_index >= static_cast<int>(move_plan.size())) {
-    //     RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: plan_index=%d 越界", plan_index);
-    //     return BT::FAILED;
-    // }
+    // 6. 从行为树黑板读取当前执行索引
+    if (!tree.read_msg("plan_index", plan_index)) {
+        RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: 缺少 plan_index");
+        return BT::FAILED;
+    }
 
 
-    // // 8. 取出当前要执行的搬箱计划
-    // const auto& plan = move_plan[plan_index];
+    // 7. 检查索引是否合法，防止数组越界
+    if (plan_index < 0 || plan_index >= static_cast<int>(move_plan.size())) {
+        RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: plan_index=%d 越界", plan_index);
+        return BT::FAILED;
+    }
+
+
+    // 8. 取出当前要执行的搬箱计划
+    const auto& plan = move_plan[plan_index];
 
     // const std::array<float, 2>* target_pos = nullptr;
 
@@ -250,10 +250,10 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
     //     place_at_second_floor_ ? "true" : "false");
 
 
-    // // 9. 打印当前放置任务信息
-    // RCLCPP_INFO(
-    //     context->node_->get_logger(), "PlaceBoxAction: 执行放置轨迹，轨迹点数量=%zu，目标位置=(%.2f, %.2f)", plan.place_trajectory.size(),
-    //     plan.dst_box_pos[0], plan.dst_box_pos[1]);
+    // 9. 打印当前放置任务信息
+    RCLCPP_INFO(
+        context->node_->get_logger(), "PlaceBoxAction: 执行放置轨迹，轨迹点数量=%zu，目标位置=(%.2f, %.2f)", plan.place_trajectory.size(),
+        plan.dst_box_pos[0], plan.dst_box_pos[1]);
 
 
 
@@ -264,11 +264,12 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
     // // }
 
 
-    // // 11. 如果还有下一个搬箱计划
-    // if (plan_index + 1 < static_cast<int>(move_plan.size())) {
+    // 11. 如果还有下一个搬箱计划
+    if (plan_index + 1 < static_cast<int>(move_plan.size())) {
 
-    //     // 更新索引，准备下次执行下一条计划
-    //     tree.write_msg("plan_index", plan_index + 1);
+        // 更新索引，准备下次执行下一条计划
+        tree.write_msg("plan_index", plan_index + 1);
+    }
 
     // } else {
 
@@ -288,4 +289,7 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
     std::this_thread::sleep_for(1s);
     // 13. 返回执行成功
     return BT::SUCCESS;
+    RCLCPP_INFO(
+        context->node_->get_logger(),
+        "机械臂放置完成");
 }
