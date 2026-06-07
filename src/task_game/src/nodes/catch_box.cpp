@@ -6,6 +6,17 @@
 #include <rclcpp/logging.hpp>
 
 using namespace std::chrono_literals;
+namespace {
+
+bool wait_for_stage(Robot* context, int32_t expected_stage) {
+    while (rclcpp::ok() && context->auto_pilot_enabled.load() && context->tree_start_key.load() != expected_stage) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+
+    return rclcpp::ok() && context->auto_pilot_enabled.load();
+}
+
+}  // namespace
 
 CatchBoxAction::CatchBoxAction()
     : BT::ActionNode("catch_box_action")
