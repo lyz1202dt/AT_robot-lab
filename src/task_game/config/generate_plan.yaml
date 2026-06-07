@@ -169,32 +169,27 @@ routes:
   # - E：仅左边有 VIP 时走上方路线
   # 每条路线包含两个过渡点：a1、a2，格式为 [x, y, yaw]
   A:
-    a1: [0.69, 1.60, 0.0]
+    a1: [0.69, 1.60, 1.57]
     a2: [3.91, 1.65, 0.0]
   C:
     a1: [0.75, -0.05, 0.0]
     a2: [3.78, 0.02, 0.0]
   E:
-    a1: [0.67, -1.66, 0.0]
+    a1: [0.67, -1.66, -1.57]
     a2: [3.84, -1.76, 0.0]
 
 target_points:
   # 第一条计划：起始点 -> a1
-  start_to_a1:
-    <<: *start_to_a1_target_point
+  start_to_a1: *start_to_a1_target_point
 
   # 第一条计划：a1 -> a2
-  a1_to_a2:
-    <<: *a1_to_a2_target_point
+  a1_to_a2: *a1_to_a2_target_point
 
   # 第一条计划：a2 -> src（到抓取点）
-  a2_to_src:
-    <<: *a2_to_src_target_point
+  a2_to_src: *a2_to_src_target_point
 
   # 每条计划：src -> dst（抓取点到放置点）
-  src_to_dst:
-    <<: *src_to_dst_target_point
+  src_to_dst: *src_to_dst_target_point
 
   # 从第二条计划开始：上一次 dst -> 下一次 src
-  dst_to_src:
-    <<: *dst_to_src_target_point
+  dst_to_src: *dst_to_src_target_point
