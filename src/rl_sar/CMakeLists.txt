@@ -476,6 +476,13 @@ target_link_libraries(rl_sdk PUBLIC
     Eigen3::Eigen
 )
 
+if(osqp_FOUND AND OsqpEigen_FOUND)
+    target_link_libraries(rl_sdk PUBLIC
+        osqp::osqp
+        OsqpEigen::OsqpEigen
+    )
+endif()
+
 # Link KDL libraries if available
 if(NOT USE_CMAKE)
     if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
@@ -646,58 +653,76 @@ if(SYSTEM_TYPE STREQUAL "Linux")
     endif()
 endif()
 
-# executable for rl real atdog2
-if(SYSTEM_TYPE STREQUAL "Linux" AND NOT USE_CMAKE AND $ENV{ROS_DISTRO} MATCHES "foxy|humble")
-    add_executable(rl_real_atdog2 src/rl_real_atdog2.cpp)
-    target_link_libraries(rl_real_atdog2
-        atdog::imu_driver
-        atdog::leg_driver
-        rl_sdk
-        observation_buffer
-        ${YAML_CPP_LIBRARIES}
-    )
-    ament_target_dependencies(rl_real_atdog2
-        rclcpp
-        geometry_msgs
-        robot_msgs
-    )
-    install(TARGETS rl_real_atdog2 DESTINATION lib/${PROJECT_NAME})
+# executable for rl real atdog2 (ROS2 dependent)
+if(SYSTEM_TYPE STREQUAL "Linux")
+    if(NOT USE_CMAKE)
+        add_executable(rl_real_atdog2 src/rl_real_atdog2.cpp)
+        target_link_libraries(rl_real_atdog2
+            atdog::imu_driver
+            atdog::leg_driver
+            rl_sdk
+            observation_buffer
+            ${YAML_CPP_LIBRARIES}
+        )
+        if($ENV{ROS_DISTRO} MATCHES "noetic")
+            target_link_libraries(rl_real_atdog2 ${catkin_LIBRARIES})
+        elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+            ament_target_dependencies(rl_real_atdog2
+                rclcpp
+                geometry_msgs
+                robot_msgs
+            )
+            install(TARGETS rl_real_atdog2 DESTINATION lib/${PROJECT_NAME})
+        endif()
+    endif()
 endif()
 
-# executable for rl real atdog3
-if(SYSTEM_TYPE STREQUAL "Linux" AND NOT USE_CMAKE AND $ENV{ROS_DISTRO} MATCHES "foxy|humble")
-    add_executable(rl_real_atdog3 src/rl_real_atdog3.cpp)
-    target_link_libraries(rl_real_atdog3
-        atdog::imu_driver
-        atdog::leg_driver
-        rl_sdk
-        observation_buffer
-        ${YAML_CPP_LIBRARIES}
-    )
-    ament_target_dependencies(rl_real_atdog3
-        rclcpp
-        geometry_msgs
-        robot_msgs
-    )
-    install(TARGETS rl_real_atdog3 DESTINATION lib/${PROJECT_NAME})
+# executable for rl real atdog3 (ROS2 dependent)
+if(SYSTEM_TYPE STREQUAL "Linux")
+    if(NOT USE_CMAKE)
+        add_executable(rl_real_atdog3 src/rl_real_atdog3.cpp)
+        target_link_libraries(rl_real_atdog3
+            atdog::imu_driver
+            atdog::leg_driver
+            rl_sdk
+            observation_buffer
+            ${YAML_CPP_LIBRARIES}
+        )
+        if($ENV{ROS_DISTRO} MATCHES "noetic")
+            target_link_libraries(rl_real_atdog3 ${catkin_LIBRARIES})
+        elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+            ament_target_dependencies(rl_real_atdog3
+                rclcpp
+                geometry_msgs
+                robot_msgs
+            )
+            install(TARGETS rl_real_atdog3 DESTINATION lib/${PROJECT_NAME})
+        endif()
+    endif()
 endif()
 
-# executable for rl real atdog
-if(SYSTEM_TYPE STREQUAL "Linux" AND NOT USE_CMAKE AND $ENV{ROS_DISTRO} MATCHES "foxy|humble")
-    add_executable(rl_real_atdog src/rl_real_atdog.cpp)
-    target_link_libraries(rl_real_atdog
-        atdog::imu_driver
-        atdog::leg_driver
-        rl_sdk
-        observation_buffer
-        ${YAML_CPP_LIBRARIES}
-    )
-    ament_target_dependencies(rl_real_atdog
-        rclcpp
-        geometry_msgs
-        robot_msgs
-    )
-    install(TARGETS rl_real_atdog DESTINATION lib/${PROJECT_NAME})
+# executable for rl real atdog (ROS2 dependent)
+if(SYSTEM_TYPE STREQUAL "Linux")
+    if(NOT USE_CMAKE)
+        add_executable(rl_real_atdog src/rl_real_atdog.cpp)
+        target_link_libraries(rl_real_atdog
+            atdog::imu_driver
+            atdog::leg_driver
+            rl_sdk
+            observation_buffer
+            ${YAML_CPP_LIBRARIES}
+        )
+        if($ENV{ROS_DISTRO} MATCHES "noetic")
+            target_link_libraries(rl_real_atdog ${catkin_LIBRARIES})
+        elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+            ament_target_dependencies(rl_real_atdog
+                rclcpp
+                geometry_msgs
+                robot_msgs
+            )
+            install(TARGETS rl_real_atdog DESTINATION lib/${PROJECT_NAME})
+        endif()
+    endif()
 endif()
 
 # executable for rl real l4w4

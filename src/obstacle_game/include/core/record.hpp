@@ -25,6 +25,7 @@ public:
         double allow_start_dir_error{0.0};
         double err_allow{0.0};
         double adjust_min_vel{0.0};
+        double min_omega{0.0};
     };
 
     Record(rclcpp::Node::SharedPtr node);

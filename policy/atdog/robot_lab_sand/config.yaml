@@ -1,9 +1,9 @@
 # Copyright (c) 2024-2025 Ziqi Fan
 # SPDX-License-Identifier: Apache-2.0
 
-atdog2/robot_lab:
+atdog/robot_lab_sand:
   model_name: "policy.pt"
-  num_observations: 45
+  num_observations: 57
   observations: ["ang_vel", "gravity_vec", "commands", "dof_pos", "dof_vel", "actions"]
   observations_history: []  # 0 is the latest observation
   observations_history_priority: "time"  # "time" or "term" priority
@@ -11,33 +11,40 @@ atdog2/robot_lab:
   clip_actions_lower: [-100.0, -100.0, -100.0,
                        -100.0, -100.0, -100.0,
                        -100.0, -100.0, -100.0,
-                       -100.0, -100.0, -100.0]
+                       -100.0, -100.0, -100.0,
+                       -100.0, -100.0, -100.0, -100.0]
   clip_actions_upper: [100.0, 100.0, 100.0,
                        100.0, 100.0, 100.0,
                        100.0, 100.0, 100.0,
-                       100.0, 100.0, 100.0]
-  rl_kp: [25.0, 25.0, 25.0,
-          25.0, 25.0, 25.0,
-          25.0, 25.0, 25.0,
-          25.0, 25.0, 25.0]
+                       100.0, 100.0, 100.0,
+                       100.0, 100.0, 100.0, 100.0]
+  rl_kp: [20.0, 20.0, 20.0,
+          20.0, 20.0, 20.0,
+          20.0, 20.0, 20.0,
+          20.0, 20.0, 20.0,
+          0.0, 0.0, 0.0, 0.0]
   rl_kd: [0.5, 0.5, 0.5,
           0.5, 0.5, 0.5,
           0.5, 0.5, 0.5,
-          0.5, 0.5, 0.5]
-  fixed_kp: [80.0, 80.0, 80.0,
-             80.0, 80.0, 80.0,
-             80.0, 80.0, 80.0,
-             80.0, 80.0, 80.0]
-  fixed_kd: [3.0, 3.0, 3.0,
-             3.0, 3.0, 3.0,
-             3.0, 3.0, 3.0,
-             3.0, 3.0, 3.0]
-  num_of_dofs: 12
+          0.5, 0.5, 0.5,
+          0.2, 0.2, 0.2, 0.2]
+  fixed_kp: [70.0, 70.0, 70.0,
+             70.0, 70.0, 70.0,
+             70.0, 70.0, 70.0,
+             70.0, 70.0, 70.0,
+             0.0, 0.0, 0.0, 0.0]
+  fixed_kd: [5.0, 5.0, 5.0,
+             5.0, 5.0, 5.0,
+             5.0, 5.0, 5.0,
+             5.0, 5.0, 5.0,
+             0.5, 0.5, 0.5, 0.5]
+  num_of_dofs: 16
   action_scale: [0.125, 0.25, 0.25,
                  0.125, 0.25, 0.25,
                  0.125, 0.25, 0.25,
-                 0.125, 0.25, 0.25]
-  wheel_indices: []
+                 0.125, 0.25, 0.25,
+                 5.0, 5.0, 5.0, 5.0]
+  wheel_indices: [12, 13, 14, 15]
   lin_vel_scale: 2.0
   ang_vel_scale: 0.25
   dof_pos_scale: 1.0
@@ -46,13 +53,11 @@ atdog2/robot_lab:
   torque_limits: [23.5, 23.5, 23.5,
                   23.5, 23.5, 23.5,
                   23.5, 23.5, 23.5,
-                  23.5, 23.5, 23.5]
+                  23.5, 23.5, 23.5,
+                  2.0, 2.0, 2.0, 2.0]
   default_dof_pos: [ 0.00, -0.80, 0.00,
                      0.00, 0.80, 0.00,
                      0.00, -0.80, 0.00,
-                     0.00, 0.80, 0.00]
-  # Map policy DOF order -> hardware DOF index.
-  # Policy DOF order: FR, FL, RR, RL (3 joints per leg).
-  # Hardware leg order: LF=0, RF=1, LH=2, RH=3.
-  #joint_mapping: [3, 4, 5, 0, 1, 2, 9, 10, 11, 6, 7, 8]
-  joint_mapping: [0,1,2,3,4,5,6,7,8,9,10,11]
+                     0.00, 0.80, 0.00,
+                     0.00, 0.00, 0.00, 0.00]
+  joint_mapping: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]

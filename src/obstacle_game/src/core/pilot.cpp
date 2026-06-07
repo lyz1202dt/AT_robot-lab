@@ -181,11 +181,19 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
         current_linear_speed_ = 0.0;
     }
 
+    double yaw_rate = clamp_abs(path.kp.z() * yaw_err, kMaxYawRate);
+    if (std::abs(yaw_err) > 1e-6 && path.min_omega > 0.0) {
+        const double min_omega = std::min(path.min_omega, kMaxYawRate);
+        if (std::abs(yaw_rate) < min_omega) {
+            yaw_rate = std::copysign(min_omega, yaw_err);
+        }
+    }
+
     const double cos_yaw = std::cos(current_yaw_);
     const double sin_yaw = std::sin(current_yaw_);
     cmd.vx = static_cast<float>(cos_yaw * desired_world_vel.x() + sin_yaw * desired_world_vel.y());
     cmd.vy = static_cast<float>(-sin_yaw * desired_world_vel.x() + cos_yaw * desired_world_vel.y());
-    cmd.vz = static_cast<float>(clamp_abs(path.kp.z() * yaw_err, kMaxYawRate));
+    cmd.vz = static_cast<float>(yaw_rate);
     cmd.mode = path.policy_id;
     cmd.wheel_vel = 0.0f;
 
@@ -218,6 +226,7 @@ bool Pilot::load_paths(const std::string &yaml_path)
             point.allow_start_dir_error = path_node["allow_start_dir_error"].as<double>();
             point.err_allow = path_node["err_allow"].as<double>();
             point.adjust_min_vel = path_node["adjust_min_vel"].as<double>();
+            point.min_omega = path_node["min_omega"] ? path_node["min_omega"].as<double>() : 0.0;
             paths_.push_back(point);
         }
 
@@ -276,12 +285,22 @@ double Pilot::compute_feedforward_speed(const PathPoint &path, double distance, 
 bool Pilot::advance_if_current_target_reached()
 {
     while (current_path_index_ < paths_.size()) {
-        const double distance = (paths_[current_path_index_].target_pos - current_pos_).norm();
-        if (distance > paths_[current_path_index_].err_allow) {
+        const PathPoint &path = paths_[current_path_index_];
+        const double distance = (path.target_pos - current_pos_).norm();
+        if (distance > path.err_allow) {
             return false;
         }
 
-        current_linear_speed_ = paths_[current_path_index_].target_vel;
+        RCLCPP_INFO(
+            node_->get_logger(),
+            "目标点%zu/%zu执行完成: target=(%.3f, %.3f), policy_id=%d",
+            current_path_index_ + 1,
+            paths_.size(),
+            path.target_pos.x(),
+            path.target_pos.y(),
+            path.policy_id);
+
+        current_linear_speed_ = path.target_vel;
         ++current_path_index_;
         reset_segment_progress();
 

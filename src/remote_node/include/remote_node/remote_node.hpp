@@ -27,6 +27,7 @@ private:
     std::unique_ptr<serial::Serial> serial_;
     std::unique_ptr<std::thread> serial_recv_thread_;
     std::unique_ptr<std::thread> watchdog_thread_;  // 看门狗线程
+    std::mutex serial_mutex_;
     
     // 通信协议处理器
     std::unique_ptr<RemoteComm> remote_comm_;
@@ -56,4 +57,5 @@ private:
 
     // 解析并打开串口，失败时仅记录日志
     bool init_serial();
+    void close_serial();
 };
