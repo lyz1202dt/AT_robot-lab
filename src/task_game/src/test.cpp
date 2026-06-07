@@ -18,7 +18,7 @@ public:
 
 private:
     void publish_once() {
-        timer_->cancel();
+        //timer_->cancel();
 
         // --- 发布 vip_box_id ---
         auto vip_msg = robot_msgs::msg::Int();
