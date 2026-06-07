@@ -331,15 +331,15 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    if (!wait_with_interrupt(context, 3s)) {
-        return BT::FAILED;
-    }
+    // if (!wait_with_interrupt(context, 3s)) {
+    //     return BT::FAILED;
+    // }
     if (context->auto_pilot_enabled.load()) {
         context->cmd.mode = 1;
     }
-    if (!wait_with_interrupt(context, 5s)) {
-        return BT::FAILED;
-    }
+    // if (!wait_with_interrupt(context, 5s)) {
+    //     return BT::FAILED;
+    // }
 
     //此处有个话题用来发布摄像头功能，暂定，无需改动
 

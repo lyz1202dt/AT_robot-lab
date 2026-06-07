@@ -34,7 +34,7 @@ start_to_a1_target_point: &start_to_a1_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.25
+  adjust_min_omega: 0.15
   # 是否允许较大的 y 向速度
   allow_y_vel: false
 
@@ -60,7 +60,7 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.25
+  adjust_min_omega: 0.15
   # 是否允许较大的 y 向速度
   allow_y_vel: false
 
@@ -86,7 +86,7 @@ a2_to_src_target_point: &a2_to_src_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.25
+  adjust_min_omega: 0.15
   # 是否允许较大的 y 向速度
   allow_y_vel: false
 
@@ -112,7 +112,7 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.25
+  adjust_min_omega: 0.15
   # 是否允许较大的 y 向速度
   allow_y_vel: false
 
@@ -138,7 +138,7 @@ dst_to_src_target_point: &dst_to_src_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.25
+  adjust_min_omega: 0.15
   # 是否允许较大的 y 向速度
   allow_y_vel: false
 
