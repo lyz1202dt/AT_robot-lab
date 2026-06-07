@@ -154,6 +154,11 @@ void RemoteNode::serial_recv_task()
                 std::this_thread::sleep_for(RECONNECT_DELAY);
                 continue;
             }
+            if (has_connected_once_) {
+                should_mark_reconnect_ = true;
+            } else {
+                has_connected_once_ = true;
+            }
             error_count = 0;
             last_data_time = std::chrono::steady_clock::now();
         }
@@ -227,12 +232,13 @@ void RemoteNode::on_remote_control_data(const uint8_t* data, uint16_t size, void
     }
     
     robot_msgs::msg::Remote remote;
-    
+
     memcpy(&remote.lx, data + 0, sizeof(float));
     memcpy(&remote.ly, data + 4, sizeof(float));
     memcpy(&remote.rx, data + 8, sizeof(float));
     memcpy(&remote.ry, data + 12, sizeof(float));
     memcpy(&remote.key, data + 16, sizeof(uint32_t));
+    remote.just_reconnected = node->should_mark_reconnect_.exchange(false);
 
     node->remote_pub->publish(remote);
 }

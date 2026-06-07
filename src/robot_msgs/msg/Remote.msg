@@ -3,3 +3,4 @@ float32 ly
 float32 rx
 float32 ry
 uint32 key
+bool just_reconnected

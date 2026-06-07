@@ -57,24 +57,36 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
     // 机器人遥控器指令订阅
     remote_sub_ = node_->create_subscription<robot_msgs::msg::Remote>("remote", 10, [this](const robot_msgs::msg::Remote& msg) {
+        if (msg.just_reconnected) {
+            reconnect_ignore_frames_ = kReconnectIgnoreFrames;
+            last_key = msg.key;
+            RCLCPP_INFO(node_->get_logger(), "遥控器重连恢复，暂时忽略前%d帧模式切换", kReconnectIgnoreFrames);
+        }
+        const bool ignore_mode_switch = reconnect_ignore_frames_ > 0;
+        if (ignore_mode_switch) {
+            --reconnect_ignore_frames_;
+        }
+
         // RCLCPP_INFO_THROTTLE(
         //     node_->get_logger(),
         //     *node_->get_clock(),
         //     100,
         //     "接收遥控器输入: key=0x%X",
         //     msg.key);
-        if (!check_key_pressed(msg.key, 1)) {
-            if (current_control_mode == 1) {
-                set_manual_mode(this);
-                current_control_mode = 0;
-                RCLCPP_INFO(node_->get_logger(), "请求切入手动控制");
-            }
-        } else {
-            if (current_control_mode == 0) {
-                current_control_mode = 1;
-                auto_pilot_enabled = true;
-                tree_start_key = kTreeGeneratePlan;
-                RCLCPP_INFO(node_->get_logger(), "请求切入自动控制");
+        if (!ignore_mode_switch) {
+            if (!check_key_pressed(msg.key, 1)) {
+                if (current_control_mode == 1) {
+                    set_manual_mode(this);
+                    current_control_mode = 0;
+                    RCLCPP_INFO(node_->get_logger(), "请求切入手动控制");
+                }
+            } else {
+                if (current_control_mode == 0) {
+                    current_control_mode = 1;
+                    auto_pilot_enabled = true;
+                    tree_start_key = kTreeGeneratePlan;
+                    RCLCPP_INFO(node_->get_logger(), "请求切入自动控制");
+                }
             }
         }
 

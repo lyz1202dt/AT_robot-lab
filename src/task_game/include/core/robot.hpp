@@ -57,4 +57,6 @@ private:
     uint32_t last_key{0};
     int current_control_mode{0};
     bool autopilot_available{true};
+    int reconnect_ignore_frames_{0};
+    static constexpr int kReconnectIgnoreFrames = 5;
 };
