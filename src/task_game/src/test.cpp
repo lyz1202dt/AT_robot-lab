@@ -13,7 +13,7 @@ public:
         vip_pub_ = this->create_publisher<robot_msgs::msg::Int>("vip_box_id", 10);
         grid_pub_ = this->create_publisher<robot_msgs::msg::BoxIdGrid>("box_id_grid", 10);
 
-        timer_ = this->create_wall_timer(3s, [this]() { publish_once(); });
+        timer_ = this->create_wall_timer(1s, [this]() { publish_once(); });
     }
 
 private:

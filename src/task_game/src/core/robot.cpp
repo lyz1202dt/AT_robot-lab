@@ -35,7 +35,7 @@ void set_manual_mode(Robot* robot) {
         }
     }
     robot->tree_start_key = Robot::kTreeIdle;
-    robot->auto_pilot_enabled = false;
+    robot->auto_pilot_enabled = true;
 }
 
 }  // namespace
@@ -47,7 +47,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
 
-    node_->declare_parameter<bool>("tree_debug_mode", false);
+    node_->declare_parameter<bool>("tree_debug_mode", true);
     set_tree_debug_mode(node_->get_parameter("tree_debug_mode").as_bool());
 
     pilot = std::make_shared<Pilot>(node_);
@@ -57,6 +57,12 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
     // 机器人遥控器指令订阅
     remote_sub_ = node_->create_subscription<robot_msgs::msg::Remote>("remote", 10, [this](const robot_msgs::msg::Remote& msg) {
+        RCLCPP_INFO_THROTTLE(
+            node_->get_logger(),
+            *node_->get_clock(),
+            100,
+            "接收遥控器输入: key=0x%X",
+            msg.key);
         if (!check_key_pressed(msg.key, 1)) {
             if (current_control_mode == 1) {
                 set_manual_mode(this);
@@ -108,7 +114,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     control_timer = node_->create_wall_timer(50ms, [this]() {
         geometry_msgs::msg::TransformStamped transfer;
         try {
-                transfer = tf_buffer_->lookupTransform("odom","base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));
+                transfer = tf_buffer_->lookupTransform("map","base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));
                 robot_pos_transfer=transfer;
                 RCLCPP_INFO_THROTTLE(
                     node_->get_logger(),

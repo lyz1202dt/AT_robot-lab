@@ -16,7 +16,7 @@ start_to_a1_target_point: &start_to_a1_target_point
   # 是否要求机器人到点后朝向 target_yaw
   constraint_target_yaw: true
   # 到达目标点后的期望速度
-  target_vel: 0.0
+  target_vel: 0.25
   # 该段路线的最大平移速度
   max_velocity: 0.7
   # 该段路线的最大平移加速度
@@ -24,7 +24,7 @@ start_to_a1_target_point: &start_to_a1_target_point
   # 该段路线的最大角速度
   max_omega: 1.0
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [0.2, 0.2, 0.5]
+  kp: [0.2, 0.2, 0.3]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.2
   # 最终允许的朝向误差
@@ -42,7 +42,7 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 是否要求机器人到点后朝向 target_yaw
   constraint_target_yaw: true
   # 到达目标点后的期望速度
-  target_vel: 0.0
+  target_vel: 0.25
   # 该段路线的最大平移速度
   max_velocity: 0.7
   # 该段路线的最大平移加速度
@@ -50,7 +50,7 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 该段路线的最大角速度
   max_omega: 1.0
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [0.2, 0.2, 0.5]
+  kp: [0.2, 0.2, 0.3]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.2
   # 最终允许的朝向误差
@@ -68,7 +68,7 @@ a2_to_src_target_point: &a2_to_src_target_point
   # 是否要求机器人到点后朝向 target_yaw
   constraint_target_yaw: true
   # 到达目标点后的期望速度
-  target_vel: 0.0
+  target_vel: 0.1
   # 该段路线的最大平移速度
   max_velocity: 0.7
   # 该段路线的最大平移加速度
@@ -76,7 +76,7 @@ a2_to_src_target_point: &a2_to_src_target_point
   # 该段路线的最大角速度
   max_omega: 1.0
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [0.2, 0.2, 0.5]
+  kp: [0.2, 0.2, 0.3]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.2
   # 最终允许的朝向误差
@@ -94,7 +94,7 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 是否要求机器人到点后朝向 target_yaw
   constraint_target_yaw: true
   # 到达目标点后的期望速度
-  target_vel: 0.0
+  target_vel: 0.1
   # 该段路线的最大平移速度
   max_velocity: 0.7
   # 该段路线的最大平移加速度
@@ -102,7 +102,7 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 该段路线的最大角速度
   max_omega: 1.0
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [0.2, 0.2, 0.5]
+  kp: [0.2, 0.2, 0.3]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.2
   # 最终允许的朝向误差
@@ -120,7 +120,7 @@ dst_to_src_target_point: &dst_to_src_target_point
   # 是否要求机器人到点后朝向 target_yaw
   constraint_target_yaw: true
   # 到达目标点后的期望速度
-  target_vel: 0.0
+  target_vel: 0.1
   # 该段路线的最大平移速度
   max_velocity: 0.7
   # 该段路线的最大平移加速度
@@ -128,7 +128,7 @@ dst_to_src_target_point: &dst_to_src_target_point
   # 该段路线的最大角速度
   max_omega: 1.0
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [0.2, 0.2, 0.5]
+  kp: [0.2, 0.2, 0.3]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.2
   # 最终允许的朝向误差
