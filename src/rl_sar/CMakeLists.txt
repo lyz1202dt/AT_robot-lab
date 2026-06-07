@@ -678,6 +678,29 @@ if(SYSTEM_TYPE STREQUAL "Linux")
     endif()
 endif()
 
+# executable for rl real atdog3
+if(SYSTEM_TYPE STREQUAL "Linux")
+    add_executable(rl_real_atdog3 src/rl_real_atdog3.cpp)
+    target_link_libraries(rl_real_atdog3
+        atdog::leg_driver
+        rl_sdk
+        observation_buffer
+        ${YAML_CPP_LIBRARIES}
+    )
+    if(NOT USE_CMAKE)
+        if($ENV{ROS_DISTRO} MATCHES "noetic")
+            target_link_libraries(rl_real_atdog3 ${catkin_LIBRARIES})
+        elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+            ament_target_dependencies(rl_real_atdog3
+                rclcpp
+                geometry_msgs
+                robot_msgs
+            )
+            install(TARGETS rl_real_atdog3 DESTINATION lib/${PROJECT_NAME})
+        endif()
+    endif()
+endif()
+
 # executable for rl real atdog
 if(SYSTEM_TYPE STREQUAL "Linux")
     add_executable(rl_real_atdog src/rl_real_atdog.cpp)

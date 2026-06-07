@@ -20,5 +20,6 @@
 #include "fsm_tita.hpp"
 #include "fsm_atdog.hpp"
 #include "fsm_atdog2.hpp"
+#include "fsm_atdog3.hpp"
 
 #endif // FSM_ALL_HPP
