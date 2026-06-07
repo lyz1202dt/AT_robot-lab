@@ -26,11 +26,11 @@ start_to_a1_target_point: &start_to_a1_target_point
   # 闭环控制比例参数 [x, y, yaw]
   kp: [0.2, 0.2, 0.6]
   # 起步时允许的朝向误差
-  allow_start_dir_error: 0.2
+  allow_start_dir_error: 0.15
   # 最终允许的朝向误差
-  allow_final_dir_error: 0.2
+  allow_final_dir_error: 0.15
   # 最终允许的位置误差
-  allow_final_pos_allow: 0.2
+  allow_final_pos_allow: 0.05
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
@@ -52,11 +52,11 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 闭环控制比例参数 [x, y, yaw]
   kp: [0.2, 0.2, 0.65]
   # 起步时允许的朝向误差
-  allow_start_dir_error: 0.2
+  allow_start_dir_error: 0.15
   # 最终允许的朝向误差
-  allow_final_dir_error: 0.2
+  allow_final_dir_error: 0.15
   # 最终允许的位置误差
-  allow_final_pos_allow: 0.2
+  allow_final_pos_allow: 0.05
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
@@ -78,11 +78,11 @@ a2_to_src_target_point: &a2_to_src_target_point
   # 闭环控制比例参数 [x, y, yaw]
   kp: [0.2, 0.2, 0.6]
   # 起步时允许的朝向误差
-  allow_start_dir_error: 0.2
+  allow_start_dir_error: 0.15
   # 最终允许的朝向误差
-  allow_final_dir_error: 0.2
+  allow_final_dir_error: 0.15
   # 最终允许的位置误差
-  allow_final_pos_allow: 0.2
+  allow_final_pos_allow: 0.05
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
@@ -104,11 +104,11 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 闭环控制比例参数 [x, y, yaw]
   kp: [0.2, 0.2, 0.6]
   # 起步时允许的朝向误差
-  allow_start_dir_error: 0.2
+  allow_start_dir_error: 0.15
   # 最终允许的朝向误差
-  allow_final_dir_error: 0.2
+  allow_final_dir_error: 0.15
   # 最终允许的位置误差
-  allow_final_pos_allow: 0.2
+  allow_final_pos_allow: 0.05
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
@@ -130,11 +130,11 @@ dst_to_src_target_point: &dst_to_src_target_point
   # 闭环控制比例参数 [x, y, yaw]
   kp: [0.2, 0.2, 0.6]
   # 起步时允许的朝向误差
-  allow_start_dir_error: 0.2
+  allow_start_dir_error: 0.15
   # 最终允许的朝向误差
-  allow_final_dir_error: 0.2
+  allow_final_dir_error: 0.15
   # 最终允许的位置误差
-  allow_final_pos_allow: 0.2
+  allow_final_pos_allow: 0.05
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
@@ -169,13 +169,13 @@ routes:
   # - E：仅左边有 VIP 时走上方路线
   # 每条路线包含两个过渡点：a1、a2，格式为 [x, y, yaw]
   A:
-    a1: [0.69, 1.60, 1.57]
+    a1: [0.69, 1.60, 0.0]
     a2: [3.91, 1.65, 0.0]
   C:
     a1: [0.75, -0.05, 0.0]
     a2: [3.78, 0.02, 0.0]
   E:
-    a1: [0.67, -1.66, -1.57]
+    a1: [0.67, -1.66, 0.0]
     a2: [3.84, -1.76, 0.0]
 
 target_points:
