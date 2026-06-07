@@ -179,10 +179,12 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
         }
     }
 
-    const double body_speed = desired_body_vel.norm();
-    if (body_speed > static_cast<double>(target_.max_velocity) && body_speed > kEpsilon) {
-        desired_body_vel *= (static_cast<double>(target_.max_velocity) / body_speed);
+    double body_speed = desired_body_vel.norm();
+    const double max_velocity = std::max(0.0, static_cast<double>(target_.max_velocity));
+    if (body_speed > max_velocity && body_speed > kEpsilon) {
+        desired_body_vel *= (max_velocity / body_speed);
     }
+    apply_min_adjust_linear_speed(desired_body_vel);
 
     cmd.mode = kWalkMode;
     cmd.vx = static_cast<float>(desired_body_vel.x());
@@ -287,6 +289,20 @@ double Pilot::compute_limited_omega(double yaw_error, double) const
     }
 
     return omega;
+}
+
+void Pilot::apply_min_adjust_linear_speed(Eigen::Vector2d &body_vel) const
+{
+    const double speed = body_vel.norm();
+    if (speed <= kEpsilon) {
+        return;
+    }
+
+    const double max_velocity = std::max(0.0, static_cast<double>(target_.max_velocity));
+    const double min_speed = std::min(std::max(0.0, static_cast<double>(target_.adjust_min_vel)), max_velocity);
+    if (speed < min_speed) {
+        body_vel *= (min_speed / speed);
+    }
 }
 
 robot_msgs::msg::Cmd Pilot::make_zero_command() const

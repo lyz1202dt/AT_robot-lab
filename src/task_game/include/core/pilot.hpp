@@ -58,6 +58,7 @@ private:
     void finish_current_task(int success);
     double compute_limited_linear_speed(double distance, double dt);
     double compute_limited_omega(double yaw_error, double dt) const;
+    void apply_min_adjust_linear_speed(Eigen::Vector2d &body_vel) const;
     robot_msgs::msg::Cmd make_zero_command() const;
     static double normalize_angle(double angle);
     static double clamp_abs(double value, double limit);
