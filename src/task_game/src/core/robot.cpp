@@ -57,12 +57,12 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
     // 机器人遥控器指令订阅
     remote_sub_ = node_->create_subscription<robot_msgs::msg::Remote>("remote", 10, [this](const robot_msgs::msg::Remote& msg) {
-        RCLCPP_INFO_THROTTLE(
-            node_->get_logger(),
-            *node_->get_clock(),
-            100,
-            "接收遥控器输入: key=0x%X",
-            msg.key);
+        // RCLCPP_INFO_THROTTLE(
+        //     node_->get_logger(),
+        //     *node_->get_clock(),
+        //     100,
+        //     "接收遥控器输入: key=0x%X",
+        //     msg.key);
         if (!check_key_pressed(msg.key, 1)) {
             if (current_control_mode == 1) {
                 set_manual_mode(this);

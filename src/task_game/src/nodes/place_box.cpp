@@ -69,6 +69,7 @@ void PlaceBoxAction::arm_place_cmd_callback(
     arm_state_ = msg->mode;
 }
 
+
 /// 行为树执行到这个节点时会调用 execute()
 BT::Status PlaceBoxAction::execute(BT& tree) {
 
@@ -78,6 +79,15 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
     if (!context) {
         return BT::FAILED;
     }
+
+    if (!wait_for_stage(context, Robot::kTreePlaceBox)) {
+        context->pilot->stop();
+        return BT::FAILED;
+    }
+
+    RCLCPP_INFO(
+        context->node_->get_logger(),
+        "等待机械臂放置完成");
 
     //  // 初始化话题通信
     // place_pos_up_pub   = context->node_->template create_publisher<robot_msgs::msg::Vis>("place_position_up", 10);
@@ -275,7 +285,7 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
     //     context->advance_tree_stage();
     // }
 
-    std::this_thread::sleep_for(5s);
+    std::this_thread::sleep_for(1s);
     // 13. 返回执行成功
     return BT::SUCCESS;
 }

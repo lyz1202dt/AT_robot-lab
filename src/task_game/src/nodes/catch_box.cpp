@@ -52,9 +52,14 @@ BT::Status CatchBoxAction::execute(BT& tree)
 
     // arm_cmd_pub_->publish(msg);
 
-    // RCLCPP_INFO(
-    //     context->node_->get_logger(),
-    //     "等待机械臂抓取完成");
+    if (!wait_for_stage(context, Robot::kTreeCatchBox)) {
+        context->pilot->stop();
+        return BT::FAILED;
+    }
+
+    RCLCPP_INFO(
+        context->node_->get_logger(),
+        "等待机械臂抓取完成");
 
     // auto start = std::chrono::steady_clock::now();
 
@@ -99,6 +104,6 @@ BT::Status CatchBoxAction::execute(BT& tree)
 
     // }
 
-    std::this_thread::sleep_for(5s);
+    std::this_thread::sleep_for(1s);
     return BT::FAILED;
 }
