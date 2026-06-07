@@ -123,7 +123,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
     const double lateral_err = -sin_yaw * pos_err_world.x() + cos_yaw * pos_err_world.y();
 
     Eigen::Vector2d desired_body_vel = Eigen::Vector2d::Zero();
-    double desired_yaw = current_yaw_;
+    double desired_yaw = target_.allow_y_vel ? current_yaw_ : target_heading;
 
     if (target_.allow_y_vel) {
         const double limited_speed = compute_limited_linear_speed(distance, dt);
