@@ -81,7 +81,8 @@ struct PlanConfig {
     TargetPoint a1_to_a2{};
     TargetPoint a2_to_src{};
     TargetPoint src_to_dst{};
-    TargetPoint dst_to_src{};
+    TargetPoint dst_to_dst2{};
+    TargetPoint dst2_to_src{};
 };
 
 // 箱子布局、位置和 VIP ID 的聚合信息。
@@ -203,7 +204,8 @@ PlanConfig load_plan_config(const std::string& yaml_path) {
     config.a1_to_a2 = read_target_point(target_points["a1_to_a2"], "target_points.a1_to_a2");
     config.a2_to_src = read_target_point(target_points["a2_to_src"], "target_points.a2_to_src");
     config.src_to_dst = read_target_point(target_points["src_to_dst"], "target_points.src_to_dst");
-    config.dst_to_src = read_target_point(target_points["dst_to_src"], "target_points.dst_to_src");
+    config.dst_to_dst2 = read_target_point(target_points["dst_to_dst2"], "target_points.dst_to_dst2");
+    config.dst2_to_src = read_target_point(target_points["dst2_to_src"], "target_points.dst2_to_src");
     return config;
 }
 
@@ -410,6 +412,8 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     std::array<int, 4> placed_count{};
     // 上一次规划结束时的期望位置，用于选择最近的下一个箱子。
     std::array<float, 3> last_expected_pos = a2;
+    // 放置点后的退让点，x 方向相对放置点后退 0.5m，避免下一次转向时碰到放置区箱子。
+    std::array<float, 3> last_dst2 = a2;
 
     //计移动箱子计划数容器
     std::vector<MoveBoxPlan> move_plan;
@@ -430,6 +434,10 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
             std::get<0>(box_info.positions[0][box_id]),
             std::get<1>(box_info.positions[0][box_id]),
             std::get<2>(box_info.positions[0][box_id])};
+        const std::array<float, 3> dst2 = {
+            dst[0] - 0.5f,
+            dst[1],
+            dst[2]};
 
         MoveBoxPlan plan;
         if (!dog_to_middle) {
@@ -441,8 +449,10 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
             plan.target_point.push_back(plan_config.a2_to_src);
             dog_to_middle = true;
         } else {
+            plan.catch_trajectory.push_back(last_dst2);
+            plan.target_point.push_back(plan_config.dst_to_dst2);
             plan.catch_trajectory.push_back(src);
-            plan.target_point.push_back(plan_config.dst_to_src);
+            plan.target_point.push_back(plan_config.dst2_to_src);
         }
 
         plan.place_trajectory.push_back(dst);
@@ -454,7 +464,8 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
 
         picked[box_row][col] = true;
         ++placed_count[box_id];
-        last_expected_pos = dst;
+        last_expected_pos = dst2;
+        last_dst2 = dst2;
 
         RCLCPP_INFO(
             context->node_->get_logger(),

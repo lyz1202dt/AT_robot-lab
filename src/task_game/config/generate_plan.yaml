@@ -3,14 +3,15 @@
 # 这份配置主要包含三部分：
 # 1. box_positions：场地里的放置区/抓取区固定点位（每个点格式为 [x, y, yaw]）
 # 2. routes：根据道路 A/C/E 进入抓取区前的两个过渡点 a1/a2
-# 3. target_points：5 类固定路段的运动控制参数
+# 3. target_points：6 类固定路段的运动控制参数
 #
 # 轨迹段对应关系：
 # - start_to_a1：起始点 -> a1（仅第一条计划使用）
 # - a1_to_a2：a1 -> a2（仅第一条计划使用）
 # - a2_to_src：a2 -> src（仅第一条计划使用）
 # - src_to_dst：src -> dst（每一条计划都会使用）
-# - dst_to_src：dst -> 下一次 src（从第二条计划开始使用）
+# - dst_to_dst2：dst -> dst2（从第二条计划开始使用，先从放置区后退离开）
+# - dst2_to_src：dst2 -> 下一次 src（从第二条计划开始使用）
 
 start_to_a1_target_point: &start_to_a1_target_point
   # 是否要求机器人到点后朝向 target_yaw
@@ -116,7 +117,33 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 是否允许较大的 y 向速度
   allow_y_vel: false
 
-dst_to_src_target_point: &dst_to_src_target_point
+dst_to_dst2_target_point: &dst_to_dst2_target_point
+  # 是否要求机器人到点后朝向 target_yaw
+  constraint_target_yaw: false
+  # 到达目标点后的期望速度
+  target_vel: -0.1
+  # 该段路线的最大平移速度
+  max_velocity: 0.7
+  # 该段路线的最大平移加速度
+  max_accelation: 0.25
+  # 该段路线的最大角速度
+  max_omega: 1.0
+  # 闭环控制比例参数 [x, y, yaw]
+  kp: [0.2, 0.2, 0.6]
+  # 起步时允许较大的朝向误差，便于直接倒车离开放置区
+  allow_start_dir_error: 3.2
+  # 最终允许的朝向误差
+  allow_final_dir_error: 0.15
+  # 最终允许的位置误差
+  allow_final_pos_allow: 0.05
+  # 微调时的最小平移速度
+  adjust_min_vel: 0.35
+  # 微调时的最小角速度
+  adjust_min_omega: 0.2
+  # 是否允许较大的 y 向速度
+  allow_y_vel: false
+
+dst2_to_src_target_point: &dst2_to_src_target_point
   # 是否要求机器人到点后朝向 target_yaw
   constraint_target_yaw: true
   # 到达目标点后的期望速度
@@ -191,5 +218,8 @@ target_points:
   # 每条计划：src -> dst（抓取点到放置点）
   src_to_dst: *src_to_dst_target_point
 
-  # 从第二条计划开始：上一次 dst -> 下一次 src
-  dst_to_src: *dst_to_src_target_point
+  # 从第二条计划开始：上一次 dst -> dst2（先后退离开放置区）
+  dst_to_dst2: *dst_to_dst2_target_point
+
+  # 从第二条计划开始：dst2 -> 下一次 src
+  dst2_to_src: *dst2_to_src_target_point
