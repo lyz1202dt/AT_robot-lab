@@ -24,7 +24,14 @@ def generate_launch_description():
         output="screen",
     )
 
+    test_node = Node(
+        package="task_game",
+        executable="test_node",
+        output="screen",
+    )
+
     return LaunchDescription([
+        test_node,
         robot_control_node,
-        remote_node,
+        #remote_node,
     ])

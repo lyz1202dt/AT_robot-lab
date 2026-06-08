@@ -173,13 +173,13 @@ private:
                 ly_axis_ = Axis{};
                 rx_axis_ = Axis{};
                 break;
-            case '1':
+            case '2':
                 set_mode(Mode::Manual, "manual");
                 break;
-            case '2':
+            case '3':
                 set_mode(Mode::Auto, "auto");
                 break;
-            case '3':
+            case '1':
                 set_mode(Mode::Record, "record");
                 break;
             case 'z':
