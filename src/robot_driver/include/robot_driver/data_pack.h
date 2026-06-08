@@ -33,8 +33,9 @@ typedef struct
 // servo 用于表示伺服电机的上下限
 typedef struct
 {
-    float up;               //!<@brief 上限
-    float low;              //!<@brief 下限
+    float up;      
+    float low;        
+    float down;             
 } servo;
 
 // target_pack_t 用于表示目标数据包，包含多个机器人控制模块的期望数据
@@ -44,7 +45,7 @@ typedef struct
     int air_pump;
     servo servo1;        //!<@brief 伺服电机信息
     Expect_Robstride rob01;  //!<@brief RobStride 期望值
-    Expect_GM6020 rob02;     //!<@brief GM6020 期望值
+   
 } target_pack_t;
 
 typedef struct

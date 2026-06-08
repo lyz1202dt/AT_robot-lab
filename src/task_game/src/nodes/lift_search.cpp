@@ -53,7 +53,7 @@ BT::Status LiftSearchAction::execute(BT& tree)
 
     // RCLCPP_INFO(
     //     context->node_->get_logger(),
-    //     "等待机械臂抓取完成");
+    //     "等待机械臂搜索完成");
 
     // auto start = std::chrono::steady_clock::now();
 
@@ -64,7 +64,7 @@ BT::Status LiftSearchAction::execute(BT& tree)
 
     //         RCLCPP_INFO(
     //             context->node_->get_logger(),
-    //             "抓取成功");
+    //             "搜索完成");
 
     //         arm_search_state_ = 0;
 
@@ -76,7 +76,7 @@ BT::Status LiftSearchAction::execute(BT& tree)
 
     //         RCLCPP_ERROR(
     //             context->node_->get_logger(),
-    //             "抓取失败");
+    //             "搜索失败");
 
     //         arm_search_state_ = 0;
 
