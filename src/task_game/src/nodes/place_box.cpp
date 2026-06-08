@@ -112,10 +112,10 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
    
 
 
-    // // 3. 如果自动模式开启，发送自动控制命令
-    // if (context->auto_pilot_enabled.load()) {
-    //     context->cmd.mode = 1;
-    // }
+    // 3. 如果自动模式开启，发送自动控制命令
+    if (context->auto_pilot_enabled.load()) {
+        context->cmd.mode = 1;
+    }
 
 
 
@@ -269,24 +269,24 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
 
         // 更新索引，准备下次执行下一条计划
         tree.write_msg("plan_index", plan_index + 1);
+    
+
+    } else {
+
+        // 所有计划执行完成
+        RCLCPP_INFO(
+            context->node_->get_logger(),
+            "PlaceBoxAction: 全部搬箱计划执行完成"
+        );
     }
 
-    // } else {
 
-    //     // 所有计划执行完成
-    //     RCLCPP_INFO(
-    //         context->node_->get_logger(),
-    //         "PlaceBoxAction: 全部搬箱计划执行完成"
-    //     );
-    // }
+    // 12. 如果不是调试模式，推进到下一行为树阶段
+    if (!context->is_tree_debug_mode()) {
+        context->advance_tree_stage();
+    }
 
-
-    // // 12. 如果不是调试模式，推进到下一行为树阶段
-    // if (!context->is_tree_debug_mode()) {
-    //     context->advance_tree_stage();
-    // }
-
-    std::this_thread::sleep_for(1s);
+    std::this_thread::sleep_for(2s);
     // 13. 返回执行成功
     return BT::SUCCESS;
     RCLCPP_INFO(
