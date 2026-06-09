@@ -121,7 +121,7 @@ dst_to_dst2_target_point: &dst_to_dst2_target_point
   # 是否要求机器人到点后朝向 target_yaw
   constraint_target_yaw: false
   # 到达目标点后的期望速度
-  target_vel: -0.1
+  target_vel: 0.0
   # 该段路线的最大平移速度
   max_velocity: 0.7
   # 该段路线的最大平移加速度
@@ -141,7 +141,7 @@ dst_to_dst2_target_point: &dst_to_dst2_target_point
   # 微调时的最小角速度
   adjust_min_omega: 0.2
   # 是否允许较大的 y 向速度
-  allow_y_vel: false
+  allow_y_vel: true
 
 dst2_to_src_target_point: &dst2_to_src_target_point
   # 是否要求机器人到点后朝向 target_yaw
