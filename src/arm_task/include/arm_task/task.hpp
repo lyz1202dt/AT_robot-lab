@@ -83,8 +83,7 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr visual_target_pub_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr joint_space_target_pub_;
     rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr air_pub_;
-    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr detect_pub;
-    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr scan_pub;
+    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr arm_vision_command_pub_;
     rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_state_pub_1;
     rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_state_pub_2;
     rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_place_finish_pub;
@@ -178,17 +177,6 @@ private:
 
     geometry_msgs::msg::PoseStamped latest_visual_pose_; // 新增
     bool has_visual_pose_ = false;                       // 新增
-
-
-
-
-
-    //uint32_t last_catch_request_id_{1}; // 用于匹配请求和结果的 ID
-    //uint32_t last_place1_request_id_{1}; // 用于匹配请求和结果的 ID
-    //uint32_t last_place2_request_id_{1}; // 用于匹配请求和结果的 ID
-    //std::string catch_request_name_;
-    //std::string place_request_name_;
-
 
 
 
