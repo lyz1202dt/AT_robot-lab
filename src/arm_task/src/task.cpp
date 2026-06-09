@@ -78,6 +78,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     //通知视觉开始检测抓取过程是否一直吸住物块
     detect_pub = this->create_publisher<std_msgs::msg::Int32>("arm_command", 10);
 
+    
     //机械臂初始扫描场地的箱子，视觉将箱子位置发给四足去规划路径
     scan_pub = this->create_publisher<std_msgs::msg::Int32>("arm_command", 10);
 
@@ -104,9 +105,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
 
     air_pub_ = this->create_publisher<robot_msgs::msg::Armmode>("air_pump_target", 10);
 
-    // Create subscribers
-    place_target_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-        "place_target_pose", 10, std::bind(&ArmTaskNode::on_place_target_pose, this, std::placeholders::_1));
+  
 
     // Setup parameter callback
     param_callback_ = this->add_on_set_parameters_callback(std::bind(&ArmTaskNode::on_parameters_changed, this, std::placeholders::_1));
@@ -1084,171 +1083,10 @@ bool ArmTaskNode::search_for_object(geometry_msgs::msg::PoseStamped& object_pose
 
 void ArmTaskNode::arm_cmd_callback(const robot_msgs::msg::Armmode& msg) {
 
+    //current_mode = msg.mode;
 
 
-    current_mode = msg.mode;
-
-
-
-
-    // std::lock_guard<std::mutex> lock(arm_cmd_mutex_);
-
-    // int current_cmd = arm_up_cmd_.load();
-
-    // // ========================================================
-    // // 1. 当前任务执行中
-    // // 只允许 mode=0 清空
-    // // ========================================================
-    // if (task_running_) {
-
-    //     if (msg.mode == 0) {
-
-    //         arm_up_cmd_.store(0);
-
-    //         RCLCPP_INFO(this->get_logger(), "任务执行中，允许清零 arm_up_cmd");
-    //     } else {
-
-    //         RCLCPP_WARN(this->get_logger(), "任务执行中，拒绝新任务: %d", msg.mode);
-    //     }
-
-    //     return;
-    // }
-
-    // // ========================================================
-    // // 2. 当前已有待执行任务
-    // // 不允许覆盖
-    // // ========================================================
-    // if (current_cmd != 0) {
-
-    //     RCLCPP_WARN(this->get_logger(), "已有待执行任务 %d，拒绝新任务 %d", current_cmd, msg.mode);
-
-    //     return;
-    // }
-
-    // // ========================================================
-    // // 3. catch_box
-    // // ========================================================
-    // if (msg.request_name == "catch_box") {
-
-    //     // -----------------------------
-    //     // mode=0 直接允许清零
-    //     // -----------------------------
-    //     if (msg.mode == 0) {
-
-    //         arm_up_cmd_.store(0);
-
-    //         RCLCPP_INFO(this->get_logger(), "catch_box 请求清零");
-
-    //         return;
-    //     }
-
-    //     // -----------------------------
-    //     // request_id 匹配
-    //     // -----------------------------
-    //     if (msg.catch_request_id != last_catch_request_id_) {
-
-    //         RCLCPP_WARN(this->get_logger(), "catch_box request_id 不匹配: recv=%u expect=%u", msg.catch_request_id,
-    //         last_catch_request_id_);
-
-    //         return;
-    //     }
-
-    //     // -----------------------------
-    //     // 接受任务
-    //     // -----------------------------
-    //     arm_up_cmd_.store(msg.mode);
-
-    //     RCLCPP_INFO(this->get_logger(), "接受 catch_box 任务 mode=%d id=%u", msg.mode, msg.catch_request_id);
-    //     return;
-    // }
-
-    // // ========================================================
-    // // 4. place_box
-    // // ========================================================
-    // if (msg.request_name == "place_box_first") {
-
-    //     // -----------------------------
-    //     // mode=0 直接允许清零
-    //     // -----------------------------
-    //     if (msg.mode == 0) {
-
-    //         arm_up_cmd_.store(0);
-
-    //         RCLCPP_INFO(this->get_logger(), "place_box 请求清零");
-
-    //         return;
-    //     }
-
-    //     // -----------------------------
-    //     // request_id 匹配
-    //     // -----------------------------
-    //     if (msg.place1_request_id != last_place1_request_id_) {
-
-    //         RCLCPP_WARN(
-    //             this->get_logger(), "place_box request_id 不匹配: recv=%u expect=%u", msg.place1_request_id, last_place1_request_id_);
-
-    //         return;
-    //     }
-
-    //     // -----------------------------
-    //     // 接受任务
-    //     // -----------------------------
-    //     arm_up_cmd_.store(msg.mode);
-
-    //     RCLCPP_INFO(this->get_logger(), "接受 place_box 任务 mode=%d id=%u", msg.mode, msg.place1_request_id);
-
-    //     return;
-    // }
-
-
-    // // ========================================================
-    // // 4. place_box
-    // // ========================================================
-    // if (msg.request_name == "place_box_second") {
-
-    //     // -----------------------------
-    //     // mode=0 直接允许清零
-    //     // -----------------------------
-    //     if (msg.mode == 0) {
-
-    //         arm_up_cmd_.store(0);
-
-    //         RCLCPP_INFO(this->get_logger(), "place_box 请求清零");
-
-    //         return;
-    //     }
-
-    //     // -----------------------------
-    //     // request_id 匹配
-    //     // -----------------------------
-    //     if (msg.place2_request_id != last_place2_request_id_) {
-
-    //         RCLCPP_WARN(
-    //             this->get_logger(), "place_box request_id 不匹配: recv=%u expect=%u", msg.place2_request_id, last_place2_request_id_);
-
-    //         return;
-    //     }
-
-    //     // -----------------------------
-    //     // 接受任务
-    //     // -----------------------------
-    //     arm_up_cmd_.store(msg.mode);
-
-    //     RCLCPP_INFO(this->get_logger(), "接受 place_box 任务 mode=%d id=%u", msg.mode, msg.place2_request_id);
-
-    //     return;
-    // }
-
-
-
-
-    // // ========================================================
-    // // 6. 未知任务
-    // // ========================================================
-    // RCLCPP_WARN(this->get_logger(), "未知 request_name: %s", msg.request_name.c_str());
 }
-
-
 
 
 } // namespace arm_task
