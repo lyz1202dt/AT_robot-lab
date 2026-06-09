@@ -83,8 +83,7 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr visual_target_pub_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr joint_space_target_pub_;
     rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr air_pub_;
-    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr detect_pub;
-    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr scan_pub;
+    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr arm_vision_command_pub_;
     rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_state_pub_1;
     rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_state_pub_2;
     rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_place_finish_pub;
