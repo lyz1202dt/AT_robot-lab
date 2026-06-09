@@ -35,7 +35,7 @@ void set_manual_mode(Robot* robot) {
         }
     }
     robot->tree_start_key = Robot::kTreeIdle;
-    robot->auto_pilot_enabled = false;
+    robot->auto_pilot_enabled = true;
 }
 
 }  // namespace
@@ -47,7 +47,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
 
-    node_->declare_parameter<bool>("tree_debug_mode", false);
+    node_->declare_parameter<bool>("tree_debug_mode", true);
     set_tree_debug_mode(node_->get_parameter("tree_debug_mode").as_bool());
 
     pilot = std::make_shared<Pilot>(node_);
