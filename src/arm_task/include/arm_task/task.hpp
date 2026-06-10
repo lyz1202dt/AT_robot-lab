@@ -158,7 +158,7 @@ private:
     std::vector<double> grasp_position_two{0.0, 3.14159, 2.4, 2.55};
     std::vector<double> place_position{0.0, 3.14159, 3.1, 3.1};
     std::vector<double> place_position_2{0.0, 3.14159, 3.1, 3.1};
-    std::vector<double> look_for_position_{0.0, 1.5, 2.45, 2.48};
+    std::vector<double> look_for_position_{0.0, 1.2, 2.3, 2.8};       //0.0 1.0 2.45 3.1
     std::vector<double> look_left_position_{-1.0, 1.5, 2.45, 2.48};
     std::vector<double> look_middle_position_{0.0, 1.5, 2.45, 2.48};
     std::vector<double> look_right_position_{1.0, 1.5, 2.45, 2.48};
@@ -177,18 +177,6 @@ private:
 
     geometry_msgs::msg::PoseStamped latest_visual_pose_; // 新增
     bool has_visual_pose_ = false;                       // 新增
-
-
-
-
-
-    //uint32_t last_catch_request_id_{1}; // 用于匹配请求和结果的 ID
-    //uint32_t last_place1_request_id_{1}; // 用于匹配请求和结果的 ID
-    //uint32_t last_place2_request_id_{1}; // 用于匹配请求和结果的 ID
-    //std::string catch_request_name_;
-    //std::string place_request_name_;
-
-
 
 
 
