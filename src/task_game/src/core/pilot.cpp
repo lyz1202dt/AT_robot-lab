@@ -182,14 +182,12 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
 
     limit_body_velocity(desired_body_vel);
     apply_min_adjust_linear_speed(desired_body_vel, distance);
-    limit_body_velocity(desired_body_vel);
 
     cmd.mode = kWalkMode;
     cmd.vx = static_cast<float>(desired_body_vel.x());
     cmd.vy = static_cast<float>(desired_body_vel.y());
     cmd.vz = static_cast<float>(compute_limited_omega(normalize_angle(desired_yaw - current_yaw_), dt));
     cmd.wheel_vel = 0.0f;
-    limit_command(cmd);
     return cmd;
 }
 
