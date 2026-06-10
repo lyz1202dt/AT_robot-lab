@@ -499,9 +499,9 @@ void ArmCtrlNode::publish_control_loop() {
     if (last_ee_log_time_sec_ < 0.0 || (now_sec - last_ee_log_time_sec_) >= 0.25) {
         const CartesianPose ee_pose  = arm_calc_->end_pose(current_joint_state_.position);
         const Eigen::Vector3d ee_rpy = ee_pose.orientation.toRotationMatrix().eulerAngles(0, 1, 2);
-        RCLCPP_INFO(
-            get_logger(), "EE pose pos=(%.4f, %.4f, %.4f) rpy=(%.4f, %.4f, %.4f)", ee_pose.position.x(), ee_pose.position.y(),
-            ee_pose.position.z(), ee_rpy.x(), ee_rpy.y(), ee_rpy.z());
+        // RCLCPP_INFO(
+        //     get_logger(), "EE pose pos=(%.4f, %.4f, %.4f) rpy=(%.4f, %.4f, %.4f)", ee_pose.position.x(), ee_pose.position.y(),
+        //     ee_pose.position.z(), ee_rpy.x(), ee_rpy.y(), ee_rpy.z());
         last_ee_log_time_sec_ = now_sec;
     }
 
@@ -745,12 +745,13 @@ void ArmCtrlNode::on_joint_space_target(const std_msgs::msg::Float64MultiArray& 
 rcl_interfaces::msg::SetParametersResult ArmCtrlNode::on_parameters_changed(const std::vector<rclcpp::Parameter>& params) {
     rcl_interfaces::msg::SetParametersResult result;
     result.successful = true;
-
+    
     for (const auto& param : params) {
         if (param.get_name() == "motion_mode") {
             requested_motion_mode_ = parse_motion_mode(param.as_int());
         } else if (param.get_name() == "trajectory_duration") {
             trajectory_duration_sec_ = std::max(param.as_double(), 0.1);
+            RCLCPP_INFO(get_logger(), "\033[1;32mUpdated trajectory_duration_sec_ to %.2f seconds\033[0m", trajectory_duration_sec_);
         } else if (param.get_name() == "control_period") {
             control_period_sec_ = std::max(param.as_double(), 0.005);
         } else if (param.get_name() == "execute_trajectory") {

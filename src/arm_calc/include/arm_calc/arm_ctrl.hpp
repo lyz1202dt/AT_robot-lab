@@ -64,7 +64,7 @@ private:
     bool planners_ready_{false};
     MotionMode active_motion_mode_{MotionMode::kIdle};
     MotionMode requested_motion_mode_{MotionMode::kIdle};
-    double trajectory_duration_sec_{3.0};
+    double trajectory_duration_sec_{0.5};
     double control_period_sec_{0.02};
     bool execute_trajectory_{false};
     bool updating_execute_parameter_{false};
