@@ -154,23 +154,18 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
             desired_yaw = static_cast<double>(target_.target_yaw);
         }
     } else {
-        const bool should_align_before_move = std::abs(heading_err) > static_cast<double>(target_.allow_start_dir_error);
-        if (should_align_before_move) {
-            current_linear_speed_ = 0.0;
-        } else {
-            const double limited_speed = compute_limited_linear_speed(std::max(0.0, forward_err), dt);
-            const double raw_vx = target_.kp.x() * forward_err;
-            double vx = std::clamp(raw_vx, -limited_speed, limited_speed);
-            if (in_position_adjust_window(distance)) {
-                const double min_speed = std::min(
-                    std::max(0.0, static_cast<double>(target_.adjust_min_vel)),
-                    std::max(0.0, static_cast<double>(target_.max_velocity)));
-                if (std::abs(vx) > kEpsilon && std::abs(vx) < min_speed) {
-                    vx = std::copysign(min_speed, vx);
-                }
+        const double limited_speed = compute_limited_linear_speed(std::max(0.0, forward_err), dt);
+        const double raw_vx = target_.kp.x() * forward_err;
+        double vx = std::clamp(raw_vx, -limited_speed, limited_speed);
+        if (in_position_adjust_window(distance)) {
+            const double min_speed = std::min(
+                std::max(0.0, static_cast<double>(target_.adjust_min_vel)),
+                std::max(0.0, static_cast<double>(target_.max_velocity)));
+            if (std::abs(vx) > kEpsilon && std::abs(vx) < min_speed) {
+                vx = std::copysign(min_speed, vx);
             }
-            desired_body_vel.x() = vx;
         }
+        desired_body_vel.x() = vx;
 
         if (in_position_adjust_window(distance)) {
             desired_body_vel.y() = std::clamp(
