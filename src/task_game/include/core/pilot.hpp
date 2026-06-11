@@ -15,9 +15,7 @@ public:
     struct TargetPoint {
         Eigen::Vector2d target_pos{Eigen::Vector2d::Zero()};
         float target_yaw{0.0f};                // 机器人轨迹执行完毕后应该指向的方向
-
         bool constraint_target_yaw{false};    // 是否约束机器人轨迹执行完毕后指向特定的方向
-
         float target_vel{0.0f};               // 到达目标点后应具有的速度
         float max_velocity{0.7f};             // 路线最大速度
         float max_accelation{0.25f};           // 路线最大加速度
@@ -29,7 +27,6 @@ public:
         float adjust_min_vel{0.25f};           // 微调时的最小速度
         float adjust_min_omega{0.15f};         // 微调时的最小角速度
         bool allow_y_vel{false};              // 是否允许较大的y向速度（如果为true，则机器人以边平移边旋转的方式运动到目标点，否则就是先瞄准在运动到目标点）
-
         float trajectory_connection_radius{0.0};    //三次多项式轨迹衔接半径
     };
 
