@@ -137,7 +137,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
         Eigen::Vector2d desired_world_vel(target_.kp.x() * pos_err_world.x(), target_.kp.y() * pos_err_world.y());
 
         const double vel_norm = desired_world_vel.norm();
-        if (vel_norm > limited_speed && vel_norm > kEpsilon) {
+        if (vel_norm > kEpsilon) {
             desired_world_vel *= (limited_speed / vel_norm);
         }
 
@@ -151,7 +151,9 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
     } else {
         const double limited_speed = compute_limited_linear_speed(std::max(0.0, forward_err), dt);
         const double raw_vx = target_.kp.x() * forward_err;
-        desired_body_vel.x() = std::clamp(raw_vx, -limited_speed, limited_speed);
+        if (std::abs(raw_vx) > kEpsilon) {
+            desired_body_vel.x() = std::copysign(limited_speed, raw_vx);
+        }
 
         if (in_position_adjust_window(distance)) {
             desired_body_vel.y() = std::clamp(
