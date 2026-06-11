@@ -57,11 +57,11 @@ private:
     bool is_yaw_reached() const;
     void finish_current_task(int success);
     double compute_limited_linear_speed(double distance, double dt);
-    double compute_limited_omega(double yaw_error, double dt) const;
+    double compute_limited_omega(double yaw_error) const;
     bool in_position_adjust_window(double distance) const;
     void limit_body_velocity(Eigen::Vector2d &body_vel) const;
     void apply_min_adjust_linear_speed(Eigen::Vector2d &body_vel, double distance) const;
-    void limit_command(robot_msgs::msg::Cmd &cmd) const;
+    void apply_output_axis_limits(robot_msgs::msg::Cmd &cmd) const;
     robot_msgs::msg::Cmd make_zero_command() const;
     static double normalize_angle(double angle);
     static double clamp_abs(double value, double limit);
