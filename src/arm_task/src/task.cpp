@@ -74,8 +74,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     place_position_up_sub = this->create_subscription<robot_msgs::msg::Vis>(
         "place_position_up", 10, std::bind(&ArmTaskNode::place_position_up_callback, this, std::placeholders::_1));
 
-    // 当发1时通知视觉可以开始全场扫描，当发2时通知视觉可以开始寻找并发布物块坐标使机械臂能够去抓取物块，
-    // 当发3时通知视觉可以开始检测抓取过程是否一直吸住物块
+    // 当发1时通知视觉可以开始全场扫描，当发2时通知视觉可以开始寻找并发布物块坐标使机械臂能够去抓取物块
     arm_vision_command_pub_ = this->create_publisher<std_msgs::msg::Int32>("arm_command", 10);
 
     // 结束扫描，机械臂需要回到初始位置
@@ -91,17 +90,16 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     // 跟上层控制反馈当前机械臂搜索状态，是否找到物块了
     arm_state_pub_2 = this->create_publisher<robot_msgs::msg::Armmode>("arm_search_state", 10);
 
-    // 机械臂是否抓到物块的视觉反馈结果
-    arm_if_catch = this->create_subscription<robot_msgs::msg::Vis>(
-        "detect_result", 10, std::bind(&ArmTaskNode::if_catch_callback, this, std::placeholders::_1));
-
     // 上层控制命令订阅，告诉机械臂执行哪个任务
     arm_cmd_sub_ = this->create_subscription<robot_msgs::msg::Armmode>(
         "arm_cmd", 10, std::bind(&ArmTaskNode::arm_cmd_callback, this, std::placeholders::_1));
 
-    //气泵的控制话题，发布机械臂需要的吸取和放置命令
+    // 气泵的控制话题，发布机械臂需要的吸取和放置命令
     air_pub_ = this->create_publisher<robot_msgs::msg::Armmode>("air_pump_target", 10);
 
+    //
+    red_distance_sub_ = this->create_subscription<robot_msgs::msg::Int>(
+        "red_distance", 10, std::bind(&ArmTaskNode::red_distance_callback, this, std::placeholders::_1));
 
 
     // 参数服务的回调
@@ -334,7 +332,7 @@ void ArmTaskNode::execute_grasp_flow() {
 
     // 强制规定姿态
     tf2::Quaternion quat;
-    quat.setRPY(0, M_PI/2.0, 0);
+    quat.setRPY(0, M_PI / 2.0, 0);
     object_pose.pose.orientation.w = quat.getW();
     object_pose.pose.orientation.x = quat.getX();
     object_pose.pose.orientation.y = quat.getY();
@@ -355,27 +353,46 @@ void ArmTaskNode::execute_grasp_flow() {
     air_pub_->publish(msg);
 
 
-
-    
     // 6.回到初始位置
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     execute_joint_space_trajectory(grasp_finish_position, trajectory_duration_);
     std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 500));
 
-    // 清状态，以便视觉反馈结果能正确更新状态
+    // 清状态，以便下位机反馈结果能正确更新状态，从下面开始就是接受三次距离反馈的结果，
+    // 如果三次距离都满足条件才认为抓取成功，否则认为抓取失败
     catch_result_.store(0);
 
-    // 通知视觉开始检测是否吸住了
-    std_msgs::msg::Int32 detect_msg;
-    detect_msg.data = 3;
-    arm_vision_command_pub_->publish(detect_msg);
+    bool red_distance_close = true;
 
+    for (int i = 0; i < 3; i++) {
 
-    // 阻塞等待视觉发布会的抓取结果，告诉机械臂是否真的吸住了物块
-    if (!wait_for_catch_result()) {
-        return;
+        int current_distance = red_distance_;
+
+        RCLCPP_INFO(this->get_logger(), "第%d次检测 red_distance = %d", i + 1, current_distance);
+
+        if (current_distance >= 100) {
+            red_distance_close = false;
+            break;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
+    // 给上位控制层反馈抓取结果，1为抓到，-1为没抓到
+    if (red_distance_close) {
+
+        robot_msgs::msg::Armmode msg;
+        msg.mode = 1;
+        arm_state_pub_1->publish(msg);
+
+    } else {
+
+        robot_msgs::msg::Armmode msg;
+        msg.mode = -1;
+        arm_state_pub_1->publish(msg);
+
+        return;
+    }
 
     RCLCPP_INFO(this->get_logger(), "抓取流程完成");
 }
@@ -864,7 +881,8 @@ void ArmTaskNode::set_parameter_on_remote_node(
     }
 }
 
-void ArmTaskNode::if_catch_callback(const robot_msgs::msg::Vis& msg) { catch_result_.store(msg.x); }
+
+void ArmTaskNode::red_distance_callback(const robot_msgs::msg::Int& msg) { red_distance_ = msg.data; }
 
 void ArmTaskNode::scan_result_callback(const robot_msgs::msg::Vis& msg) {
     scan_finished_ = msg.x;
@@ -944,44 +962,7 @@ void ArmTaskNode::execute_place_place_rad() {
     RCLCPP_INFO(this->get_logger(), "任务结束");
 }
 
-bool ArmTaskNode::wait_for_catch_result() {
-    RCLCPP_INFO(this->get_logger(), "等待抓取结果...");
 
-    auto start = std::chrono::steady_clock::now();
-
-    while (rclcpp::ok()) {
-
-        int result = catch_result_.load();
-
-        if (result == 1) {
-            RCLCPP_INFO(this->get_logger(), "抓取成功");
-            robot_msgs::msg::Armmode msg;
-            msg.mode = 1;
-            arm_state_pub_1->publish(msg);
-            return true;
-        }
-
-        if (result == -1) {
-            RCLCPP_ERROR(this->get_logger(), "抓取失败");
-            robot_msgs::msg::Armmode msg;
-            msg.mode = -1;
-            arm_state_pub_1->publish(msg);
-            return false;
-        }
-
-        // 超时保护
-        auto now = std::chrono::steady_clock::now();
-        if (now - start > std::chrono::seconds(30)) {
-            RCLCPP_ERROR(this->get_logger(), "等待抓取结果超时");
-
-            return false;
-        }
-
-        std::this_thread::sleep_for(50ms);
-    }
-
-    return false;
-}
 
 bool ArmTaskNode::search_for_object(geometry_msgs::msg::PoseStamped& object_pose) {
     RCLCPP_INFO(this->get_logger(), "开始巡视寻找目标");

@@ -10,6 +10,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <robot_msgs/msg/armmode.hpp>
 #include <robot_msgs/msg/vis.hpp>
+#include <robot_msgs/msg/int.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <string>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -30,7 +31,7 @@ public:
 
 private:
     void vision_callback(const robot_msgs::msg::Vis& msg);
-    void if_catch_callback(const robot_msgs::msg::Vis& msg);
+    void red_distance_callback(const robot_msgs::msg::Int& msg); 
     void arm_cmd_callback(const robot_msgs::msg::Armmode& msg);
     void scan_result_callback(const robot_msgs::msg::Vis& msg);
     void place_position_down_callback(const robot_msgs::msg::Vis& msg);
@@ -60,7 +61,7 @@ private:
     void execute_cartesian_space_trajectory(const geometry_msgs::msg::PoseStamped& target_pose, double duration);
     void execute_visual_servo(const geometry_msgs::msg::PoseStamped& target_pose);
     bool wait_for_visual_servo_convergence(double position_tolerance_m, double timeout_sec);
-    bool wait_for_catch_result();
+    
 
     // Helper methods
     bool get_object_pose_in_base_frame(geometry_msgs::msg::PoseStamped& pose_out);
@@ -92,10 +93,10 @@ private:
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr place_target_sub_;
     rclcpp::Subscription<robot_msgs::msg::Vis>::SharedPtr vision_sub_;
     rclcpp::Subscription<robot_msgs::msg::Vis>::SharedPtr scan_finish_sub_;
-    rclcpp::Subscription<robot_msgs::msg::Vis>::SharedPtr arm_if_catch;
     rclcpp::Subscription<robot_msgs::msg::Vis>::SharedPtr place_position_down_sub;
     rclcpp::Subscription<robot_msgs::msg::Vis>::SharedPtr place_position_up_sub;
     rclcpp::Subscription<robot_msgs::msg::Armmode>::SharedPtr arm_cmd_sub_;
+    rclcpp::Subscription<robot_msgs::msg::Int>::SharedPtr red_distance_sub_;
 
 
     // Parameters
@@ -142,6 +143,7 @@ private:
     float place_down_position_y{0.0};
     float place_down_position_z{0.0};
 
+    int red_distance_{0}; // 来自视觉的红色距离信息
     int last_arm_up_cmd{0};
     std::atomic<int> catch_result_{0}; // 0等待 1成功 -1失败              // 0: unknown, 1: success, -1: failure
     
