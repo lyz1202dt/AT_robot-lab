@@ -6,6 +6,7 @@
 
 namespace {
 
+// Cmd.mode 的约定来自现有控制链：1=位控站立，2=普通行走。
 constexpr int kStandMode = 1;
 constexpr int kWalkMode = 2;
 constexpr double kPi = 3.14159265358979323846;
@@ -21,6 +22,7 @@ struct MotionSample {
     double duration{0.0};
 };
 
+// 梯形/三角速度规划采样：给定路程和时间，返回当前参考路程、速度和总时长。
 MotionSample sample_trapezoid_profile(
     double distance,
     double elapsed,
@@ -37,6 +39,7 @@ MotionSample sample_trapezoid_profile(
     const double accel = std::max(max_acceleration, 0.05);
     const double v0 = std::clamp(start_velocity, 0.0, vmax);
     const double v1 = std::clamp(end_velocity, 0.0, vmax);
+    // 距离不够加速到 vmax 时自动退化为三角速度曲线。
     const double peak_for_triangle = std::sqrt(std::max(0.0, accel * distance + 0.5 * (v0 * v0 + v1 * v1)));
     const double vpeak = std::min(vmax, std::max({peak_for_triangle, v0, v1}));
 
@@ -88,6 +91,7 @@ void apply_minimum(double& command, double error, double minimum) {
     if (std::abs(error) <= kTinyError || minimum <= 0.0) {
         return;
     }
+    // 微调阶段补偿死区：有误差时，命令幅值不能小于最小可动速度。
     if (std::abs(command) < minimum) {
         command = std::copysign(minimum, command == 0.0 ? error : command);
     }
@@ -119,10 +123,11 @@ double Pilot::clamp_abs(double value, double limit) {
     return std::clamp(value, -abs_limit, abs_limit);
 }
 
-Eigen::Vector2d Pilot::world_to_body(const Eigen::Vector2d& vector, double yaw) {
-    const double c = std::cos(yaw);
-    const double s = std::sin(yaw);
-    return Eigen::Vector2d(c * vector.x() + s * vector.y(), -s * vector.x() + c * vector.y());
+Eigen::Vector2d Pilot::world_to_body(const Eigen::Vector2d& vector, double yaw)
+{
+    // 地图系误差/速度旋转到机器人机体系，最终 Cmd.vx/vy 使用机体系。
+    Eigen::Rotation2Dd R(-yaw);
+    return R * vector;
 }
 
 robot_msgs::msg::Cmd Pilot::stand_command() const {
@@ -148,6 +153,7 @@ void Pilot::reset_execution() {
 }
 
 void Pilot::begin_current_segment(std::chrono::time_point<std::chrono::high_resolution_clock> time, double start_speed) {
+    // 每段轨迹都以当前机器人状态为起点，避免 stop/start 后继续追旧时间轴。
     segment_start_pos_ = current_pos_;
     segment_start_yaw_ = current_yaw_;
     segment_start_speed_ = start_speed;
@@ -155,6 +161,7 @@ void Pilot::begin_current_segment(std::chrono::time_point<std::chrono::high_reso
     transition_ = CubicTransition{};
 
     if (current_index_ < targets_.size()) {
+        // allow_y_vel=true 可直接边走边转；false 则需要先进入瞄准阶段。
         aiming_done_ = targets_[current_index_].allow_y_vel;
     } else {
         aiming_done_ = true;
@@ -165,6 +172,7 @@ void Pilot::finish_current_target(std::chrono::time_point<std::chrono::high_reso
     if (current_index_ + 1 < targets_.size()) {
         const auto previous_target = targets_[current_index_];
         ++current_index_;
+        // 中间目标点不做最终微调，直接切到下一段；最终目标才进入 Adjusting。
         segment_start_pos_ = previous_target.target_pos;
         segment_start_yaw_ = current_yaw_;
         segment_start_speed_ = std::max(0.0f, previous_target.target_vel);
@@ -189,6 +197,7 @@ bool Pilot::start(std::function<void(int success)> finished_cb) {
     const auto now = std::chrono::high_resolution_clock::now();
 
     if (state_ == PilotState::Paused) {
+        // stop 只暂停执行，不清空轨迹；再次 start 从当前进度继续。
         state_ = resume_state_ == PilotState::Finished ? PilotState::Running : resume_state_;
         if (state_ == PilotState::Running) {
             begin_current_segment(now, 0.0);
@@ -208,6 +217,7 @@ bool Pilot::start(std::function<void(int success)> finished_cb) {
 bool Pilot::stop() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (state_ == PilotState::Running || state_ == PilotState::Adjusting) {
+        // 记录暂停前状态，get_command 会因为 Paused 输出站立零速。
         resume_state_ = state_;
         state_ = PilotState::Paused;
     } else if (state_ != PilotState::Finished) {
@@ -250,6 +260,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
         cmd.wheel_vel = 0.0f;
 
         if (state_ == PilotState::Adjusting) {
+            // 规划时间结束后进入微调：只用当前位置误差闭环，直到满足最终容差。
             const Eigen::Vector2d pos_error_world = target.target_pos - current_pos_;
             const Eigen::Vector2d pos_error_body = world_to_body(pos_error_world, current_yaw_);
             const double yaw_error = target.constraint_target_yaw ? normalize_angle(target.target_yaw - current_yaw_) : 0.0;
@@ -280,6 +291,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                 cmd.vz = static_cast<float>(omega);
             }
         } else {
+            // Running 阶段先生成轨迹参考值，再叠加 P 控制反馈。
             Eigen::Vector2d reference_pos = target.target_pos;
             Eigen::Vector2d reference_vel = Eigen::Vector2d::Zero();
             double reference_yaw = target.constraint_target_yaw ? target.target_yaw : current_yaw_;
@@ -288,6 +300,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
             double segment_progress = 1.0;
 
             if (transition_.active) {
+                // 连接半径内启用三次 Hermite 曲线，起终点同时约束位置和速度。
                 const double elapsed = std::chrono::duration<double>(time - transition_.start_time).count();
                 const double duration = std::max(transition_.duration, kMinDuration);
                 const double u = std::clamp(elapsed / duration, 0.0, 1.0);
@@ -325,6 +338,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                     }
                 }
             } else {
+                // 默认轨迹是一段直线，沿 segment_start_pos_ -> target_pos 做速度规划。
                 Eigen::Vector2d segment_vec = target.target_pos - segment_start_pos_;
                 double distance = segment_vec.norm();
 
@@ -340,6 +354,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                 const double path_yaw = std::atan2(direction.y(), direction.x());
 
                 if (!target.allow_y_vel && !aiming_done_) {
+                    // 非横移模式先原地瞄准目标方向，满足阈值后本段不再回到瞄准。
                     const double yaw_error = normalize_angle(path_yaw - current_yaw_);
                     if (std::abs(yaw_error) < static_cast<double>(target.allow_start_dir_error)) {
                         aiming_done_ = true;
@@ -355,6 +370,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                 }
 
                 const double elapsed = std::chrono::duration<double>(time - segment_start_time_).count();
+                // 轨迹规划速度是前馈项，后面会再加 kp * error 形成最终速度。
                 const MotionSample profile = sample_trapezoid_profile(
                     distance,
                     elapsed,
@@ -381,6 +397,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                 const float connection_radius = target.trajectory_connection_radius;
                 if (current_index_ + 1 < targets_.size() && connection_radius > 0.0f &&
                     (target.target_pos - current_pos_).norm() < static_cast<double>(connection_radius)) {
+                    // 提前转入下一段方向，避免在连接点附近速度方向突然跳变。
                     const TargetPoint& next_target = targets_[current_index_ + 1];
                     const Eigen::Vector2d next_vec = next_target.target_pos - target.target_pos;
                     const double next_distance = next_vec.norm();
@@ -414,6 +431,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                 }
             }
 
+            // 最终控制律：机体系速度 = 轨迹规划速度 + P 控制反馈。
             const Eigen::Vector2d pos_error_body = world_to_body(reference_pos - current_pos_, current_yaw_);
             Eigen::Vector2d velocity_body = world_to_body(reference_vel, current_yaw_);
             velocity_body.x() += target.kp.x() * pos_error_body.x();

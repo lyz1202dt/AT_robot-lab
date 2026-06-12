@@ -52,6 +52,7 @@ public:
     robot_msgs::msg::Cmd get_command(std::chrono::time_point<std::chrono::high_resolution_clock> time);
 
 private:
+    // Pilot 的内部执行状态：Idle/Paused/Finished 都输出站立零速。
     enum class PilotState {
         Idle,
         Running,
@@ -60,6 +61,7 @@ private:
         Finished
     };
 
+    // 多段轨迹连接处的三次多项式过渡数据，用于保证位置和速度连续。
     struct CubicTransition {
         bool active{false};
         std::chrono::time_point<std::chrono::high_resolution_clock> start_time{};
@@ -82,19 +84,24 @@ private:
     void finish_current_target(std::chrono::time_point<std::chrono::high_resolution_clock> time);
 
     rclcpp::Node::SharedPtr node_;
+    // set_state 由控制定时器更新，get_command/start/stop 可能由行为树线程调用。
     mutable std::mutex mutex_;
 
+    // targets_ 保存整条任务轨迹；current_index_ 指向当前正在执行的目标点。
     std::vector<TargetPoint> targets_;
     std::size_t current_index_{0};
     PilotState state_{PilotState::Idle};
+    // stop 后不清空轨迹，resume_state_ 用于再次 start 时恢复到暂停前阶段。
     PilotState resume_state_{PilotState::Running};
 
     Eigen::Vector2d current_pos_{Eigen::Vector2d::Zero()};
     float current_yaw_{0.0f};
 
+    // 当前直线段的起点状态，用于按时间采样规划位置/速度。
     Eigen::Vector2d segment_start_pos_{Eigen::Vector2d::Zero()};
     float segment_start_yaw_{0.0f};
     double segment_start_speed_{0.0};
+    // allow_y_vel=false 时先瞄准，置 true 后本段不再回到纯瞄准状态。
     bool aiming_done_{false};
     std::chrono::time_point<std::chrono::high_resolution_clock> segment_start_time_{};
 
