@@ -357,8 +357,10 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                     // 非横移模式先原地瞄准目标方向，满足阈值后本段不再回到瞄准。
                     const double yaw_error = normalize_angle(path_yaw - current_yaw_);
                     if (std::abs(yaw_error) < static_cast<double>(target.allow_start_dir_error)) {
-                        aiming_done_ = true;
                         begin_current_segment(time, 0.0);
+                        // begin_current_segment 会按 allow_y_vel 初始化 aiming_done_，
+                        // 这里必须重新置 true，否则 allow_y_vel=false 的轨迹会永远卡在瞄准阶段。
+                        aiming_done_ = true;
                         segment_vec = target.target_pos - segment_start_pos_;
                         distance = segment_vec.norm();
                     } else {
