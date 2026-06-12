@@ -42,7 +42,9 @@ ArmNode::ArmNode()
         {
             const state_pack_t* pack = reinterpret_cast<const state_pack_t*>(data);
             if (pack->pack_type == 1)         // 确认包类型正确
-                publishredState(pack);        // 一旦接收，立即发布狗臂状态
+                publishredState(pack);        // 一旦接收，立即发布状态
+                
+
             else
                 RCLCPP_ERROR(this->get_logger(), "接收到错误的数据包类型%d", pack->pack_type);
         }
@@ -78,9 +80,16 @@ ArmNode::~ArmNode() {
 
 
 void ArmNode::publishredState(const state_pack_t *arm_state){
+
+     if (arm_state->red_distance == 0)
+    {
+        return;
+    }
+
     robot_msgs::msg::Int msg;
     msg.data = arm_state->red_distance;
     red_pub->publish(msg);
+    RCLCPP_INFO(this->get_logger(), "\033[35m发布了红外距离 %d\033[0m", arm_state->red_distance);
        
 }
 
