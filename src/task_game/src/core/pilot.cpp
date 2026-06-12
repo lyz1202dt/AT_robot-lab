@@ -364,9 +364,11 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                         segment_vec = target.target_pos - segment_start_pos_;
                         distance = segment_vec.norm();
                     } else {
+                        double omega = target.kp.z() * yaw_error;
+                        apply_minimum(omega, yaw_error, target.adjust_min_omega);
                         cmd.vx = 0.0f;
                         cmd.vy = 0.0f;
-                        cmd.vz = static_cast<float>(clamp_abs(target.kp.z() * yaw_error, target.max_omega));
+                        cmd.vz = static_cast<float>(clamp_abs(omega, target.max_omega));
                         return cmd;
                     }
                 }
@@ -438,10 +440,18 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
             Eigen::Vector2d velocity_body = world_to_body(reference_vel, current_yaw_);
             velocity_body.x() += target.kp.x() * pos_error_body.x();
             velocity_body.y() += target.kp.y() * pos_error_body.y();
+            const Eigen::Vector2d target_error_body = world_to_body(target.target_pos - current_pos_, current_yaw_);
+            apply_minimum(velocity_body.x(), target_error_body.x(), target.adjust_min_vel);
+            apply_minimum(velocity_body.y(), target_error_body.y(), target.adjust_min_vel);
             clamp_translation(velocity_body, target.max_velocity);
 
             const double yaw_error = normalize_angle(reference_yaw - current_yaw_);
-            const double omega = clamp_abs(reference_omega + target.kp.z() * yaw_error, target.max_omega);
+            double omega = reference_omega + target.kp.z() * yaw_error;
+            const double target_yaw_error = target.constraint_target_yaw
+                                                ? normalize_angle(target.target_yaw - current_yaw_)
+                                                : yaw_error;
+            apply_minimum(omega, target_yaw_error, target.adjust_min_omega);
+            omega = clamp_abs(omega, target.max_omega);
 
             cmd.vx = static_cast<float>(velocity_body.x());
             cmd.vy = static_cast<float>(velocity_body.y());
