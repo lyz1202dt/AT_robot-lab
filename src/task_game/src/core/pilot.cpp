@@ -273,15 +273,18 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                 callback_to_call = std::move(finished_cb_);
                 cmd = stand_command();
             } else {
-                Eigen::Vector2d velocity_body(
-                    target.kp.x() * pos_error_body.x(),
-                    target.kp.y() * pos_error_body.y());
-                apply_minimum(velocity_body.x(), pos_error_body.x(), target.adjust_min_vel);
-                apply_minimum(velocity_body.y(), pos_error_body.y(), target.adjust_min_vel);
-                clamp_translation(velocity_body, target.max_velocity);
+                Eigen::Vector2d velocity_body = Eigen::Vector2d::Zero();
+                if (!pos_ok) {
+                    velocity_body.x() = target.kp.x() * pos_error_body.x();
+                    velocity_body.y() = target.kp.y() * pos_error_body.y();
+                    apply_minimum(velocity_body.x(), pos_error_body.x(), target.adjust_min_vel);
+                    apply_minimum(velocity_body.y(), pos_error_body.y(), target.adjust_min_vel);
+                    clamp_translation(velocity_body, target.max_velocity);
+                }
 
-                double omega = target.kp.z() * yaw_error;
-                if (target.constraint_target_yaw) {
+                double omega = 0.0;
+                if (target.constraint_target_yaw && !yaw_ok && (target.allow_y_vel || pos_ok)) {
+                    omega = target.kp.z() * yaw_error;
                     apply_minimum(omega, yaw_error, target.adjust_min_omega);
                 }
                 omega = clamp_abs(omega, target.max_omega);
@@ -388,12 +391,14 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                 reference_pos = segment_start_pos_ + direction * profile.position;
                 reference_vel = direction * profile.velocity;
 
-                if (target.constraint_target_yaw) {
+                if (!target.allow_y_vel) {
+                    // 非横移模式行走阶段只保持朝向路径方向，最终 target_yaw 留给 Adjusting 阶段原地对准。
+                    reference_yaw = path_yaw;
+                    reference_omega = 0.0;
+                } else if (target.constraint_target_yaw) {
                     const double yaw_delta = normalize_angle(target.target_yaw - segment_start_yaw_);
                     reference_yaw = normalize_angle(segment_start_yaw_ + yaw_delta * segment_progress);
                     reference_omega = segment_duration > kMinDuration ? yaw_delta / segment_duration : 0.0;
-                } else if (!target.allow_y_vel) {
-                    reference_yaw = path_yaw;
                 } else {
                     reference_yaw = current_yaw_;
                 }
@@ -447,10 +452,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
 
             const double yaw_error = normalize_angle(reference_yaw - current_yaw_);
             double omega = reference_omega + target.kp.z() * yaw_error;
-            const double target_yaw_error = target.constraint_target_yaw
-                                                ? normalize_angle(target.target_yaw - current_yaw_)
-                                                : yaw_error;
-            apply_minimum(omega, target_yaw_error, target.adjust_min_omega);
+            apply_minimum(omega, yaw_error, target.adjust_min_omega);
             omega = clamp_abs(omega, target.max_omega);
 
             cmd.vx = static_cast<float>(velocity_body.x());
