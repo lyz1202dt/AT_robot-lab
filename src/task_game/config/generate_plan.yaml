@@ -19,11 +19,11 @@ start_to_a1_target_point: &start_to_a1_target_point
   # 到达目标点后的期望速度
   target_vel: 0.0
   # 该段路线的最大平移速度
-  max_velocity: 0.7
+  max_velocity: 0.5
   # 该段路线的最大平移加速度
-  max_accelation: 0.25
+  max_accelation: 0.2
   # 该段路线的最大角速度
-  max_omega: 0.7
+  max_omega: 0.5
   # 闭环控制比例参数 [x, y, yaw]
   kp: [0.2, 0.2, 0.45]
   # 起步时允许的朝向误差
@@ -35,7 +35,7 @@ start_to_a1_target_point: &start_to_a1_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.2
+  adjust_min_omega: 0.25
   # 是否允许较大的 y 向速度
   allow_y_vel: true
 
@@ -45,11 +45,11 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 到达目标点后的期望速度
   target_vel: 0.0
   # 该段路线的最大平移速度
-  max_velocity: 0.7
+  max_velocity: 0.5
   # 该段路线的最大平移加速度
-  max_accelation: 0.25
+  max_accelation: 0.2
   # 该段路线的最大角速度
-  max_omega: 0.7
+  max_omega: 0.5
   # 闭环控制比例参数 [x, y, yaw]
   kp: [0.2, 0.2, 0.45]
   # 起步时允许的朝向误差
@@ -61,7 +61,7 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.15
+  adjust_min_omega: 0.25
   # 是否允许较大的 y 向速度
   allow_y_vel: false
 
@@ -71,9 +71,9 @@ a2_to_src_target_point: &a2_to_src_target_point
   # 到达目标点后的期望速度
   target_vel: 0.0
   # 该段路线的最大平移速度
-  max_velocity: 1.2
+  max_velocity: 0.6
   # 该段路线的最大平移加速度
-  max_accelation: 0.3
+  max_accelation: 0.2
   # 该段路线的最大角速度
   max_omega: 0.7
   # 闭环控制比例参数 [x, y, yaw]
@@ -87,7 +87,7 @@ a2_to_src_target_point: &a2_to_src_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.2
+  adjust_min_omega: 0.25
   # 是否允许较大的 y 向速度
   allow_y_vel: true
 
@@ -97,9 +97,9 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 到达目标点后的期望速度
   target_vel: 0.0
   # 该段路线的最大平移速度
-  max_velocity: 1.2
+  max_velocity: 0.6
   # 该段路线的最大平移加速度
-  max_accelation: 0.3
+  max_accelation: 0.2
   # 该段路线的最大角速度
   max_omega: 0.8
   # 闭环控制比例参数 [x, y, yaw]
@@ -113,7 +113,7 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.2
+  adjust_min_omega: 0.25
   # 是否允许较大的 y 向速度
   allow_y_vel: false
 
@@ -123,9 +123,9 @@ dst_to_dst2_target_point: &dst_to_dst2_target_point
   # 到达目标点后的期望速度
   target_vel: 0.0
   # 该段路线的最大平移速度
-  max_velocity: 1.2
+  max_velocity: 0.6
   # 该段路线的最大平移加速度
-  max_accelation: 0.3
+  max_accelation: 0.2
   # 该段路线的最大角速度
   max_omega: 0.8
   # 闭环控制比例参数 [x, y, yaw]
@@ -139,7 +139,7 @@ dst_to_dst2_target_point: &dst_to_dst2_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.2
+  adjust_min_omega: 0.25
   # 是否允许较大的 y 向速度
   allow_y_vel: true
 
@@ -149,9 +149,9 @@ dst2_to_src_target_point: &dst2_to_src_target_point
   # 到达目标点后的期望速度
   target_vel: 0.0
   # 该段路线的最大平移速度
-  max_velocity: 1.2
+  max_velocity: 0.6
   # 该段路线的最大平移加速度
-  max_accelation: 0.3
+  max_accelation: 0.2
   # 该段路线的最大角速度
   max_omega: 0.8
   # 闭环控制比例参数 [x, y, yaw]
@@ -165,30 +165,30 @@ dst2_to_src_target_point: &dst2_to_src_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.2
+  adjust_min_omega: 0.25
   # 是否允许较大的 y 向速度
   allow_y_vel: false
 
 box_positions:
   # 放置区 4 个槽位，索引按 box_id 对应，格式为 [x, y, yaw]
   place:
-    - [4.61, 1.10, 0.0] # box_id 0
-    - [4.63, 0.29, 0.0] # box_id 1
-    - [4.63, -0.52, 0.0] # box_id 2
-    - [4.60, -1.26, 0.0] # box_id 3
+    - [4.495, -0.725, 0.0] # box_id 0
+    - [4.495, -1.575, 0.0] # box_id 1
+    - [4.495, -2.425, 0.0] # box_id 2
+    - [4.495, -3.275, 0.0] # box_id 3
   # 抓取区第一排 4 个槽位，格式为 [x, y, yaw]
   pick_row_0:
-    - [2.94, 1.32, 3.1415926] # col 0
-    - [2.92, 0.45, 3.1415926] # col 1
-    - [2.95, -0.34, 3.1415926] # col 2
-    - [2.94, -1.20, 3.1415926] # col 3
+    - [2.905, -0.725, 3.1415926] # col 0
+    - [2.905, -1.575, 3.1415926] # col 1
+    - [2.905, -2.425, 3.1415926] # col 2
+    - [2.905, -3.275, 3.1415926] # col 3
   # 抓取区第二排 4 个槽位，格式为 [x, y, yaw]
   pick_row_1:
-    - [2.07, 1.31, 3.1415926] # col 0
-    - [2.07, 0.48, 3.1415926] # col 1
-    - [2.10, -0.39, 3.1415926] # col 2
-    - [2.13, -1.20, 3.1415926] # col 3
-
+    - [2.005, -0.725, 3.1415926] # col 0
+    - [2.005, -1.575, 3.1415926] # col 1
+    - [2.005, -2.425, 3.1415926] # col 2
+    - [2.005, -3.275, 3.1415926] # col 3
+#-0.43-0.125
 routes:
   # 根据 VIP 所在边列选择进入路线：
   # - A：默认路线
@@ -196,14 +196,15 @@ routes:
   # - E：仅左边有 VIP 时走上方路线
   # 每条路线包含两个过渡点：a1、a2，格式为 [x, y, yaw]
   A:
-    a1: [0.69, 1.60, 0.0]
-    a2: [3.1, 1.65, 3.1415926]
+    a1: [0.795, -0.3, 0.0]
+    a2: [2.90, -0.3, 3.1415926]
   C:
-    a1: [0.75, -0.05, 0.0]
-    a2: [3.1, 0.02, 3.1415926]
+    a1: [0.795, -2.0, 0.0]
+    a2: [2.90, -2.0, 3.1415926]
   E:
-    a1: [0.67, -1.66, 0.0]
-    a2: [3.1, -1.76, 3.1415926]
+    a1: [0.795, -3.7, 0.0]
+    a2: [2.90, -3.7, 3.1415926]
+
 
 target_points:
   # 第一条计划：起始点 -> a1
