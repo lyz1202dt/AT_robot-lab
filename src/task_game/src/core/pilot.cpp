@@ -91,10 +91,14 @@ void apply_minimum(double& command, double error, double minimum) {
     if (std::abs(error) <= kTinyError || minimum <= 0.0) {
         return;
     }
-    // 微调阶段补偿死区：有误差时，命令幅值不能小于最小可动速度。
+    // 补偿执行器死区：有误差时，命令幅值不能小于最小可动速度。
     if (std::abs(command) < minimum) {
         command = std::copysign(minimum, command == 0.0 ? error : command);
     }
+}
+
+bool translation_is_above_minimum(const Eigen::Vector2d& velocity, double minimum) {
+    return minimum > 0.0 && velocity.norm() > minimum;
 }
 
 }  // namespace
@@ -274,18 +278,25 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                 cmd = stand_command();
             } else {
                 Eigen::Vector2d velocity_body = Eigen::Vector2d::Zero();
+                bool translation_above_minimum = false;
                 if (!pos_ok) {
                     velocity_body.x() = target.kp.x() * pos_error_body.x();
                     velocity_body.y() = target.kp.y() * pos_error_body.y();
-                    apply_minimum(velocity_body.x(), pos_error_body.x(), target.adjust_min_vel);
-                    apply_minimum(velocity_body.y(), pos_error_body.y(), target.adjust_min_vel);
                     clamp_translation(velocity_body, target.max_velocity);
+                    translation_above_minimum = translation_is_above_minimum(velocity_body, target.adjust_min_vel);
+                    if (!translation_above_minimum) {
+                        apply_minimum(velocity_body.x(), pos_error_body.x(), target.adjust_min_vel);
+                        apply_minimum(velocity_body.y(), pos_error_body.y(), target.adjust_min_vel);
+                        clamp_translation(velocity_body, target.max_velocity);
+                    }
                 }
 
                 double omega = 0.0;
                 if (target.constraint_target_yaw && !yaw_ok && (target.allow_y_vel || pos_ok)) {
                     omega = target.kp.z() * yaw_error;
-                    apply_minimum(omega, yaw_error, target.adjust_min_omega);
+                    if (!translation_above_minimum) {
+                        apply_minimum(omega, yaw_error, target.adjust_min_omega);
+                    }
                 }
                 omega = clamp_abs(omega, target.max_omega);
 
@@ -446,13 +457,19 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
             velocity_body.x() += target.kp.x() * pos_error_body.x();
             velocity_body.y() += target.kp.y() * pos_error_body.y();
             const Eigen::Vector2d target_error_body = world_to_body(target.target_pos - current_pos_, current_yaw_);
-            apply_minimum(velocity_body.x(), target_error_body.x(), target.adjust_min_vel);
-            apply_minimum(velocity_body.y(), target_error_body.y(), target.adjust_min_vel);
             clamp_translation(velocity_body, target.max_velocity);
+            const bool translation_above_minimum = translation_is_above_minimum(velocity_body, target.adjust_min_vel);
+            if (!translation_above_minimum) {
+                apply_minimum(velocity_body.x(), target_error_body.x(), target.adjust_min_vel);
+                apply_minimum(velocity_body.y(), target_error_body.y(), target.adjust_min_vel);
+                clamp_translation(velocity_body, target.max_velocity);
+            }
 
             const double yaw_error = normalize_angle(reference_yaw - current_yaw_);
             double omega = reference_omega + target.kp.z() * yaw_error;
-            apply_minimum(omega, yaw_error, target.adjust_min_omega);
+            if (!translation_above_minimum) {
+                apply_minimum(omega, yaw_error, target.adjust_min_omega);
+            }
             omega = clamp_abs(omega, target.max_omega);
 
             cmd.vx = static_cast<float>(velocity_body.x());
