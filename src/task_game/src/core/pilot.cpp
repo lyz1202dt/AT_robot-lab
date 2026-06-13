@@ -97,6 +97,23 @@ void apply_minimum(double& command, double error, double minimum) {
     }
 }
 
+void apply_translation_minimum(Eigen::Vector2d& velocity, const Eigen::Vector2d& error, double minimum) {
+    if (error.norm() <= kTinyError || minimum <= 0.0) {
+        return;
+    }
+
+    const double norm = velocity.norm();
+    if (norm > minimum) {
+        return;
+    }
+
+    if (norm > kTinyError) {
+        velocity *= minimum / norm;
+    } else {
+        velocity = error.normalized() * minimum;
+    }
+}
+
 bool translation_is_above_minimum(const Eigen::Vector2d& velocity, double minimum) {
     return minimum > 0.0 && velocity.norm() > minimum;
 }
@@ -285,8 +302,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                     clamp_translation(velocity_body, target.max_velocity);
                     translation_above_minimum = translation_is_above_minimum(velocity_body, target.adjust_min_vel);
                     if (!translation_above_minimum) {
-                        apply_minimum(velocity_body.x(), pos_error_body.x(), target.adjust_min_vel);
-                        apply_minimum(velocity_body.y(), pos_error_body.y(), target.adjust_min_vel);
+                        apply_translation_minimum(velocity_body, pos_error_body, target.adjust_min_vel);
                         clamp_translation(velocity_body, target.max_velocity);
                     }
                 }
@@ -460,8 +476,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
             clamp_translation(velocity_body, target.max_velocity);
             const bool translation_above_minimum = translation_is_above_minimum(velocity_body, target.adjust_min_vel);
             if (!translation_above_minimum) {
-                apply_minimum(velocity_body.x(), target_error_body.x(), target.adjust_min_vel);
-                apply_minimum(velocity_body.y(), target_error_body.y(), target.adjust_min_vel);
+                apply_translation_minimum(velocity_body, target_error_body, target.adjust_min_vel);
                 clamp_translation(velocity_body, target.max_velocity);
             }
 
