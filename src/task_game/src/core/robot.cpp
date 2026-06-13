@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <memory>
 #include <thread>
+#include <cstdlib>
 #include <rclcpp/logging.hpp>
 #include <sstream>
 #include <tf2/LinearMath/Quaternion.hpp>
@@ -20,6 +21,8 @@
 using namespace std::chrono_literals;
 
 namespace {
+
+constexpr std::array<const char*, 2> kRlRealNodeNames{"rl_real_atdog2", "rl_real_atdog3"};
 
 void set_manual_mode(Robot* robot) {
     robot->cmd.mode = 1;
@@ -49,6 +52,27 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
     node_->declare_parameter<bool>("tree_debug_mode", true);
     set_tree_debug_mode(node_->get_parameter("tree_debug_mode").as_bool());
+    node_->declare_parameter<std::vector<double>>("transfer_x_limits", {transfer_x_limits_[0], transfer_x_limits_[1]});
+    node_->declare_parameter<std::vector<double>>("transfer_y_limits", {transfer_y_limits_[0], transfer_y_limits_[1]});
+    node_->declare_parameter<std::vector<double>>("transfer_z_limits", {transfer_z_limits_[0], transfer_z_limits_[1]});
+
+    const auto update_limits = [this](const std::string& name, std::array<double, 2>& target) {
+        const auto values = node_->get_parameter(name).as_double_array();
+        if (values.size() == 2 && values[0] <= values[1]) {
+            target = {values[0], values[1]};
+            return;
+        }
+        RCLCPP_WARN(
+            node_->get_logger(),
+            "参数 %s 配置无效，保持范围 [%.3f, %.3f]",
+            name.c_str(),
+            target[0],
+            target[1]);
+    };
+
+    update_limits("transfer_x_limits", transfer_x_limits_);
+    update_limits("transfer_y_limits", transfer_y_limits_);
+    update_limits("transfer_z_limits", transfer_z_limits_);
 
     pilot = std::make_shared<Pilot>(node_);
 
@@ -118,7 +142,30 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         for (const auto& param : params) {
             if (param.get_name() == "tree_debug_mode") {
                 set_tree_debug_mode(param.as_bool());
+                continue;
             }
+
+            auto update_limit = [&](const char* name, std::array<double, 2>& target) {
+                if (param.get_name() != name) {
+                    return false;
+                }
+                const auto values = param.as_double_array();
+                if (values.size() != 2 || values[0] > values[1]) {
+                    result.successful = false;
+                    result.reason = std::string(name) + " 必须是长度为2且按最小值到最大值排列的数组";
+                    return true;
+                }
+                target = {values[0], values[1]};
+                return true;
+            };
+
+            if (update_limit("transfer_x_limits", transfer_x_limits_)) {
+                continue;
+            }
+            if (update_limit("transfer_y_limits", transfer_y_limits_)) {
+                continue;
+            }
+            update_limit("transfer_z_limits", transfer_z_limits_);
         }
         return result;
     });
@@ -128,6 +175,27 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         try {
                 transfer = tf_buffer_->lookupTransform("map","base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));
                 robot_pos_transfer=transfer;
+                if (is_position_out_of_bounds(transfer)) {
+                    RCLCPP_ERROR(
+                        node_->get_logger(),
+                        "检测到机器人位置越界: x=%.3f y=%.3f z=%.3f, 允许范围 x[%.3f, %.3f] y[%.3f, %.3f] z[%.3f, %.3f]",
+                        transfer.transform.translation.x,
+                        transfer.transform.translation.y,
+                        transfer.transform.translation.z,
+                        transfer_x_limits_[0],
+                        transfer_x_limits_[1],
+                        transfer_y_limits_[0],
+                        transfer_y_limits_[1],
+                        transfer_z_limits_[0],
+                        transfer_z_limits_[1]);
+                    stop_rl_real_nodes();
+                    if (current_control_mode == 1) {
+                        set_manual_mode(this);
+                        current_control_mode = 0;
+                    }
+                    cmd_pub_->publish(cmd);
+                    return;
+                }
                 // RCLCPP_INFO_THROTTLE(
                 //     node_->get_logger(),
                 //     *node_->get_clock(),
@@ -183,6 +251,30 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 Robot::~Robot(){
     if (action_thread && action_thread->joinable())  //子线程退出
         action_thread->join();
+}
+
+bool Robot::is_position_out_of_bounds(const geometry_msgs::msg::TransformStamped& transfer) const {
+    const auto& translation = transfer.transform.translation;
+    return translation.x < transfer_x_limits_[0] || translation.x > transfer_x_limits_[1] ||
+           translation.y < transfer_y_limits_[0] || translation.y > transfer_y_limits_[1] ||
+           translation.z < transfer_z_limits_[0] || translation.z > transfer_z_limits_[1];
+}
+
+void Robot::stop_rl_real_nodes() {
+    bool expected = false;
+    if (!rl_real_stop_requested_.compare_exchange_strong(expected, true)) {
+        return;
+    }
+
+    for (const auto* node_name : kRlRealNodeNames) {
+        const std::string command = std::string("pkill -f '/rl_sar/.*") + node_name + "$' || pkill -x '" + node_name + "'";
+        const int result = std::system(command.c_str());
+        if (result == 0) {
+            RCLCPP_WARN(node_->get_logger(), "已终止节点 %s", node_name);
+            continue;
+        }
+        RCLCPP_WARN(node_->get_logger(), "未找到运行中的节点 %s", node_name);
+    }
 }
 
 void Robot::advance_tree_stage() {

@@ -3,6 +3,7 @@
 #include <atomic>
 #include <memory>
 #include <thread>
+#include <array>
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <robot_msgs/msg/cmd.hpp>
@@ -38,7 +39,9 @@ public:
     std::atomic_int32_t tree_start_key{kTreeIdle};
     std::atomic_bool tree_debug_mode{true};
 private:
-    
+    bool is_position_out_of_bounds(const geometry_msgs::msg::TransformStamped& transfer) const;
+    void stop_rl_real_nodes();
+
     rclcpp::TimerBase::SharedPtr control_timer;
     rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_server_;
     rclcpp::Subscription<robot_msgs::msg::Remote>::SharedPtr remote_sub_;
@@ -49,9 +52,13 @@ private:
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
     geometry_msgs::msg::TransformStamped robot_pos_transfer;
+    std::array<double, 2> transfer_x_limits_{{-0.5, 8.0}};
+    std::array<double, 2> transfer_y_limits_{{-4.5, 0.5}};
+    std::array<double, 2> transfer_z_limits_{{-0.5, 0.5}};
+    std::atomic_bool rl_real_stop_requested_{false};
 
-    
-    
+
+
     std::shared_ptr<std::thread> action_thread;
 
     uint32_t last_key{0};
