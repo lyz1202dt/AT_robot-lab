@@ -10,8 +10,6 @@
 using namespace std::chrono_literals;
 namespace {
 
-constexpr float kTrajectoryConnectionRadius = 0.2f;
-
 bool wait_for_stage(Robot* context, int32_t expected_stage) {
     while (rclcpp::ok() && context->auto_pilot_enabled.load() && context->tree_start_key.load() != expected_stage) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -108,8 +106,7 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
         target_point.adjust_min_vel = plan_target_point.adjust_min_vel;
         target_point.adjust_min_omega = plan_target_point.adjust_min_omega;
         target_point.allow_y_vel = plan_target_point.allow_y_vel;
-        target_point.trajectory_connection_radius =
-            point_index + 1 < current_plan.catch_trajectory.size() ? kTrajectoryConnectionRadius : 0.0f;
+        target_point.trajectory_connection_radius = plan_target_point.trajectory_connection_radius;
         pilot_targets.push_back(target_point);
     }
 

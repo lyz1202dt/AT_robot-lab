@@ -165,6 +165,9 @@ TargetPoint read_target_point(const YAML::Node& node, const std::string& name) {
     target_point.adjust_min_vel = node["adjust_min_vel"].as<float>();
     target_point.adjust_min_omega = node["adjust_min_omega"].as<float>();
     target_point.allow_y_vel = node["allow_y_vel"].as<bool>();
+    if (const auto connection_radius = node["trajectory_connection_radius"]) {
+        target_point.trajectory_connection_radius = connection_radius.as<float>();
+    }
     return target_point;
 }
 

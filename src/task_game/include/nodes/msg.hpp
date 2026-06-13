@@ -17,6 +17,7 @@ struct TargetPoint {
         float adjust_min_vel{0.25f};           // 微调时的最小速度
         float adjust_min_omega{0.15f};         // 微调时的最小角速度
         bool allow_y_vel{false};              // 是否允许较大的y向速度
+        float trajectory_connection_radius{0.0f};  // 轨迹衔接半径，0 表示不使用曲线连接
     };
 
 struct MoveBoxPlan{
