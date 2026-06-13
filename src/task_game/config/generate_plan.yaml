@@ -25,7 +25,7 @@ start_to_a1_target_point: &start_to_a1_target_point
   # 该段路线的最大角速度
   max_omega: 1.35
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [2.5, 2.0, 2.5]
+  kp: [2.5, 2.5, 2.5]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
@@ -47,13 +47,13 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 到达目标点后的期望速度
   target_vel: 0.6
   # 该段路线的最大平移速度
-  max_velocity: 1.0
+  max_velocity: 1.8
   # 该段路线的最大平移加速度
-  max_accelation: 1.0
+  max_accelation: 1.2
   # 该段路线的最大角速度
-  max_omega: 1.5
+  max_omega: 2.5
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [2.5, 2.0, 2.5]
+  kp: [2.5, 2.5, 2.5]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
@@ -81,7 +81,7 @@ a2_to_src_target_point: &a2_to_src_target_point
   # 该段路线的最大角速度
   max_omega: 1.0
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [2.5, 2.0, 2.50]
+  kp: [2.5, 2.5, 2.5]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
@@ -103,13 +103,13 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 到达目标点后的期望速度
   target_vel: 0.0
   # 该段路线的最大平移速度
-  max_velocity: 1.0
+  max_velocity: 2.0
   # 该段路线的最大平移加速度
-  max_accelation: 1.0
+  max_accelation: 1.5
   # 该段路线的最大角速度
-  max_omega: 1.5
+  max_omega: 2.5
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [2.5, 2.0, 2.5]
+  kp: [2.5, 2.5, 2.5]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
@@ -131,13 +131,13 @@ dst_to_dst2_target_point: &dst_to_dst2_target_point
   # 到达目标点后的期望速度
   target_vel: 0.4
   # 该段路线的最大平移速度
-  max_velocity: 1.0
+  max_velocity: 2.0
   # 该段路线的最大平移加速度
-  max_accelation: 0.2
+  max_accelation: 0.8
   # 该段路线的最大角速度
-  max_omega: 1.5
+  max_omega: 2.5
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [2.5, 2.0, 2.5]
+  kp: [2.5, 2.5, 2.5]
   # 起步时允许较大的朝向误差，便于直接倒车离开放置区
   allow_start_dir_error: 3.2
   # 最终允许的朝向误差
@@ -159,13 +159,13 @@ dst2_to_src_target_point: &dst2_to_src_target_point
   # 到达目标点后的期望速度
   target_vel: 0.0
   # 该段路线的最大平移速度
-  max_velocity: 1.0
+  max_velocity: 1.8
   # 该段路线的最大平移加速度
-  max_accelation: 1.0
+  max_accelation: 1.2
   # 该段路线的最大角速度
-  max_omega: 1.5
+  max_omega: 2.5
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [2.5, 2.0, 2.5]
+  kp: [2.2, 2.5, 2.5]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
@@ -196,10 +196,10 @@ box_positions:
     - [3.05, -3.275, 3.1415926] # col 3
   # 抓取区第二排 4 个槽位，格式为 [x, y, yaw]
   pick_row_1:
-    - [2.005, -0.725, 3.1415926] # col 0
-    - [2.005, -1.575, 3.1415926] # col 1
-    - [2.005, -2.425, 3.1415926] # col 2
-    - [2.005, -3.275, 3.1415926] # col 3
+    - [2.105, -0.725, 3.1415926] # col 0
+    - [2.105, -1.575, 3.1415926] # col 1
+    - [2.105, -2.425, 3.1415926] # col 2
+    - [2.105, -3.275, 3.1415926] # col 3
 #-0.43-0.125
 routes:
   # 根据 VIP 所在边列选择进入路线：
