@@ -286,7 +286,7 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         context->advance_tree_stage();
     }
 
-    std::this_thread::sleep_for(2s);
+    std::this_thread::sleep_for(6s);
     // 13. 返回执行成功
     return BT::SUCCESS;
     RCLCPP_INFO(
