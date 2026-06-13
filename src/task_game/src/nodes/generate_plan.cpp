@@ -435,7 +435,7 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
             std::get<1>(box_info.positions[0][box_id]),
             std::get<2>(box_info.positions[0][box_id])};
         const std::array<float, 3> dst2 = {
-            dst[0] - 0.5f,
+            dst[0] - 0.1f,
             dst[1],
             dst[2]};
 

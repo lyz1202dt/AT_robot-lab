@@ -110,6 +110,7 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
         target_point.adjust_min_vel = plan_target_point.adjust_min_vel;
         target_point.adjust_min_omega = plan_target_point.adjust_min_omega;
         target_point.allow_y_vel = plan_target_point.allow_y_vel;
+        target_point.trajectory_connection_radius = 0.0f;
 
         //target_point.target_vel = is_last ? 0.0f : 0.25f;
         // 最后一个轨迹点要求机器人面向箱子，方便后续抓取动作衔接。
