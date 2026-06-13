@@ -164,6 +164,7 @@ robot_msgs::msg::Cmd Pilot::stand_command() const {
 void Pilot::reset_execution() {
     current_index_ = 0;
     state_ = PilotState::Idle;
+    adjust_phase_ = AdjustPhase::Position;
     resume_state_ = PilotState::Running;
     segment_start_pos_ = current_pos_;
     segment_start_yaw_ = current_yaw_;
@@ -205,6 +206,7 @@ void Pilot::finish_current_target(std::chrono::time_point<std::chrono::high_reso
     }
 
     state_ = PilotState::Adjusting;
+    adjust_phase_ = AdjustPhase::Position;
     transition_ = CubicTransition{};
 }
 
@@ -281,44 +283,74 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
         cmd.wheel_vel = 0.0f;
 
         if (state_ == PilotState::Adjusting) {
-            // 规划时间结束后进入微调：只用当前位置误差闭环，直到满足最终容差。
+            // 规划时间结束后进入微调：先修位置，再原地修最终方向，最后复检位置。
             const Eigen::Vector2d pos_error_world = target.target_pos - current_pos_;
             const Eigen::Vector2d pos_error_body = world_to_body(pos_error_world, current_yaw_);
             const double yaw_error = target.constraint_target_yaw ? normalize_angle(target.target_yaw - current_yaw_) : 0.0;
             const bool pos_ok = pos_error_world.norm() <= static_cast<double>(target.allow_final_pos_allow);
             const bool yaw_ok = !target.constraint_target_yaw || std::abs(yaw_error) <= static_cast<double>(target.allow_final_dir_error);
 
-            if (pos_ok && yaw_ok) {
+            const auto finish_target = [&]() {
                 state_ = PilotState::Finished;
                 current_index_ = targets_.size();
                 callback_to_call = std::move(finished_cb_);
                 cmd = stand_command();
-            } else {
-                Eigen::Vector2d velocity_body = Eigen::Vector2d::Zero();
-                bool translation_above_minimum = false;
-                if (!pos_ok) {
-                    velocity_body.x() = target.kp.x() * pos_error_body.x();
-                    velocity_body.y() = target.kp.y() * pos_error_body.y();
-                    clamp_translation(velocity_body, target.max_velocity);
-                    translation_above_minimum = translation_is_above_minimum(velocity_body, target.adjust_min_vel);
-                    if (!translation_above_minimum) {
-                        apply_translation_minimum(velocity_body, pos_error_body, target.adjust_min_vel);
-                        clamp_translation(velocity_body, target.max_velocity);
-                    }
-                }
+            };
 
-                double omega = 0.0;
-                if (target.constraint_target_yaw && !yaw_ok && (target.allow_y_vel || pos_ok)) {
-                    omega = target.kp.z() * yaw_error;
-                    if (!translation_above_minimum) {
-                        apply_minimum(omega, yaw_error, target.adjust_min_omega);
-                    }
+            const auto set_position_adjust_command = [&]() {
+                Eigen::Vector2d velocity_body = Eigen::Vector2d::Zero();
+                velocity_body.x() = target.kp.x() * pos_error_body.x();
+                velocity_body.y() = target.kp.y() * pos_error_body.y();
+                clamp_translation(velocity_body, target.max_velocity);
+                const bool translation_above_minimum = translation_is_above_minimum(velocity_body, target.adjust_min_vel);
+                if (!translation_above_minimum) {
+                    apply_translation_minimum(velocity_body, pos_error_body, target.adjust_min_vel);
+                    clamp_translation(velocity_body, target.max_velocity);
                 }
-                omega = clamp_abs(omega, target.max_omega);
 
                 cmd.vx = static_cast<float>(velocity_body.x());
                 cmd.vy = static_cast<float>(velocity_body.y());
+                cmd.vz = 0.0f;
+            };
+
+            const auto set_yaw_adjust_command = [&]() {
+                double omega = 0.0;
+                if (target.constraint_target_yaw && !yaw_ok) {
+                    omega = target.kp.z() * yaw_error;
+                    apply_minimum(omega, yaw_error, target.adjust_min_omega);
+                }
+                omega = clamp_abs(omega, target.max_omega);
+
+                cmd.vx = 0.0f;
+                cmd.vy = 0.0f;
                 cmd.vz = static_cast<float>(omega);
+            };
+
+            for (int step = 0; step < 3; ++step) {
+                if (adjust_phase_ == AdjustPhase::Position) {
+                    if (!pos_ok) {
+                        set_position_adjust_command();
+                        break;
+                    }
+                    adjust_phase_ = target.constraint_target_yaw ? AdjustPhase::Yaw : AdjustPhase::FinalPosition;
+                    continue;
+                }
+
+                if (adjust_phase_ == AdjustPhase::Yaw) {
+                    if (!yaw_ok) {
+                        set_yaw_adjust_command();
+                        break;
+                    }
+                    adjust_phase_ = AdjustPhase::FinalPosition;
+                    continue;
+                }
+
+                if (!pos_ok) {
+                    set_position_adjust_command();
+                    break;
+                }
+                finish_target();
+                break;
             }
         } else {
             // Running 阶段先生成轨迹参考值，再叠加 P 控制反馈。
@@ -365,6 +397,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                     aiming_done_ = true;
                     if (current_index_ >= targets_.size()) {
                         state_ = PilotState::Adjusting;
+                        adjust_phase_ = AdjustPhase::Position;
                     }
                 }
             } else {

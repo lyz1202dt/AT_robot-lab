@@ -61,6 +61,13 @@ private:
         Finished
     };
 
+    // 最终微调顺序：先到点，再原地对准最终方向，最后复检/修正位置漂移。
+    enum class AdjustPhase {
+        Position,
+        Yaw,
+        FinalPosition
+    };
+
     // 多段轨迹连接处的三次多项式过渡数据，用于保证位置和速度连续。
     struct CubicTransition {
         bool active{false};
@@ -91,6 +98,7 @@ private:
     std::vector<TargetPoint> targets_;
     std::size_t current_index_{0};
     PilotState state_{PilotState::Idle};
+    AdjustPhase adjust_phase_{AdjustPhase::Position};
     // stop 后不清空轨迹，resume_state_ 用于再次 start 时恢复到暂停前阶段。
     PilotState resume_state_{PilotState::Running};
 
