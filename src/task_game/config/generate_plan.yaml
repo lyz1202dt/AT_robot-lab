@@ -45,7 +45,7 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 是否要求机器人到点后朝向 target_yaw
   constraint_target_yaw: true
   # 到达目标点后的期望速度
-  target_vel: 0.6
+  target_vel: 0.4
   # 该段路线的最大平移速度
   max_velocity: 1.8
   # 该段路线的最大平移加速度
