@@ -45,7 +45,7 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 是否要求机器人到点后朝向 target_yaw
   constraint_target_yaw: true
   # 到达目标点后的期望速度
-  target_vel: 0.4
+  target_vel: 0.0
   # 该段路线的最大平移速度
   max_velocity: 1.8
   # 该段路线的最大平移加速度
@@ -59,7 +59,7 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 最终允许的朝向误差
   allow_final_dir_error: 0.3
   # 最终允许的位置误差
-  allow_final_pos_allow: 0.1
+  allow_final_pos_allow: 0.3
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
@@ -165,7 +165,7 @@ dst2_to_src_target_point: &dst2_to_src_target_point
   # 该段路线的最大角速度
   max_omega: 2.5
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [2.2, 2.5, 2.5]
+  kp: [2.2, 2.0, 2.5]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
@@ -184,10 +184,10 @@ dst2_to_src_target_point: &dst2_to_src_target_point
 box_positions:
   # 放置区 4 个槽位，索引按 box_id 对应，格式为 [x, y, yaw]
   place:
-    - [4.495, -0.725, 0.0] # box_id 0
-    - [4.495, -1.575, 0.0] # box_id 1
-    - [4.495, -2.425, 0.0] # box_id 2
-    - [4.495, -3.275, 0.0] # box_id 3
+    - [4.515, -0.725, 0.0] # box_id 0
+    - [4.515, -1.575, 0.0] # box_id 1
+    - [4.515, -2.425, 0.0] # box_id 2
+    - [4.515, -3.275, 0.0] # box_id 3
   # 抓取区第一排 4 个槽位，格式为 [x, y, yaw]
   pick_row_0:
     - [3.05, -0.725, 3.1415926] # col 0
