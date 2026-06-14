@@ -59,7 +59,7 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 最终允许的朝向误差
   allow_final_dir_error: 0.3
   # 最终允许的位置误差
-  allow_final_pos_allow: 0.3
+  allow_final_pos_allow: 0.1
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
