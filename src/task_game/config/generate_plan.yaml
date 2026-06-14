@@ -113,9 +113,9 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
-  allow_final_dir_error: 0.2
+  allow_final_dir_error: 0.1
   # 最终允许的位置误差
-  allow_final_pos_allow: 0.1
+  allow_final_pos_allow: 0.08
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
@@ -171,7 +171,7 @@ dst2_to_src_target_point: &dst2_to_src_target_point
   # 最终允许的朝向误差
   allow_final_dir_error: 0.1
   # 最终允许的位置误差
-  allow_final_pos_allow: 0.1
+  allow_final_pos_allow: 0.08
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
