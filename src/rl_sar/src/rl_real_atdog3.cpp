@@ -6,6 +6,7 @@
 #include "rl_real_atdog3.hpp"
 #include "fsm_atdog3.hpp"
 
+#include <algorithm>
 #include <array>
 #include <memory>
 
@@ -64,23 +65,23 @@ void RL_Real::GetState(RobotState<float>* state) {
     std::array<float, 3> w{};
     const bool has_imu_state = this->leg_driver != nullptr && this->leg_driver->get_imu_state(q, w);
     if (has_imu_state) {
-        state->imu.quaternion[0] = q[0];
-        state->imu.quaternion[1] = q[1];
-        state->imu.quaternion[2] = q[2];
-        state->imu.quaternion[3] = q[3];
+        state->imu.quaternion[0] = static_cast<float>(q[0]);
+        state->imu.quaternion[1] = static_cast<float>(q[1]);
+        state->imu.quaternion[2] = static_cast<float>(q[2]);
+        state->imu.quaternion[3] = static_cast<float>(q[3]);
 
-        state->imu.gyroscope[0] = w[0];
-        state->imu.gyroscope[1] = w[1];
-        state->imu.gyroscope[2] = w[2];
+        state->imu.gyroscope[0] = static_cast<float>(w[0]);
+        state->imu.gyroscope[1] = static_cast<float>(w[1]);
+        state->imu.gyroscope[2] = static_cast<float>(w[2]);
     } else {
-        state->imu.quaternion[0] = 1.0f;
-        state->imu.quaternion[1] = 0.0f;
-        state->imu.quaternion[2] = 0.0f;
-        state->imu.quaternion[3] = 0.0f;
+        state->imu.quaternion[0] = 1.0;
+        state->imu.quaternion[1] = 0.0;
+        state->imu.quaternion[2] = 0.0;
+        state->imu.quaternion[3] = 0.0;
 
-        state->imu.gyroscope[0] = 0.0f;
-        state->imu.gyroscope[1] = 0.0f;
-        state->imu.gyroscope[2] = 0.0f;
+        state->imu.gyroscope[0] = 0.0;
+        state->imu.gyroscope[1] = 0.0;
+        state->imu.gyroscope[2] = 0.0;
     }
 
     if (this->leg_driver == nullptr || dof_count <= 0) {
@@ -94,22 +95,16 @@ void RL_Real::GetState(RobotState<float>* state) {
 
     const auto joint_mapping = this->params.Get<std::vector<int>>("joint_mapping");
     for (int i = 0; i < dof_count; ++i) {
-        const int hw_index       = (i < static_cast<int>(joint_mapping.size())) ? joint_mapping[i] : i;
-        const int leg_index      = hw_index / 3;
-        const int actuator_index = hw_index % 3;
+        const int hw_index    = (i < static_cast<int>(joint_mapping.size())) ? joint_mapping[i] : i;
+        const int leg_index   = hw_index / 3;
+        const int joint_index = hw_index % 3;
         if (leg_index < 0 || leg_index >= static_cast<int>(legs_state.size())) {
             continue;
         }
 
-        if (i < 12) {
-            state->motor_state.q[i]       = legs_state[leg_index].joint[actuator_index].rad;
-            state->motor_state.dq[i]      = legs_state[leg_index].joint[actuator_index].omega;
-            state->motor_state.tau_est[i] = legs_state[leg_index].joint[actuator_index].torque;
-        }
-        else {
-            state->motor_state.dq[i]      = legs_state[i - 12].wheel.omega;
-            state->motor_state.tau_est[i] = legs_state[i - 12].wheel.torque;
-        }
+        state->motor_state.q[i]       = legs_state[leg_index].joint[joint_index].rad;
+        state->motor_state.dq[i]      = legs_state[leg_index].joint[joint_index].omega;
+        state->motor_state.tau_est[i] = legs_state[leg_index].joint[joint_index].torque;
     }
 
     // std::cout<<"cur_pos:"<<state->motor_state.q<<std::endl;
@@ -121,7 +116,10 @@ void RL_Real::RobotControl() {
 
     if (remote_cmd.mode != 0) {     //由ROS2上层接管控制
         this->control.setMode(remote_cmd.mode);
-        this->control.setVel(remote_cmd.vx, remote_cmd.vy, remote_cmd.vz);
+        const float vx = std::clamp(remote_cmd.vx, -0.5f, 1.5f);
+        const float vy = std::clamp(remote_cmd.vy, -0.5f, 1.0f);
+        const float vz = std::clamp(remote_cmd.vz, -0.5f, 1.5f);
+        this->control.setVel(vx, vy, vz);
     }
     else {
         this->control.setMode(0);

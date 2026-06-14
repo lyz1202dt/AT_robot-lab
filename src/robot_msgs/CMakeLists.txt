@@ -17,7 +17,14 @@ if($ENV{ROS_DISTRO} MATCHES "noetic")
     RobotCommand.msg
     RobotState.msg
     IMU.msg
-  )
+    Arm.msg
+    Arm4.msg
+    Armmode.msg
+    GM6020.msg
+    Joint.msg
+    RobStride.msg
+    Servo.msg
+    Vis.msg  )
   generate_messages(
     DEPENDENCIES
     std_msgs
@@ -51,6 +58,16 @@ elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
     "msg/IMU.msg"
     "msg/Cmd.msg"
     "msg/Remote.msg"
+    "msg/Int.msg"
+    "msg/BoxIdGrid.msg"
+    "msg/Arm.msg"
+    "msg/Arm4.msg"
+    "msg/Armmode.msg"
+    "msg/GM6020.msg"
+    "msg/Joint.msg"
+    "msg/RobStride.msg"
+    "msg/Servo.msg"
+    "msg/Vis.msg" 
     DEPENDENCIES builtin_interfaces std_msgs geometry_msgs sensor_msgs
   )
   ament_export_dependencies(rosidl_default_runtime)

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 atdog/robot_lab:
-  model_name: "policy.pt"
+  model_name: "policy.onnx"
   num_observations: 57
   observations: ["ang_vel", "gravity_vec", "commands", "dof_pos", "dof_vel", "actions"]
   observations_history: []  # 0 is the latest observation
@@ -18,16 +18,16 @@ atdog/robot_lab:
                        100.0, 100.0, 100.0,
                        100.0, 100.0, 100.0,
                        100.0, 100.0, 100.0, 100.0]
-  rl_kp: [20.0, 20.0, 20.0,
-          20.0, 20.0, 20.0,
-          20.0, 20.0, 20.0,
-          20.0, 20.0, 20.0,
+  rl_kp: [35.0, 35.0, 35.0,
+          35.0, 35.0, 35.0,
+          35.0, 35.0, 35.0,
+          35.0, 35.0, 35.0,
           0.0, 0.0, 0.0, 0.0]
-  rl_kd: [0.5, 0.5, 0.5,
-          0.5, 0.5, 0.5,
-          0.5, 0.5, 0.5,
-          0.5, 0.5, 0.5,
-          0.2, 0.2, 0.2, 0.2]
+  rl_kd: [1.0, 1.0, 1.0,
+          1.0, 1.0, 1.0,
+          1.0, 1.0, 1.0,
+          1.0, 1.0, 1.0,
+          0.8, 0.8, 0.8, 0.8]
   fixed_kp: [70.0, 70.0, 70.0,
              70.0, 70.0, 70.0,
              70.0, 70.0, 70.0,
