@@ -34,7 +34,7 @@ public:
     ~Pilot();
 
     // 开始执行，让机器人行走到目标(到达目标后执行一次finished_cb)
-    bool start(std::function<void(int success)> finished_cb);
+    bool start(std::function<void(int success)> finished_cb, bool stop_when_finished = true);
 
     // 进入位控站立
     bool stop();
@@ -115,5 +115,6 @@ private:
 
     CubicTransition transition_;
     std::function<void(int success)> finished_cb_;
+    bool stop_when_finished_{true};
 
 };

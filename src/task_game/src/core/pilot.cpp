@@ -172,6 +172,7 @@ void Pilot::reset_execution() {
     aiming_done_ = false;
     transition_ = CubicTransition{};
     finished_cb_ = nullptr;
+    stop_when_finished_ = true;
 }
 
 void Pilot::begin_current_segment(std::chrono::time_point<std::chrono::high_resolution_clock> time, double start_speed) {
@@ -210,13 +211,14 @@ void Pilot::finish_current_target(std::chrono::time_point<std::chrono::high_reso
     transition_ = CubicTransition{};
 }
 
-bool Pilot::start(std::function<void(int success)> finished_cb) {
+bool Pilot::start(std::function<void(int success)> finished_cb, bool stop_when_finished) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (targets_.empty()) {
         return false;
     }
 
     finished_cb_ = std::move(finished_cb);
+    stop_when_finished_ = stop_when_finished;
     const auto now = std::chrono::high_resolution_clock::now();
 
     if (state_ == PilotState::Paused) {
@@ -294,7 +296,14 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                 state_ = PilotState::Finished;
                 current_index_ = targets_.size();
                 callback_to_call = std::move(finished_cb_);
-                cmd = stand_command();
+                cmd = stop_when_finished_ ? stand_command() : robot_msgs::msg::Cmd{};
+                if (!stop_when_finished_) {
+                    cmd.mode = kWalkMode;
+                    cmd.vx = 0.0f;
+                    cmd.vy = 0.0f;
+                    cmd.vz = 0.0f;
+                    cmd.wheel_vel = 0.0f;
+                }
             };
 
             const auto set_position_adjust_command = [&]() {

@@ -129,7 +129,7 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
     if (!context->pilot->start([&finished, &success](int result) {
             success = (result != 0);
             finished = true;
-        })) {
+        }, false)) {
         RCLCPP_ERROR(context->node_->get_logger(), "ArriveToBoxAction: 启动连续轨迹失败");
         context->pilot->stop();
         return BT::FAILED;
@@ -161,7 +161,17 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    context->pilot->stop();
+    if (!stop_timer_) {
+        stop_timer_ = context->node_->create_wall_timer(500ms, [this, context]() {
+            context->pilot->stop();
+            stop_timer_->cancel();
+        });
+        stop_timer_->cancel();
+    }
+
+    if (stop_timer_->is_canceled()) {
+        stop_timer_->reset();
+    }
 
     if (!context->is_tree_debug_mode()) {
         context->advance_tree_stage();
