@@ -29,6 +29,7 @@ RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
         node_->create_subscription<robot_msgs::msg::Cmd>("robot_move_cmd", 10, [this](const robot_msgs::msg::Cmd& msg) {
             remote_cmd = msg;
             std::cout << "mode=" << msg.mode << std::endl;
+            //RCLCPP_INFO(node_->get_logger(),"mode=", msg.mode);
         });
 
 

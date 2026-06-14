@@ -1,3 +1,105 @@
+遥控器与键盘操作摘要
+=====================
+
+概述
+----
+本项目提供基于遥控器和键盘的远程/手动控制方案，相关实现分布在以下模块：
+- `src/remote_node`：串口遥控器驱动节点（发布 `robot_msgs/msg/Remote`）。
+- `src/keyboard`：键盘输入映射节点（用于调试或无遥控器场景）。
+- `src/obstacle_game` / `src/task_game`：机器人控制层，订阅遥控器/键盘并发布执行命令。
+- `src/robot_msgs`：定义了 `Remote`、`Cmd` 等消息类型。
+
+遥控器（Remote）
+-----------------
+- 节点：`remote_node`（位于 `src/remote_node`）。
+- 发布：`robot_msgs/msg/Remote` 到话题 `/remote`。
+- 行为：从串口读取遥控器协议并发布按键/摇杆状态；若系统缺少 ROS `serial` 包，会回退使用仓库内置的串口实现（构建日志会提示）。
+- 模式：遥控器按键用于在 手动 / 自动 / 录制 模式间切换。
+  - 手动模式：遥控器摇杆直接填充 `Cmd`（线速度/角速度等），由 `Robot` 节点读取并转发到 `/robot_move_cmd`。
+  - 自动模式：由 `Pilot`（控制模块）依据 TF（例如 `odom -> base_link`）与路径 YAML 生成控制命令，`Robot` 发布为 `Cmd`。
+  - 录制模式：记录当前位置到 YAML（用于路径重放）。
+- 数据流：`/remote` -> `obstacle_game::Robot` / `task_game::Robot` -> 发布 `robot_msgs/msg/Cmd` 到 `/robot_move_cmd`。
+
+键盘（Keyboard）
+-----------------
+- 节点：`keyboard`（位于 `src/keyboard`）。
+- 功能：将键盘按键映射为控制命令或模式切换，常用于开发调试或无遥控器环境下的人工操控。
+- 输出：实现可以直接发布 `robot_msgs/msg/Cmd`，或模拟 `Remote` 的按键事件（具体实现请参阅 `src/keyboard` 源码以确认行为与按键映射）。
+- 常见映射（实现内可配置）：前进/后退/左转/右转、速度档位上下、启停、切换手动/自动/录制。
+
+消息说明（简要）
+-----------------
+- `robot_msgs/msg/Remote`：遥控器原始数据结构，包含按键位、摇杆数值、模式标志等。
+- `robot_msgs/msg/Cmd`：运动控制命令，通常包含线速度、角速度、爪/臂等动作控制字段，以及控制模式信息。
+
+调试与常用操作
+-----------------
+- 先加载环境：
+```bash
+source install/setup.bash
+```
+- 启动遥控器节点（示例）：
+```bash
+ros2 run remote_node remote_node
+```
+- 启动机器人控制节点（示例）：
+```bash
+ros2 run obstacle_game robot_control
+```
+- 查看遥控器/命令话题：
+```bash
+ros2 topic echo /remote
+ros2 topic echo /robot_move_cmd
+```
+
+实现注意事项
+-----------------
+- 模式与优先级：在手动模式下应优先响应摇杆/键盘输入，自动模式由 Pilot 决定输出；确保各来源发布频率与 TF 更新频率兼容。
+- 串口回退：若构建或运行时提示找不到 ROS `serial` 包，代码会使用仓库内封装的串口实现（见构建输出警告）。
+- 修改映射：若需修改按键或摇杆到 `Cmd` 的映射，请编辑 `src/keyboard` 或 `src/remote_node` 中对应逻辑并通过 `ros2 topic echo` 验证输出。
+
+参考位置
+-----------------
+- `src/remote_node`
+- `src/keyboard`
+- `src/obstacle_game`
+- `src/task_game`
+- `src/robot_msgs`
+
+如需我把具体的按键映射表从源码提取并写入此文档，或生成快速测试脚本，请告诉我。
+
+键位映射（源码摘录）
+--------------------
+下面键位与按键位（bit 索引）来自 `src/keyboard/src/keyboard_node.cpp`，机器人侧对键位的使用见 `src/task_game/src/core/robot.cpp`。
+
+- 运动轴（发布为 `robot_msgs/msg/Remote` 的摇杆值）：
+  - `w`：前进 — 设置 `ly = +1200`（在 `task_game` 中映射为 `cmd.vx = ly/1200`）。
+  - `s`：后退 — 设置 `ly = -1200`。
+  - `a`：左移 — 设置 `lx = -1200`（在 `task_game` 中映射为 `cmd.vy = -lx/1200`）。
+  - `d`：右移 — 设置 `lx = +1200`。
+  - `q`：左转（自转负） — 设置 `rx = -1200`（在 `task_game` 中映射为 `cmd.vz = -rx/1200`）。
+  - `e`：右转（自转正） — 设置 `rx = +1200`。
+  - `Space`：清零所有轴（停止运动）。
+
+- 模式切换（通过数字键修改 `Remote.key` 的模式位）：
+  - `1`：切换到 Record 模式（`Remote.key` 的 bit 2 表示 Record）。
+  - `2`：切换到 Manual 模式（本地实现把 Manual 视为默认、bit 清零）。
+  - `3`：切换到 Auto 模式（`Remote.key` 的 bit 1 表示 Auto）。
+
+- 策略/动作脉冲（按下后在短时间内将对应 bit 置位，用于触发一次性动作）：
+  - `z`：位控站立（pulse bit 4）。
+  - `x`：普通行走模式（pulse bit 5）。
+  - `c`：沙地（pulse bit 6）。
+  - `v`：上楼/楼梯模式（pulse bit 3）。
+  - `b`：policy_5（pulse bit 7）。
+  - `n`：policy_6（pulse bit 8）。
+  - `m`：记录当前点（pulse bit 14，用于路径记录）。
+
+注释与行为说明：
+- 在 `task_game` 中，节点通过 `check_key_trigger(msg.key, index)` 判断某个动作按键是否被触发（该函数检测当前帧该 bit 从 0 -> 1）。
+- `check_key_pressed(msg.key, index)` 用于检测某个模式位是否保持按下（例如自动模式 bit）。
+- 遥控器/键盘发布的话题为 `/remote`，机器人控制命令发布在 `/robot_move_cmd`，可以通过 `ros2 topic echo` 验证实时数据。
+
 # obstacle_game - 机器人障碍赛导航系统
 
 ## 1 项目概述
