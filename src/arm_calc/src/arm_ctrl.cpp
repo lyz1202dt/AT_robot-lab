@@ -100,9 +100,7 @@ void ArmCtrlNode::declare_parameters() {
     // 声明基座连杆参数：运动学链的起始连杆名称
     this->declare_parameter<std::string>("base_link", "base_link");
 
-    // 声明末端连杆参数：运动学链的末端连杆名称
-    this->declare_parameter<std::string>("tip_link", "link6");
-
+    
     // 声明关节目标参数：4个关节的目标角度（弧度）
     this->declare_parameter<std::vector<double>>("joint_target", std::vector<double>(kJointDoF, 0.0));
 
@@ -148,7 +146,7 @@ void ArmCtrlNode::create_interfaces() {
 void ArmCtrlNode::load_robot_description_and_build_solver() {
     // 获取基座和末端连杆名称，从参数中读取
     base_link_ = this->get_parameter("base_link").as_string();
-    tip_link_  = this->get_parameter("tip_link").as_string();
+   
     // 获取轨迹规划总时间
     trajectory_duration_sec_ = this->get_parameter("trajectory_duration").as_double();
     // 获取控制器运行周期
@@ -196,7 +194,7 @@ void ArmCtrlNode::load_robot_description_and_build_solver() {
         throw std::runtime_error("failed to parse arm URDF into KDL tree"); // 解析失败抛异常
     }
     // 从树中提取运动学链，从base_link到tip_link
-    if (!tree.getChain("base_link", "link5", arm_chain_)) {
+    if (!tree.getChain("base_link", "left4", arm_chain_)) {
         throw std::runtime_error("failed to build KDL chain from " + base_link_ + " to " + tip_link_);
     }
 
@@ -889,7 +887,7 @@ robot_msgs::msg::Arm ArmCtrlNode::to_arm_message(const JointTrajectoryPoint& poi
 sensor_msgs::msg::JointState ArmCtrlNode::to_joint_state_msg(const JointTrajectoryPoint& point, const rclcpp::Time& stamp) {
     sensor_msgs::msg::JointState msg;
     msg.header.stamp = stamp;                                    // 设置时间戳
-    msg.name         = {"joint1", "joint2", "joint3", "joint4"}; // 关节名称
+    msg.name         = {"yuntai", "left1", "left2", "left3"}; // 关节名称
     msg.position.resize(kJointDoF);                              // 位置数组
     // msg.velocity.resize(kJointDoF);  // 速度数组
     // msg.effort.resize(kJointDoF);  // 力矩数组
