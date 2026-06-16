@@ -5,7 +5,7 @@
 <robot
   name="arm">
   <link
-    name="base_link">
+    name="arm_base_link">
     <inertial>
       <origin
         xyz="3.42807387008343E-07 -1.14216321836849E-05 0.035427061811967"
@@ -26,7 +26,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://arm/model/base_link.STL" />
+          filename="package://arm/model/arm_base_link.STL" />
       </geometry>
       <material
         name="">
@@ -40,7 +40,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://arm/model/base_link.STL" />
+          filename="package://arm/model/arm_base_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -91,7 +91,7 @@
       xyz="0 0 0.0565"
       rpy="0 0 0" />
     <parent
-      link="base_link" />
+      link="arm_base_link" />
     <child
       link="joint1" />
     <axis

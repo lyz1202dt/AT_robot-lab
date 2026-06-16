@@ -39,7 +39,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     this->declare_parameter<double>("visual_servo_kp", 1.6);
     this->declare_parameter<double>("visual_servo_max_linear_acc", 0.5);
     this->declare_parameter<int>("air_pump_pin", 0);
-    this->declare_parameter<std::string>("base_frame", "base_link");
+    this->declare_parameter<std::string>("base_frame", "arm_base_link");
     this->declare_parameter<std::string>("camera_frame", "camera_link");
     this->declare_parameter<std::string>("object_frame", "target_object");
     this->declare_parameter<std::string>("tip_frame", "link5");
@@ -399,7 +399,7 @@ void ArmTaskNode::execute_grasp_flow() {
 
 void ArmTaskNode::execute_place_flow_first() {
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(ready_position, trajectory_duration_);
+    execute_joint_space_trajectory(ready_position, 0.5);
     std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 300));
 
     // 直接使用回调保存的放置坐标

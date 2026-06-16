@@ -98,7 +98,7 @@ void ArmCtrlNode::declare_parameters() {
     this->declare_parameter<double>("visual_servo_max_linear_acceleration", 0.5);
 
     // 声明基座连杆参数：运动学链的起始连杆名称
-    this->declare_parameter<std::string>("base_link", "base_link");
+    this->declare_parameter<std::string>("arm_base_link", "arm_base_link");
     // 声明末端连杆参数：运动学链的终止连杆名称
     this->declare_parameter<std::string>("tip_link", "joint5");
 
@@ -147,7 +147,7 @@ void ArmCtrlNode::create_interfaces() {
 // 初始化关键参数：加载机器人URDF并构建运动学求解器，这是节点启动的核心初始化步骤
 void ArmCtrlNode::load_robot_description_and_build_solver() {
     // 获取基座和末端连杆名称，从参数中读取
-    base_link_ = this->get_parameter("base_link").as_string();
+    base_link_ = this->get_parameter("arm_base_link").as_string();
     tip_link_ = this->get_parameter("tip_link").as_string();
 
     // 获取轨迹规划总时间
