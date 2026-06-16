@@ -66,6 +66,7 @@ bool wait_semaphore_with_timeout(sem_t* sem, const std::chrono::seconds timeout)
 
 // 三行四列的位置表：第 0 行为放置区，第 1/2 行为两排抓取区。
 using PositionGrid = std::array<std::array<std::tuple<float, float, float>, 4>, 3>;
+using BoxPositionGrid = std::array<std::array<std::array<float, 2>, 4>, 3>;
 
 struct RoutePoints {
     std::array<float, 3> a1{};
@@ -74,6 +75,7 @@ struct RoutePoints {
 
 struct PlanConfig {
     PositionGrid positions{};
+    BoxPositionGrid arm_box_positions{};
     RoutePoints route_a{};
     RoutePoints route_c{};
     RoutePoints route_e{};
@@ -142,6 +144,25 @@ std::array<std::tuple<float, float, float>, 4> read_point3_row(const YAML::Node&
     return row;
 }
 
+std::array<float, 2> read_point2(const YAML::Node& node, const std::string& name) {
+    if (!node || !node.IsSequence() || node.size() != 2) {
+        throw std::runtime_error(name + " 必须是长度为 2 的数组");
+    }
+    return {node[0].as<float>(), node[1].as<float>()};
+}
+
+std::array<std::array<float, 2>, 4> read_point2_row(const YAML::Node& node, const std::string& name) {
+    if (!node || !node.IsSequence() || node.size() != 4) {
+        throw std::runtime_error(name + " 必须包含 4 个点");
+    }
+
+    std::array<std::array<float, 2>, 4> row{};
+    for (size_t i = 0; i < row.size(); ++i) {
+        row[i] = read_point2(node[i], name + "[" + std::to_string(i) + "]");
+    }
+    return row;
+}
+
 TargetPoint read_target_point(const YAML::Node& node, const std::string& name) {
     if (!node || !node.IsMap()) {
         throw std::runtime_error(name + " 必须是对象");
@@ -184,14 +205,18 @@ RoutePoints select_route_points(const PlanConfig& config, char plan_case) {
 PlanConfig load_plan_config(const std::string& yaml_path) {
     const YAML::Node root = YAML::LoadFile(yaml_path);
 
+    const auto arm_box_positions = root["arm_box_positions"];
     const auto box_positions = root["box_positions"];
     const auto routes = root["routes"];
     const auto target_points = root["target_points"];
-    if (!box_positions || !routes || !target_points) {
-        throw std::runtime_error("generate_plan.yaml 缺少 box_positions/routes/target_points");
+    if (!arm_box_positions || !box_positions || !routes || !target_points) {
+        throw std::runtime_error("generate_plan.yaml 缺少 arm_box_positions/box_positions/routes/target_points");
     }
 
     PlanConfig config;
+    config.arm_box_positions[0] = read_point2_row(arm_box_positions["arm_place"], "arm_box_positions.arm_place");
+    config.arm_box_positions[1] = read_point2_row(arm_box_positions["arm_pick_row_0"], "arm_box_positions.arm_pick_row_0");
+    config.arm_box_positions[2] = read_point2_row(arm_box_positions["arm_pick_row_1"], "arm_box_positions.arm_pick_row_1");
     config.positions[0] = read_point3_row(box_positions["place"], "box_positions.place");
     config.positions[1] = read_point3_row(box_positions["pick_row_0"], "box_positions.pick_row_0");
     config.positions[2] = read_point3_row(box_positions["pick_row_1"], "box_positions.pick_row_1");
@@ -429,6 +454,8 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     auto append_plan = [&](int box_row, int col) {
         const int position_row = box_row + 1;
         const int box_id = box_info.box_ids[box_row][col];
+        const std::array<float, 2> src_box_pos = plan_config.arm_box_positions[position_row][col];
+        const std::array<float, 2> dst_box_pos = plan_config.arm_box_positions[0][box_id];
         const std::array<float, 3> src = {
             std::get<0>(box_info.positions[position_row][col]),
             std::get<1>(box_info.positions[position_row][col]),
@@ -460,8 +487,8 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
 
         plan.place_trajectory.push_back(dst);
         plan.target_point.push_back(plan_config.src_to_dst);
-        plan.src_box_pos = {src[0], src[1]};
-        plan.dst_box_pos = {dst[0], dst[1]};
+        plan.src_box_pos = src_box_pos;
+        plan.dst_box_pos = dst_box_pos;
         plan.place_at_second_floor = placed_count[box_id] > 0;
         move_plan.push_back(plan);
 
