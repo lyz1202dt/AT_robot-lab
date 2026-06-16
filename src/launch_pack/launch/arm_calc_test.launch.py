@@ -12,7 +12,7 @@ def generate_launch_description():
     arm_share = get_package_share_directory("arm")
     launch_pack_share = get_package_share_directory("launch_pack")
 
-    urdf_path = os.path.join(arm_share, "model", "robotic_arm.urdf")
+    urdf_path = os.path.join(arm_share, "model", "arm4.urdf")
     controller_yaml = os.path.join(launch_pack_share, "config", "ros2_controller.yaml")
     rviz_path = os.path.join(launch_pack_share, "rviz", "display_config.rviz")
 
@@ -45,17 +45,17 @@ def generate_launch_description():
         output="screen",
     )
 
+    arm_calc_test = Node(
+        package="arm_calc",
+        executable="arm_calc_test",
+        output="screen",
+    )
+
     rviz2 = Node(
         package="rviz2",
         executable="rviz2",
         arguments=["-d", rviz_path],
         condition=IfCondition(LaunchConfiguration("show_rviz")),
-    )
-
-    arm_task = Node(
-        package="arm_task",
-        executable="arm_task",
-        output="screen",
     )
 
     arm_driver = Node(
@@ -68,9 +68,9 @@ def generate_launch_description():
         package="tf2_ros",
         executable="static_transform_publisher",
         arguments=[
-            "0.72", "0.0", "-0.22",  # x, y, z translation
+            "0.06", "-0.02", "0.29",  # x, y, z translation
             "0.0", "0.0", "0.0", "1.0",  # quaternion (x, y, z, w) - identity (no rotation)
-            "base_link",
+            "camera_link",
             "target_object"
         ],
         output="screen",
@@ -82,16 +82,16 @@ def generate_launch_description():
     # This is a 90-degree rotation about y-axis
     # Quaternion for 90-degree rotation about y-axis: (0, 0.7071, 0, 0.7071)
     static_tf_camera = Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        arguments=[
-            "-0.02", "0.04", "0.0",  # x, y, z translation
-            "0.0", "0.0", "0.0", "1.0",  # quaternion (x, y, z, w) - 90° rotation about Y
-            "link5",
-            "camera_link"
-        ],
-        output="screen",
-    )
+    package="tf2_ros",
+    executable="static_transform_publisher",
+    arguments=[
+        "-0.03165", "0.042", "0.0",
+        "0.7071", "0.0", "0.7071", "0.0",
+        "link5",
+        "camera_link"
+    ],
+    output="screen",
+)
 
     return LaunchDescription([
         show_rviz_arg,
@@ -99,7 +99,7 @@ def generate_launch_description():
         joint_state_pub,
         arm_calc,
         rviz2,
-        arm_task,
+        arm_calc_test,
         arm_driver,
-        static_tf_camera,
+        static_tf_camera
     ])
