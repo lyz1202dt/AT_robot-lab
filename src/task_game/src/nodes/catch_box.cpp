@@ -68,6 +68,38 @@ BT::Status CatchBoxAction::execute(BT& tree)
         return BT::FAILED;
     }
 
+        // 4. 准备读取搬箱计划
+    std::vector<MoveBoxPlan> move_plan;
+
+    // 当前执行到第几个搬箱计划
+    int plan_index = 0;
+
+
+    // 5. 从行为树黑板读取 move_plan
+    if (!tree.read_msg("move_plan", move_plan)) {
+        RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: 缺少 move_plan");
+        return BT::FAILED;
+    }
+
+
+    // 6. 从行为树黑板读取当前执行索引
+    if (!tree.read_msg("plan_index", plan_index)) {
+        RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: 缺少 plan_index");
+        return BT::FAILED;
+    }
+
+
+    // 7. 检查索引是否合法，防止数组越界
+    if (plan_index < 0 || plan_index >= static_cast<int>(move_plan.size())) {
+        RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: plan_index=%d 越界", plan_index);
+        return BT::FAILED;
+    }
+
+
+    // 8. 取出当前要执行的搬箱计划
+    const auto& plan = move_plan[plan_index];
+
+
     RCLCPP_INFO(
         context->node_->get_logger(),
         "等待机械臂抓取完成");

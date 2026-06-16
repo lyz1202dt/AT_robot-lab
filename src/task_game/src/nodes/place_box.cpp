@@ -80,10 +80,6 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    if (!wait_for_stage(context, Robot::kTreePlaceBox)) {
-        context->pilot->stop();
-        return BT::FAILED;
-    }
 
     RCLCPP_INFO(
         context->node_->get_logger(),
@@ -105,18 +101,10 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
 
 
     // // 2. 等待进入“放箱子阶段”
-    // if (!wait_for_stage(context, Robot::kTreePlaceBox)) {
-    //     return BT::FAILED;
-    // }
-
-   
-
-
-    // 3. 如果自动模式开启，发送自动控制命令
-    if (context->auto_pilot_enabled.load()) {
-        context->cmd.mode = 1;
+    if (!wait_for_stage(context, Robot::kTreePlaceBox)) {
+        context->pilot->stop();
+        return BT::FAILED;
     }
-
 
 
     // 4. 准备读取搬箱计划
@@ -251,20 +239,17 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
 
 
     // 9. 打印当前放置任务信息
-    RCLCPP_INFO(
-        context->node_->get_logger(), "PlaceBoxAction: 执行放置轨迹，轨迹点数量=%zu，目标位置=(%.2f, %.2f)", plan.place_trajectory.size(),
-        plan.dst_box_pos[0], plan.dst_box_pos[1]);
+    // RCLCPP_INFO(
+    //     context->node_->get_logger(), "PlaceBoxAction: 执行放置轨迹，轨迹点数量=%zu，目标位置=(%.2f, %.2f)", plan.place_trajectory.size(),
+    //     plan.dst_box_pos[0], plan.dst_box_pos[1]);
 
 
+    // 10. 等待放置动作完成（最长10秒）
+    if (!wait_with_interrupt(context, std::chrono::seconds(6))) {
+        //return BT::FAILED;
+    }
 
-
-    // // // 10. 等待放置动作完成（最长10秒）
-    // // if (!wait_with_interrupt(context, std::chrono::seconds(10))) {
-    // //     return BT::FAILED;
-    // // }
-
-
-    // 11. 如果还有下一个搬箱计划
+        // 11. 如果还有下一个搬箱计划
     if (plan_index + 1 < static_cast<int>(move_plan.size())) {
 
         // 更新索引，准备下次执行下一条计划
@@ -280,13 +265,11 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         );
     }
 
-
     // 12. 如果不是调试模式，推进到下一行为树阶段
     if (!context->is_tree_debug_mode()) {
         context->advance_tree_stage();
     }
 
-    std::this_thread::sleep_for(6s);
     // 13. 返回执行成功
     return BT::SUCCESS;
     RCLCPP_INFO(
