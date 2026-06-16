@@ -164,7 +164,11 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
     const double target_heading = std::atan2(pos_err.y(), pos_err.x());
     const double yaw_err = normalize_angle(target_heading - current_yaw_);
 
-    const Eigen::Vector2d segment_direction = get_segment_direction(path);
+    Eigen::Vector2d segment_direction = get_segment_direction(path);
+    if (segment_direction.dot(pos_err) <= 0.0 && distance > 1e-6) {
+        // The fixed segment feedforward would increase distance after overshooting the target.
+        segment_direction = pos_err.normalized();
+    }
     const double feedforward_speed = compute_feedforward_speed(path, distance, dt);
     const Eigen::Vector2d feedforward_world_vel = segment_direction * feedforward_speed;
     const Eigen::Vector2d feedback_world_vel(path.kp.x() * pos_err.x(), path.kp.y() * pos_err.y());
