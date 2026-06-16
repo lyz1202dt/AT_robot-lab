@@ -99,10 +99,10 @@ void ArmCtrlNode::declare_parameters() {
 
     // 声明基座连杆参数：运动学链的起始连杆名称
     this->declare_parameter<std::string>("base_link", "base_link");
+    // 声明末端连杆参数：运动学链的终止连杆名称
+    this->declare_parameter<std::string>("tip_link", "joint5");
 
-    // 声明末端连杆参数：运动学链的末端连杆名称
-    this->declare_parameter<std::string>("tip_link", "link6");
-
+    
     // 声明关节目标参数：4个关节的目标角度（弧度）
     this->declare_parameter<std::vector<double>>("joint_target", std::vector<double>(kJointDoF, 0.0));
 
@@ -148,7 +148,8 @@ void ArmCtrlNode::create_interfaces() {
 void ArmCtrlNode::load_robot_description_and_build_solver() {
     // 获取基座和末端连杆名称，从参数中读取
     base_link_ = this->get_parameter("base_link").as_string();
-    tip_link_  = this->get_parameter("tip_link").as_string();
+    tip_link_ = this->get_parameter("tip_link").as_string();
+
     // 获取轨迹规划总时间
     trajectory_duration_sec_ = this->get_parameter("trajectory_duration").as_double();
     // 获取控制器运行周期
@@ -196,7 +197,7 @@ void ArmCtrlNode::load_robot_description_and_build_solver() {
         throw std::runtime_error("failed to parse arm URDF into KDL tree"); // 解析失败抛异常
     }
     // 从树中提取运动学链，从base_link到tip_link
-    if (!tree.getChain("base_link", "link5", arm_chain_)) {
+    if (!tree.getChain(base_link_, tip_link_, arm_chain_)) {
         throw std::runtime_error("failed to build KDL chain from " + base_link_ + " to " + tip_link_);
     }
 
@@ -499,9 +500,9 @@ void ArmCtrlNode::publish_control_loop() {
     if (last_ee_log_time_sec_ < 0.0 || (now_sec - last_ee_log_time_sec_) >= 0.25) {
         const CartesianPose ee_pose  = arm_calc_->end_pose(current_joint_state_.position);
         const Eigen::Vector3d ee_rpy = ee_pose.orientation.toRotationMatrix().eulerAngles(0, 1, 2);
-        RCLCPP_INFO(
-            get_logger(), "EE pose pos=(%.4f, %.4f, %.4f) rpy=(%.4f, %.4f, %.4f)", ee_pose.position.x(), ee_pose.position.y(),
-            ee_pose.position.z(), ee_rpy.x(), ee_rpy.y(), ee_rpy.z());
+        // RCLCPP_INFO(
+        //     get_logger(), "EE pose pos=(%.4f, %.4f, %.4f) rpy=(%.4f, %.4f, %.4f)", ee_pose.position.x(), ee_pose.position.y(),
+        //     ee_pose.position.z(), ee_rpy.x(), ee_rpy.y(), ee_rpy.z());
         last_ee_log_time_sec_ = now_sec;
     }
 
@@ -745,12 +746,13 @@ void ArmCtrlNode::on_joint_space_target(const std_msgs::msg::Float64MultiArray& 
 rcl_interfaces::msg::SetParametersResult ArmCtrlNode::on_parameters_changed(const std::vector<rclcpp::Parameter>& params) {
     rcl_interfaces::msg::SetParametersResult result;
     result.successful = true;
-
+    
     for (const auto& param : params) {
         if (param.get_name() == "motion_mode") {
             requested_motion_mode_ = parse_motion_mode(param.as_int());
         } else if (param.get_name() == "trajectory_duration") {
             trajectory_duration_sec_ = std::max(param.as_double(), 0.1);
+            RCLCPP_INFO(get_logger(), "\033[1;32mUpdated trajectory_duration_sec_ to %.2f seconds\033[0m", trajectory_duration_sec_);
         } else if (param.get_name() == "control_period") {
             control_period_sec_ = std::max(param.as_double(), 0.005);
         } else if (param.get_name() == "execute_trajectory") {

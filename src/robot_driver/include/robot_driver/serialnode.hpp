@@ -7,6 +7,7 @@
 #include <robot_msgs/msg/arm.hpp>
 #include <robot_msgs/msg/arm4.hpp>
 #include <robot_msgs/msg/armmode.hpp>
+#include <robot_msgs/msg/int.hpp>
 #include "data_pack.h"
 #include <thread>
 #include "sensor_msgs/msg/imu.hpp"
@@ -31,14 +32,14 @@ private:
     bool enable_control{false};
     void armSubscribCb(const robot_msgs::msg::Arm& msg);
     void airSubscribCb(const robot_msgs::msg::Armmode& msg);
-   // void publishArmState(const state_pack_t *arm_state);
+    void publishredState(const state_pack_t *arm_state);
     
     int air_pump;
     std::unique_ptr<CDCTrans> cdc_trans;
     std::unique_ptr<std::thread> usb_event_handle_thread;
     target_pack_t arm_target;
     state_pack_t arm_state;
-    //rclcpp::Publisher<robot_msgs::msg::Arm>::SharedPtr arm_pub;
+    rclcpp::Publisher<robot_msgs::msg::Int>::SharedPtr red_pub;
     rclcpp::Subscription<robot_msgs::msg::Arm>::SharedPtr arm_sub;
     rclcpp::Subscription<robot_msgs::msg::Armmode>::SharedPtr air_sub;
     

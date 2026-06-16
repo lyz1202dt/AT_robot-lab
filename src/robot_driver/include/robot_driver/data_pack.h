@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#pragma pack(1)
+
 // Expect_Robstride 用于存储预期的力矩、位置、角速度以及PID参数
 typedef enum
 {
@@ -38,6 +38,15 @@ typedef struct
     float down;             
 } servo;
 
+#pragma pack(1)
+
+typedef struct
+{
+	int pack_type;
+	int red_distance;
+	
+}state_pack_t;// state_pack_t 用于表示状态数据包，包含来自下位机反馈的红外距离信息
+
 // target_pack_t 用于表示目标数据包，包含多个机器人控制模块的期望数据
 typedef struct
 {
@@ -47,6 +56,8 @@ typedef struct
     Expect_Robstride rob01;  //!<@brief RobStride 期望值
    
 } target_pack_t;
+
+#pragma pack()
 
 typedef struct
 {
@@ -91,16 +102,9 @@ typedef struct
 
 } RobStride_t;
 
-// state_pack_t 用于表示状态数据包，包含了伺服电机和 RobStride 的状态信息
-typedef struct
-{
-    int pack_type;         //!<@brief 包类型
-    servo servo2;          //!<@brief 伺服电机信息
-    RobStride_t robstride01;  //!<@brief RobStride 控制信息
-    GM6020_TypeDef GM6020;     //!<@brief GM6020 电机信息
-} state_pack_t;
+
 
 // RobStrideType 枚举定义了四个不同的机器人类型
 
-#pragma pack()
+
 #endif

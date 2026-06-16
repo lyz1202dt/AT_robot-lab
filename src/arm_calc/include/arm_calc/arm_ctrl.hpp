@@ -64,7 +64,7 @@ private:
     bool planners_ready_{false};
     MotionMode active_motion_mode_{MotionMode::kIdle};
     MotionMode requested_motion_mode_{MotionMode::kIdle};
-    double trajectory_duration_sec_{3.0};
+    double trajectory_duration_sec_{0.5};
     double control_period_sec_{0.02};
     bool execute_trajectory_{false};
     bool updating_execute_parameter_{false};
@@ -72,9 +72,9 @@ private:
     double visual_servo_max_linear_acceleration_{0.5};
     double last_ee_log_time_sec_{-1.0};
 
-    std::vector<std::string> joint_names_{"joint1", "joint2", "joint3", "joint4"};
+    std::vector<std::string> joint_names_{"yuntai", "left1", "left2", "left3"};
     std::string base_link_{"base_link"};
-    std::string tip_link_{"link4"};
+    std::string tip_link_{"left4"};
     CartesianPose cartesian_target_{};
     CartesianPose visual_target_{};
     JointState joint_target_state_{};

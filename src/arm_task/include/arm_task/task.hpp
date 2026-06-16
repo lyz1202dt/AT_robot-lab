@@ -10,6 +10,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <robot_msgs/msg/armmode.hpp>
 #include <robot_msgs/msg/vis.hpp>
+#include <robot_msgs/msg/int.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <string>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -30,7 +31,7 @@ public:
 
 private:
     void vision_callback(const robot_msgs::msg::Vis& msg);
-    void if_catch_callback(const robot_msgs::msg::Vis& msg);
+    void red_distance_callback(const robot_msgs::msg::Int& msg); 
     void arm_cmd_callback(const robot_msgs::msg::Armmode& msg);
     void scan_result_callback(const robot_msgs::msg::Vis& msg);
     void place_position_down_callback(const robot_msgs::msg::Vis& msg);
@@ -60,7 +61,7 @@ private:
     void execute_cartesian_space_trajectory(const geometry_msgs::msg::PoseStamped& target_pose, double duration);
     void execute_visual_servo(const geometry_msgs::msg::PoseStamped& target_pose);
     bool wait_for_visual_servo_convergence(double position_tolerance_m, double timeout_sec);
-    bool wait_for_catch_result();
+    
 
     // Helper methods
     bool get_object_pose_in_base_frame(geometry_msgs::msg::PoseStamped& pose_out);
@@ -92,10 +93,10 @@ private:
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr place_target_sub_;
     rclcpp::Subscription<robot_msgs::msg::Vis>::SharedPtr vision_sub_;
     rclcpp::Subscription<robot_msgs::msg::Vis>::SharedPtr scan_finish_sub_;
-    rclcpp::Subscription<robot_msgs::msg::Vis>::SharedPtr arm_if_catch;
     rclcpp::Subscription<robot_msgs::msg::Vis>::SharedPtr place_position_down_sub;
     rclcpp::Subscription<robot_msgs::msg::Vis>::SharedPtr place_position_up_sub;
     rclcpp::Subscription<robot_msgs::msg::Armmode>::SharedPtr arm_cmd_sub_;
+    rclcpp::Subscription<robot_msgs::msg::Int>::SharedPtr red_distance_sub_;
 
 
     // Parameters
@@ -129,7 +130,7 @@ private:
     std::string tip_frame_{"link5"};
     std::string arm_calc_node_name_{"arm_calc_node"};
     double approach_distance_{0.1};    // meters above target
-    double trajectory_duration_{4.0};  // seconds
+    double trajectory_duration_{3.0};  // seconds
     double visual_servo_kp_{0.1};
     double visual_servo_max_linear_acc_{0.1};
     int air_pump_pin_{0};              // Parameter service index for air pump control
@@ -142,6 +143,7 @@ private:
     float place_down_position_y{0.0};
     float place_down_position_z{0.0};
 
+    int red_distance_{0}; // 来自视觉的红色距离信息
     int last_arm_up_cmd{0};
     std::atomic<int> catch_result_{0}; // 0等待 1成功 -1失败              // 0: unknown, 1: success, -1: failure
     
@@ -152,16 +154,19 @@ private:
 
     // Joint positions from YAML
     std::map<int, std::vector<double>> arm_positions_;
-    std::vector<double> ready_position_; // Preparation position
-    std::vector<double> home_position_{0.0, 0.0, 0.0, 0.0};
+    std::vector<double> ready_position{0.0, 2.1, 2.0, 3.0}; //机械臂抓块时的预设位置
+    std::vector<double> home_position_{0.0, 0.0, 0.0, 0.0};//机械臂初始0位置
     std::vector<double> grasp_position{0.0, 3.14159, 2.45, 2.48};
     std::vector<double> grasp_position_two{0.0, 3.14159, 2.4, 2.55};
     std::vector<double> place_position{0.0, 3.14159, 3.1, 3.1};
     std::vector<double> place_position_2{0.0, 3.14159, 3.1, 3.1};
-    std::vector<double> look_for_position_{0.0, 1.5, 2.45, 2.48};
-    std::vector<double> look_left_position_{-1.0, 1.5, 2.45, 2.48};
-    std::vector<double> look_middle_position_{0.0, 1.5, 2.45, 2.48};
-    std::vector<double> look_right_position_{1.0, 1.5, 2.45, 2.48};
+    std::vector<double> look_for_position_{0.0, 1.2, 2.3, 2.8};   //这是全场扫描时机械臂合适的位置    //0.0 1.0 2.45 3.1
+    
+    //下面三个位置是机械臂当抓取过程识别不到物块时，会抬高机械臂去寻找物块时预设的三个位置，分别是向左看、向中间看、向右看
+    std::vector<double> look_left_position_{-0.8, 1.5, 2.45, 3.1};
+    std::vector<double> look_middle_position_{0.0, 1.5, 2.45, 3.1};
+    std::vector<double> look_right_position_{0.8, 1.5, 2.45, 3.1};
+    
     std::vector<double> grasp_finish_position{0.0, 0.0, 0.0, -0.3};
 
 
@@ -177,7 +182,6 @@ private:
 
     geometry_msgs::msg::PoseStamped latest_visual_pose_; // 新增
     bool has_visual_pose_ = false;                       // 新增
-
 
 
 
