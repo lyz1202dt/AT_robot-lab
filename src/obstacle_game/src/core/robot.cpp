@@ -13,7 +13,7 @@ using namespace std::chrono_literals;
 
 Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     : node_(node) {
-    node_->declare_parameter<std::string>("scene_path","/home/dog/Desktop/AT_robot-lab/record20260606_151238.yaml");
+    node_->declare_parameter<std::string>("scene_path","/home/dog/Desktop/AT_robot-lab/record20260616_191831.yaml");
     node_->declare_parameter<std::string>("yaml_file_path","./record");
 
     auto yaml_path = node_->get_parameter("scene_path").as_string();
@@ -121,11 +121,11 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
                 target.target_vel=0.0;          //除了位置信息，其它暂且使用默认参数
                 target.max_accelation=0.4;
-                target.max_velocity=0.6;
+                target.max_velocity=0.7;
                 target.adjust_min_vel=0.2;
-                target.min_omega=0.2;
+                target.min_omega=0.3;
                 target.allow_start_dir_error=0.2;
-                target.kp={0.1,0.1,0.1};
+                target.kp={0.2,0.2,0.4};
                 target.err_allow=0.2;
                 target.policy_id=current_record_policy_id;
 
