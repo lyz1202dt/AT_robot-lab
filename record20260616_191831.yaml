@@ -1,0 +1,319 @@
+#policy_id表示机器人执行这段路径时使用的策略，0表示上电策略，不用；1表示位控站立，一般也不用；
+#2表示walk策略，3表示sand策略，4表示stair策略，5表示slope策略，6表示bar策略
+
+paths:
+  - policy_id: 1
+    target_pos:
+      x: 5.42804
+      y: -0.15652
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 3
+    target_pos:
+      x: 5.21379
+      y: -2.01164
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 6
+    target_pos:
+      x: 3.25618
+      y: -1.9823
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 6
+    target_pos:
+      x: 2.19578
+      y: -1.93597
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 2
+    target_pos:
+      x: 2.09055
+      y: -0.835838
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 5
+    target_pos:
+      x: 0.928645
+      y: -0.986203
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 5
+    target_pos:
+      x: 0.689056
+      y: -1.79178
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 5
+    target_pos:
+      x: -0.907553
+      y: -1.74541
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 2
+    target_pos:
+      x: -0.839146
+      y: -1.55644
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 2
+    target_pos:
+      x: -0.842987
+      y: -1.55088
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 1
+    target_pos:
+      x: -0.854729
+      y: -1.54689
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 1
+    target_pos:
+      x: -0.863617
+      y: -1.5266
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 1
+    target_pos:
+      x: -0.860722
+      y: -1.5242
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 5
+    target_pos:
+      x: -0.763087
+      y: -0.717906
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 5
+    target_pos:
+      x: -1.73853
+      y: -0.62964
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 5
+    target_pos:
+      x: -1.8308
+      y: -2.49806
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 2
+    target_pos:
+      x: -1.80328
+      y: -2.70273
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 2
+    target_pos:
+      x: -4.16104
+      y: -2.56587
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 5
+    target_pos:
+      x: -4.3017
+      y: -0.657977
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 5
+    target_pos:
+      x: -4.5095
+      y: 1.14809
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
+  - policy_id: 4
+    target_pos:
+      x: -0.427621
+      y: 1.07208
+    target_vel: 0
+    max_velocity: 0.6
+    max_accelation: 0.4
+    kp:
+      x: 0.1
+      y: 0.1
+      yaw: 0.1
+    allow_start_dir_error: 0.2
+    err_allow: 0.2
+    adjust_min_vel: 0.2
+    min_omega: 0.2
