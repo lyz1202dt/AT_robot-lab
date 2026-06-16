@@ -147,11 +147,13 @@ BT::Status CatchBoxAction::execute(BT& tree)
 
     // }
 
+        // 10. 等待放置动作完成（最长10秒）
+    std::this_thread::sleep_for(6s);
+
     if (!context->is_tree_debug_mode()) {
         context->advance_tree_stage();
     }
 
-    std::this_thread::sleep_for(6s);
     RCLCPP_INFO(
         context->node_->get_logger(),
         "机械臂抓取完成");

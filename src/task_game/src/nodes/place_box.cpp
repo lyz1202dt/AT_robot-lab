@@ -245,9 +245,7 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
 
 
     // 10. 等待放置动作完成（最长10秒）
-    if (!wait_with_interrupt(context, std::chrono::seconds(6))) {
-        //return BT::FAILED;
-    }
+    std::this_thread::sleep_for(6s);
 
         // 11. 如果还有下一个搬箱计划
     if (plan_index + 1 < static_cast<int>(move_plan.size())) {
