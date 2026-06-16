@@ -103,9 +103,9 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 到达目标点后的期望速度
   target_vel: 0.0
   # 该段路线的最大平移速度
-  max_velocity: 2.0
+  max_velocity: 1.5
   # 该段路线的最大平移加速度
-  max_accelation: 1.5
+  max_accelation: 1.0
   # 该段路线的最大角速度
   max_omega: 2.2
   # 闭环控制比例参数 [x, y, yaw]
@@ -131,7 +131,7 @@ dst_to_dst2_target_point: &dst_to_dst2_target_point
   # 到达目标点后的期望速度
   target_vel: 0.4
   # 该段路线的最大平移速度
-  max_velocity: 2.0
+  max_velocity: 1.5
   # 该段路线的最大平移加速度
   max_accelation: 0.8
   # 该段路线的最大角速度
@@ -159,9 +159,9 @@ dst2_to_src_target_point: &dst2_to_src_target_point
   # 到达目标点后的期望速度
   target_vel: 0.0
   # 该段路线的最大平移速度
-  max_velocity: 1.8
+  max_velocity: 1.5
   # 该段路线的最大平移加速度
-  max_accelation: 1.2
+  max_accelation: 1.0
   # 该段路线的最大角速度
   max_omega: 2.2
   # 闭环控制比例参数 [x, y, yaw]
@@ -185,22 +185,22 @@ dst2_to_src_target_point: &dst2_to_src_target_point
 arm_box_positions:
   # 真实放置区 4 个槽位，索引按 box_id 对应，格式为 [x, y]
   arm_place:
-    - [4.475+0.575, -0.725] # box_id 0
-    - [4.475+0.575, -1.575] # box_id 1
-    - [4.475+0.575, -2.425] # box_id 2
-    - [4.475+0.575, -3.275] # box_id 3
+    - [4.475, -0.725] # box_id 0
+    - [4.475, -1.575] # box_id 1
+    - [4.475, -2.425] # box_id 2
+    - [4.475, -3.275] # box_id 3
   # 真实抓取区第一排 4 个槽位，格式为 [x, y]
   arm_pick_row_0:
-    - [3.05-0.575, -0.725]  # col 0
-    - [3.05-0.575, -1.575]  # col 1
-    - [3.05-0.575, -2.425]  # col 2
-    - [3.05-0.575, -3.275]  # col 3
+    - [3.05, -0.725]  # col 0
+    - [3.05, -1.575]  # col 1
+    - [3.05, -2.425]  # col 2
+    - [3.05, -3.275]  # col 3
   # 真实抓取区第二排 4 个槽位，格式为 [x, y]
   arm_pick_row_1:
-    - [2.105-0.575, -0.725] # col 0
-    - [2.105-0.575, -1.575] # col 1
-    - [2.105-0.575, -2.425] # col 2
-    - [2.105-0.575, -3.275] # col 3
+    - [2.105, -0.725] # col 0
+    - [2.105, -1.575] # col 1
+    - [2.105, -2.425] # col 2
+    - [2.105, -3.275] # col 3
 
 #狗子要跑到的位置，不是箱子的位置
 box_positions:
