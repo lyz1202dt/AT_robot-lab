@@ -67,10 +67,14 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 cmd.mode = 4; // 上台阶策略
                 current_record_policy_id = 4;
                 RCLCPP_INFO(node_->get_logger(), "台阶模式");
-            } else if (check_key_trigger(msg.key,7)) {
+            } else if (check_key_trigger(msg.key,12)) {
                 cmd.mode = 5; // 限高杆策略
-                current_record_policy_id = 5;
+                current_record_policy_id = 6;
                 RCLCPP_INFO(node_->get_logger(), "限高杆模式");
+            } else if (check_key_trigger(msg.key,11)) {
+                cmd.mode = 6; // 斜坡策略
+                current_record_policy_id = 5;
+                RCLCPP_INFO(node_->get_logger(), "斜坡模式");
             }
 
             //摇杆赋值

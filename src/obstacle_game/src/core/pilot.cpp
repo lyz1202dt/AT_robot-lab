@@ -194,7 +194,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
     cmd.vx = static_cast<float>(cos_yaw * desired_world_vel.x() + sin_yaw * desired_world_vel.y());
     cmd.vy = static_cast<float>(-sin_yaw * desired_world_vel.x() + cos_yaw * desired_world_vel.y());
     cmd.vz = static_cast<float>(yaw_rate);
-    cmd.mode = path.policy_id;
+    cmd.mode = policy_id_to_cmd_mode(path.policy_id);
     cmd.wheel_vel = 0.0f;
 
     return cmd;
@@ -327,6 +327,20 @@ robot_msgs::msg::Cmd Pilot::make_zero_command() const
     cmd.vz = 0.0f;
     cmd.wheel_vel = 0.0f;
     return cmd;
+}
+
+int32_t Pilot::policy_id_to_cmd_mode(int32_t policy_id)
+{
+    // YAML policy_id encoding:
+    // 5 -> slope (runtime mode 6)
+    // 6 -> bar   (runtime mode 5)
+    if (policy_id == 5) {
+        return 6;
+    }
+    if (policy_id == 6) {
+        return 5;
+    }
+    return policy_id;
 }
 
 double Pilot::normalize_angle(double angle)

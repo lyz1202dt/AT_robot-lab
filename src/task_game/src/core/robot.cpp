@@ -97,7 +97,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             } else if (check_key_trigger(msg.key, 5)) {
                 cmd.mode = 2;
                 RCLCPP_INFO(node_->get_logger(), "普通行走模式");
-            } else if (check_key_trigger(msg.key, 7)) {
+            } else if (check_key_trigger(msg.key, 12)) {
                 cmd.mode = 5;
                 RCLCPP_INFO(node_->get_logger(), "限高杆模式");
             }

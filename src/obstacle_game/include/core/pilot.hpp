@@ -51,6 +51,7 @@ private:
     Eigen::Vector2d get_segment_direction(const PathPoint &path) const;
     double compute_feedforward_speed(const PathPoint &path, double distance, double dt);
     robot_msgs::msg::Cmd make_zero_command() const;
+    static int32_t policy_id_to_cmd_mode(int32_t policy_id);
     static double normalize_angle(double angle);
     static double clamp_abs(double value, double limit);
 

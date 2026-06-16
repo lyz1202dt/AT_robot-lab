@@ -81,7 +81,7 @@ void Record::close_current_file()
 void Record::write_yaml_header()
 {
     yaml_out_ << "#policy_id表示机器人执行这段路径时使用的策略，0表示上电策略，不用；1表示位控站立，一般也不用；\n";
-    yaml_out_ << "#2表示walk策略，3表示sand策略，4表示stair策略\n";
+    yaml_out_ << "#2表示walk策略，3表示sand策略，4表示stair策略，5表示slope策略，6表示bar策略\n";
     yaml_out_ << "\n";
     yaml_out_ << "paths:\n";
 }
