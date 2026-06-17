@@ -65,7 +65,7 @@ private:
     
 
     // Helper methods
-    bool get_object_pose_in_base_frame(geometry_msgs::msg::PoseStamped& pose_out);
+    bool get_object_pose_in_base_frame(geometry_msgs::msg::PoseStamped& pose_out,float z);
     void set_parameter_on_remote_node(const std::string& node_name, const std::string& param_name, const rclcpp::Parameter& param);
     void load_arm_positions_from_yaml();
     geometry_msgs::msg::PoseStamped create_approach_pose(const geometry_msgs::msg::PoseStamped& target_pose, double distance);
@@ -125,7 +125,7 @@ private:
     bool has_place_target_{false};
 
     // Configuration
-    std::string base_frame_{"base_link"};
+    std::string base_frame_{"arm_base_link"};
     std::string camera_frame_{"camera_link"};
     std::string object_frame_{"target_object"};
     std::string tip_frame_{"link5"};
@@ -137,12 +137,7 @@ private:
     int air_pump_pin_{0};              // Parameter service index for air pump control
     int start_scan{0};
     int scan_finished_{0}; // 0: not started, 1: finished
-    float place_up_position_x{0.0};
-    float place_up_position_y{0.0};
-    float place_up_position_z{0.0};
-    float place_down_position_x{0.0};
-    float place_down_position_y{0.0};
-    float place_down_position_z{0.0};
+    
     bool has_place_down_position_{false};
     std::chrono::steady_clock::time_point place_down_position_received_time_{};
 

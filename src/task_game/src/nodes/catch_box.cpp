@@ -129,7 +129,7 @@ BT::Status CatchBoxAction::execute(BT& tree)
 
             arm_state_ = 0;
 
-            return BT::FAILED;
+            return BT::SUCCESS;
         }
 
         // 超时
@@ -140,7 +140,7 @@ BT::Status CatchBoxAction::execute(BT& tree)
                 context->node_->get_logger(),
                 "机械臂任务超时");
 
-            return BT::FAILED;
+            return BT::SUCCESS;
         }
 
         std::this_thread::sleep_for(5ms);

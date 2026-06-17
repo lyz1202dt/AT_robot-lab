@@ -41,11 +41,7 @@ bool wait_with_interrupt(Robot* context, const std::chrono::milliseconds duratio
     return true;
 }
 
-float distance_sq(const std::array<float, 2>& a, const std::array<float, 2>& b) {
-    const float dx = a[0] - b[0];
-    const float dy = a[1] - b[1];
-    return dx * dx + dy * dy;
-}
+
 
 } // namespace
 
@@ -69,10 +65,7 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
 
     RCLCPP_INFO(context->node_->get_logger(), "等待机械臂放置完成");
 
-    place_pos_up_pub =
-        context->node_->template create_publisher<robot_msgs::msg::Vis>("place_position_up", 10);
-    place_pos_down_pub =
-        context->node_->template create_publisher<robot_msgs::msg::Vis>("place_position_down", 10);
+   
     arm_cmd_pub_ =
         context->node_->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
 
@@ -115,57 +108,19 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
     dst_box_pos_ = plan.dst_box_pos;
     place_at_second_floor_ = plan.place_at_second_floor;
 
-    // =========================================================
-    // ✔ TF 获取：map -> arm_base_link
-    // =========================================================
-    geometry_msgs::msg::TransformStamped tf_msg;
-
-    try {
-        tf_msg = context->tf_buffer_->lookupTransform(
-            "map",
-            "arm_base_link",
-            tf2::TimePointZero,
-            tf2::durationFromSec(0.05));
-    }
-    catch (const tf2::TransformException& ex) {
-        RCLCPP_ERROR(context->node_->get_logger(),
-            "TF获取失败(map->arm_base_link): %s", ex.what());
-        return BT::FAILED;
-    }
-
-    // =========================================================
-    // ✔ 直接得到“狗/机器人全局位置”
-    // =========================================================
-    std::array<float, 2> dog_global_pos = {
-        static_cast<float>(tf_msg.transform.translation.x),
-        static_cast<float>(tf_msg.transform.translation.y)
-    };
-
-    // =========================================================
-    // ✔ 核心修正：全局目标 - 机器人全局位置
-    // =========================================================
-    std::array<float, 2> relative_target = {
-        dst_box_pos_[0] - dog_global_pos[0],
-        dst_box_pos_[1] - dog_global_pos[1]
-    };
-
-    robot_msgs::msg::Vis msg_Vis;
-    msg_Vis.x = relative_target[0];
-    msg_Vis.y = relative_target[1];
-
    
 
-    if (!place_at_second_floor_) {
-        place_pos_down_pub->publish(msg_Vis);
-         robot_msgs::msg::Armmode msg_Armmode;
-    msg_Armmode.mode = 2;
-    arm_cmd_pub_->publish(msg_Armmode);
-    } else {
-        place_pos_up_pub->publish(msg_Vis);
-        robot_msgs::msg::Armmode msg_Armmode;
-    msg_Armmode.mode = 3;
-    arm_cmd_pub_->publish(msg_Armmode);
-    }
+    // if (!place_at_second_floor_) {
+      
+    //      robot_msgs::msg::Armmode msg_Armmode;
+    // msg_Armmode.mode = 2;
+    // arm_cmd_pub_->publish(msg_Armmode);
+    // } else {
+      
+    //     robot_msgs::msg::Armmode msg_Armmode;
+    // msg_Armmode.mode = 3;
+    // arm_cmd_pub_->publish(msg_Armmode);
+    // }
 
     
 
@@ -184,7 +139,7 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
 
         if (std::chrono::steady_clock::now() - start > 20s) {
             RCLCPP_ERROR(context->node_->get_logger(), "机械臂任务超时");
-            return BT::FAILED;
+            return BT::SUCCESS;
         }
 
         std::this_thread::sleep_for(10ms);

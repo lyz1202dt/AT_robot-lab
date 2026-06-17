@@ -24,13 +24,9 @@ protected:
 
     std::atomic<int> arm_state_{0};
 
-    rclcpp::Publisher<robot_msgs::msg::Vis>::SharedPtr place_pos_up_pub;
-    rclcpp::Publisher<robot_msgs::msg::Vis>::SharedPtr place_pos_down_pub;
+    
     rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_cmd_pub_;
     rclcpp::Subscription<robot_msgs::msg::Armmode>::SharedPtr arm_state_sub;
 
-    const std::array<float, 2> kBox1Pos = {1.0f, 2.0f};
-    const std::array<float, 2> kBox2Pos = {2.0f, 2.0f};
-    const std::array<float, 2> kBox3Pos = {3.0f, 2.0f};
-    const std::array<float, 2> kBox4Pos = {4.0f, 2.0f};
+   
 };
