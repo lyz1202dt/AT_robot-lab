@@ -283,17 +283,19 @@ void ArmTaskNode::execute_grasp_flow() {
     RCLCPP_INFO(this->get_logger(), "\033[1;32m通知视觉可以开始寻找物块了！！！！！！\033[0m");
 
 
-    int count=100;      //等10sTF
+    int count=100;      //等10s
+    bool exit_lookup=false;
      geometry_msgs::msg::TransformStamped transfer;
      do{
     try{
         transfer=tf_buffer_->lookupTransform("object_frame","arm_base_link",tf2::TimePointZero, tf2::durationFromSec(0.08));
+        exit_lookup=true;
     } catch (const tf2::TransformException& ex) {
             RCLCPP_WARN(get_logger(), "当前找不到目标物体的TF: %s", ex.what());
             std::this_thread::sleep_for(100ms);
             count--;
     }
-    }while(count!=0);
+    }while(count!=0&&exit_lookup==false);
 
     if(count==0)
     {
@@ -348,18 +350,19 @@ void ArmTaskNode::execute_place_flow() {
     execute_joint_space_trajectory(ready_position, 1.5);
     std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 300));
 
-    int count=100;
-
-   geometry_msgs::msg::TransformStamped transfer;
+    int count=100;      //等10s
+    bool exit_lookup=false;
+     geometry_msgs::msg::TransformStamped transfer;
      do{
     try{
         transfer=tf_buffer_->lookupTransform("object_frame","arm_base_link",tf2::TimePointZero, tf2::durationFromSec(0.08));
+        exit_lookup=true;
     } catch (const tf2::TransformException& ex) {
             RCLCPP_WARN(get_logger(), "当前找不到目标物体的TF: %s", ex.what());
             std::this_thread::sleep_for(100ms);
             count--;
     }
-    }while(count!=0);
+    }while(count!=0&&exit_lookup==false);
 
     if(count==0)
     {
