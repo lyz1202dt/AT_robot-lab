@@ -9,9 +9,11 @@
 #include <robot_msgs/msg/cmd.hpp>
 #include <robot_msgs/msg/remote.hpp>
 #include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
 #include "core/pilot.hpp"
 #include "core/behavior_tree.hpp"
+#include "nodes/msg.hpp"
 
 class Robot{
 public:
@@ -42,8 +44,10 @@ public:
 private:
     bool is_position_out_of_bounds(const geometry_msgs::msg::TransformStamped& transfer) const;
     void stop_rl_real_nodes();
+    void publish_active_box_target_tf();
 
     rclcpp::TimerBase::SharedPtr control_timer;
+    std::shared_ptr<tf2_ros::TransformBroadcaster> target_box_tf_broadcaster_;
     rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_server_;
     rclcpp::Subscription<robot_msgs::msg::Remote>::SharedPtr remote_sub_;
     rclcpp::Publisher<robot_msgs::msg::Cmd>::SharedPtr cmd_pub_;

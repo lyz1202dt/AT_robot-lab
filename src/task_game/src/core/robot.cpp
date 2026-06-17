@@ -23,6 +23,7 @@ using namespace std::chrono_literals;
 namespace {
 
 constexpr std::array<const char*, 2> kRlRealNodeNames{"rl_real_atdog2", "rl_real_atdog3"};
+constexpr const char* kTargetBoxFrameId = "task_game_target_box";
 
 void set_manual_mode(Robot* robot) {
     robot->cmd.mode = 1;
@@ -48,6 +49,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
     tf_buffer_   = std::make_shared<tf2_ros::Buffer>(node->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+    target_box_tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
 
 
     node_->declare_parameter<bool>("tree_debug_mode", true);
@@ -224,6 +226,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             pilot->set_state(Eigen::Vector2d(transfer.transform.translation.x, transfer.transform.translation.y), cur_yaw);
 
             cmd = pilot->get_command(std::chrono::high_resolution_clock::now());
+            publish_active_box_target_tf();
         }
         cmd_pub_->publish(cmd);
     });
@@ -251,6 +254,42 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 Robot::~Robot(){
     if (action_thread && action_thread->joinable())  //子线程退出
         action_thread->join();
+}
+
+void Robot::publish_active_box_target_tf() {
+    std::vector<MoveBoxPlan> move_plan;
+    int plan_index = 0;
+    if (!bt.read_msg("move_plan", move_plan) || !bt.read_msg("plan_index", plan_index)) {
+        return;
+    }
+
+    if (plan_index < 0 || plan_index >= static_cast<int>(move_plan.size())) {
+        return;
+    }
+
+    const auto stage = tree_start_key.load();
+    const auto& current_plan = move_plan[plan_index];
+    const std::array<float, 2>* target_box_pos = nullptr;
+    if (stage == kTreeGeneratePlan || stage == kTreeArriveToBox || stage == kTreeCatchBox) {
+        target_box_pos = &current_plan.src_box_pos;
+    } else if (stage == kTreeArriveToTarget || stage == kTreePlaceBox) {
+        target_box_pos = &current_plan.dst_box_pos;
+    } else {
+        return;
+    }
+
+    geometry_msgs::msg::TransformStamped target_tf;
+    target_tf.header.stamp = node_->get_clock()->now();
+    target_tf.header.frame_id = "map";
+    target_tf.child_frame_id = kTargetBoxFrameId;
+    target_tf.transform.translation.x = (*target_box_pos)[0];
+    target_tf.transform.translation.y = (*target_box_pos)[1];
+    target_tf.transform.translation.z = 0.0;
+    target_tf.transform.rotation.x = 0.0;
+    target_tf.transform.rotation.y = 0.0;
+    target_tf.transform.rotation.z = 0.0;
+    target_tf.transform.rotation.w = 1.0;
+    target_box_tf_broadcaster_->sendTransform(target_tf);
 }
 
 bool Robot::is_position_out_of_bounds(const geometry_msgs::msg::TransformStamped& transfer) const {
