@@ -47,11 +47,9 @@ private:
     // State machine for task execution
     void execute_task_state_machine();
     void execute_grasp_flow();
-    void execute_place_flow_first();
+    void execute_place_flow();
+
     void execute_move_to_position(int position_index);
-    void execute_place_flow_second();
-    void execute_place_place_rad();
-    void execute_place_flow_rad();
     void execute_look_for();
     void execute_lift_search();
 
@@ -68,7 +66,6 @@ private:
     bool get_object_pose_in_base_frame(geometry_msgs::msg::PoseStamped& pose_out,float z);
     void set_parameter_on_remote_node(const std::string& node_name, const std::string& param_name, const rclcpp::Parameter& param);
     void load_arm_positions_from_yaml();
-    geometry_msgs::msg::PoseStamped create_approach_pose(const geometry_msgs::msg::PoseStamped& target_pose, double distance);
 
     // Callbacks
     void on_place_target_pose(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
