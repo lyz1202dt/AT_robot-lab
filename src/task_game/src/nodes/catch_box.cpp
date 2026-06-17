@@ -16,59 +16,41 @@ bool wait_for_stage(Robot* context, int32_t expected_stage) {
     return rclcpp::ok() && context->auto_pilot_enabled.load();
 }
 
-}  // namespace
+} // namespace
 
 CatchBoxAction::CatchBoxAction()
-    : BT::ActionNode("catch_box_action")
-{
+    : BT::ActionNode("catch_box_action") {}
 
-     
-    
-}
+void CatchBoxAction::arm_cmd_callback(const robot_msgs::msg::Armmode::SharedPtr msg) { arm_state_ = msg->mode; }
 
-void CatchBoxAction::arm_cmd_callback(
-    const robot_msgs::msg::Armmode::SharedPtr msg)
-{
-    arm_state_ = msg->mode;
-}
-
-BT::Status CatchBoxAction::execute(BT& tree)
-{
+BT::Status CatchBoxAction::execute(BT& tree) {
     auto* context = tree.get_context<Robot>();
 
     if (!context) {
         return BT::FAILED;
     }
 
-    arm_cmd_pub_ =
-            context->node_->create_publisher<
-                robot_msgs::msg::Armmode>(
-                    "arm_cmd",
-                    10);
+    arm_cmd_pub_ = context->node_->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
 
-    arm_state_sub_ =
-            context->node_->create_subscription<
-                robot_msgs::msg::Armmode>(
-                    "arm_cmd_state",
-                    10,
-                    std::bind(
-                        &CatchBoxAction::arm_cmd_callback,
-                        this,
-                        std::placeholders::_1));
+    arm_state_sub_ = context->node_->create_subscription<robot_msgs::msg::Armmode>(
+        "arm_cmd_state", 10, std::bind(&CatchBoxAction::arm_cmd_callback, this, std::placeholders::_1));
 
-    
-    // // 发送抓取命令
-    // robot_msgs::msg::Armmode msg;
-    // msg.mode = 1;
 
-    // arm_cmd_pub_->publish(msg);
-
-    if (!wait_for_stage(context, Robot::kTreeCatchBox)) {
+     if (!wait_for_stage(context, Robot::kTreeCatchBox)) {
         context->pilot->stop();
         return BT::FAILED;
     }
 
-        // 4. 准备读取搬箱计划
+
+    // 发送抓取命令
+    robot_msgs::msg::Armmode msg;
+    msg.mode = 1;
+
+    arm_cmd_pub_->publish(msg);
+
+   
+
+    // 4. 准备读取搬箱计划
     std::vector<MoveBoxPlan> move_plan;
 
     // 当前执行到第几个搬箱计划
@@ -100,9 +82,7 @@ BT::Status CatchBoxAction::execute(BT& tree)
     const auto& plan = move_plan[plan_index];
 
 
-    RCLCPP_INFO(
-        context->node_->get_logger(),
-        "等待机械臂抓取完成");
+    RCLCPP_INFO(context->node_->get_logger(), "等待机械臂抓取完成");
 
     auto start = std::chrono::steady_clock::now();
 
@@ -111,11 +91,13 @@ BT::Status CatchBoxAction::execute(BT& tree)
         // 成功
         if (arm_state_ == 1) {
 
-            RCLCPP_INFO(
-                context->node_->get_logger(),
-                "抓取成功");
+            RCLCPP_INFO(context->node_->get_logger(), "抓取成功");
 
             arm_state_ = 0;
+
+            if (!context->is_tree_debug_mode()) {
+                context->advance_tree_stage();
+            }
 
             return BT::SUCCESS;
         }
@@ -123,39 +105,36 @@ BT::Status CatchBoxAction::execute(BT& tree)
         // 失败
         if (arm_state_ == -1) {
 
-            RCLCPP_ERROR(
-                context->node_->get_logger(),
-                "抓取失败");
+            RCLCPP_ERROR(context->node_->get_logger(), "抓取失败");
 
             arm_state_ = 0;
+
+            if (!context->is_tree_debug_mode()) {
+                context->advance_tree_stage();
+            }
 
             return BT::SUCCESS;
         }
 
         // 超时
-        if (std::chrono::steady_clock::now() - start
-            > 20s)
-        {
-            RCLCPP_ERROR(
-                context->node_->get_logger(),
-                "机械臂任务超时");
+        if (std::chrono::steady_clock::now() - start > 20s) {
+            RCLCPP_ERROR(context->node_->get_logger(), "机械臂任务超时");
+
+            if (!context->is_tree_debug_mode()) {
+                context->advance_tree_stage();
+            }
 
             return BT::SUCCESS;
         }
 
         std::this_thread::sleep_for(5ms);
-
     }
 
-        // 10. 等待放置动作完成（最长10秒）
-    std::this_thread::sleep_for(6s);
+    // 10. 等待放置动作完成（最长10秒）
+    // std::this_thread::sleep_for(6s);
 
-    if (!context->is_tree_debug_mode()) {
-        context->advance_tree_stage();
-    }
 
-    RCLCPP_INFO(
-        context->node_->get_logger(),
-        "机械臂抓取完成");
+
+    RCLCPP_INFO(context->node_->get_logger(), "机械臂抓取完成");
     return BT::SUCCESS;
 }

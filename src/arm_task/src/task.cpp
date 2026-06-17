@@ -213,7 +213,7 @@ void ArmTaskNode::task_execution_thread() {
 // 该函数为线性执行函数
 void ArmTaskNode::execute_task_state_machine() {
 
-    current_mode = arm_task_mode_.load(); // 调试时用的，实际跑时应该注释掉，current_mode直接接受回调里的赋值（在最下面）
+    //current_mode = arm_task_mode_.load(); // 调试时用的，实际跑时应该注释掉，current_mode直接接受回调里的赋值（在最下面）
 
 
     // 已经在运行
@@ -986,7 +986,7 @@ bool ArmTaskNode::search_for_object(geometry_msgs::msg::PoseStamped& object_pose
 
 void ArmTaskNode::arm_cmd_callback(const robot_msgs::msg::Armmode& msg) {
 
-    // current_mode = msg.mode;
+     current_mode = msg.mode;
 }
 
 
