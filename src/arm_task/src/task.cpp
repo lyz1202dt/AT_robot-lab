@@ -398,6 +398,25 @@ void ArmTaskNode::execute_grasp_flow() {
 }
 
 void ArmTaskNode::execute_place_flow_first() {
+    float place_down_x = 0.0;
+    float place_down_y = 0.0;
+    float place_down_z = 0.0;
+    std::chrono::steady_clock::time_point place_down_received_time;
+
+    {
+        std::lock_guard<std::mutex> lock(pose_mutex_);
+        const auto now = std::chrono::steady_clock::now();
+        if (!has_place_down_position_ || now - place_down_position_received_time_ > std::chrono::seconds(4)) {
+            RCLCPP_ERROR(this->get_logger(), "放置坐标不可信");
+            return;
+        }
+
+        place_down_x             = place_down_position_x;
+        place_down_y             = place_down_position_y;
+        place_down_z             = place_down_position_z;
+        place_down_received_time = place_down_position_received_time_;
+    }
+
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     execute_joint_space_trajectory(ready_position, 0.5);
     std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 300));
@@ -408,9 +427,9 @@ void ArmTaskNode::execute_place_flow_first() {
     object_pose.header.frame_id = base_frame_;
     object_pose.header.stamp    = this->now();
 
-    object_pose.pose.position.x = place_down_position_x;
-    object_pose.pose.position.y = place_down_position_y;
-    object_pose.pose.position.z = place_down_position_z; // ← 这里填你的死数
+    object_pose.pose.position.x = place_down_x;
+    object_pose.pose.position.y = place_down_y;
+    object_pose.pose.position.z = place_down_z; // ← 这里填你的死数
 
     RCLCPP_INFO(
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
@@ -450,10 +469,16 @@ void ArmTaskNode::execute_place_flow_first() {
     place_finish_msg.mode = 1;
     arm_place_finish_pub->publish(place_finish_msg);
 
-
-    place_down_position_x = 0.0;
-    place_down_position_y = 0.0;
-    place_down_position_z = 0.0;
+    {
+        std::lock_guard<std::mutex> lock(pose_mutex_);
+        if (has_place_down_position_ && place_down_position_received_time_ == place_down_received_time) {
+            place_down_position_x              = 0.0;
+            place_down_position_y              = 0.0;
+            place_down_position_z              = 0.0;
+            has_place_down_position_           = false;
+            place_down_position_received_time_ = std::chrono::steady_clock::time_point{};
+        }
+    }
 
     RCLCPP_INFO(this->get_logger(), "第一层放块任务结束");
 }
@@ -890,9 +915,12 @@ void ArmTaskNode::scan_result_callback(const robot_msgs::msg::Vis& msg) {
 }
 
 void ArmTaskNode::place_position_down_callback(const robot_msgs::msg::Vis& msg) {
+    std::lock_guard<std::mutex> lock(pose_mutex_);
 
     place_down_position_x = msg.x;
     place_down_position_y = msg.y;
+    has_place_down_position_ = true;
+    place_down_position_received_time_ = std::chrono::steady_clock::now();
 }
 
 void ArmTaskNode::place_position_up_callback(const robot_msgs::msg::Vis& msg) {

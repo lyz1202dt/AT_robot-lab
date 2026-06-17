@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -142,6 +143,8 @@ private:
     float place_down_position_x{0.0};
     float place_down_position_y{0.0};
     float place_down_position_z{0.0};
+    bool has_place_down_position_{false};
+    std::chrono::steady_clock::time_point place_down_position_received_time_{};
 
     int red_distance_{0}; // 来自视觉的红色距离信息
     int last_arm_up_cmd{0};
