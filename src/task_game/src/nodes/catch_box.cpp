@@ -3,6 +3,7 @@
 #include "core/robot.hpp"
 #include "nodes/msg.hpp"
 
+#include <rclcpp/logger.hpp>
 #include <rclcpp/logging.hpp>
 
 using namespace std::chrono_literals;
@@ -21,7 +22,8 @@ bool wait_for_stage(Robot* context, int32_t expected_stage) {
 CatchBoxAction::CatchBoxAction()
     : BT::ActionNode("catch_box_action") {}
 
-void CatchBoxAction::arm_cmd_callback(const robot_msgs::msg::Armmode::SharedPtr msg) { arm_state_ = msg->mode; }
+void CatchBoxAction::arm_cmd_callback(const robot_msgs::msg::Armmode::SharedPtr msg) { RCLCPP_INFO(rclcpp::get_logger("logger"),"接收到反馈");
+    arm_state_ = msg->mode; }
 
 BT::Status CatchBoxAction::execute(BT& tree) {
     auto* context = tree.get_context<Robot>();
@@ -90,6 +92,7 @@ BT::Status CatchBoxAction::execute(BT& tree) {
     auto start = std::chrono::steady_clock::now();
 
     while (rclcpp::ok()) {
+        
 
         // 成功
         if (arm_state_ == 1) {
@@ -97,7 +100,9 @@ BT::Status CatchBoxAction::execute(BT& tree) {
             RCLCPP_INFO(context->node_->get_logger(), "抓取成功");
 
             arm_state_ = 0;
-
+    if (!context->is_tree_debug_mode()) {
+            context->advance_tree_stage();
+        }
             return BT::SUCCESS;
         }
 
@@ -107,23 +112,25 @@ BT::Status CatchBoxAction::execute(BT& tree) {
             RCLCPP_ERROR(context->node_->get_logger(), "抓取失败");
 
             arm_state_ = 0;
-
+    if (!context->is_tree_debug_mode()) {
+            context->advance_tree_stage();
+        }
             return BT::SUCCESS;
         }
 
         // 超时
         if (std::chrono::steady_clock::now() - start > 20s) {
             RCLCPP_ERROR(context->node_->get_logger(), "机械臂任务超时");
-
+                if (!context->is_tree_debug_mode()) {
+            context->advance_tree_stage();
+        }
             return BT::SUCCESS;
         }
 
         std::this_thread::sleep_for(5ms);
     }
 
-    if (!context->is_tree_debug_mode()) {
-            context->advance_tree_stage();
-        }
+
 
     // 10. 等待放置动作完成（最长10秒）
     // std::this_thread::sleep_for(6s);
