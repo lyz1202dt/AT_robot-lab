@@ -35,7 +35,7 @@ private:
             2, 0, 1, 3    // 第二排: box_id = 2,0,1,3
         };
         grid_pub_->publish(grid_msg);
-        RCLCPP_INFO(this->get_logger(), "发布 box_id_grid");
+        //RCLCPP_INFO(this->get_logger(), "发布 box_id_grid");
     }
 
     rclcpp::Publisher<robot_msgs::msg::Int>::SharedPtr vip_pub_;

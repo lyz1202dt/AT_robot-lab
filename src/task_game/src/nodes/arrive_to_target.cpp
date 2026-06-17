@@ -165,7 +165,7 @@ BT::Status ArriveToTargetAction::execute(BT& tree) {
 
     if (!stop_timer_) {
         stop_timer_ = context->node_->create_wall_timer(500ms, [this, context]() {
-            //context->pilot->stop();
+            context->pilot->stop();
             stop_timer_->cancel();
         });
         stop_timer_->cancel();
