@@ -327,7 +327,7 @@ void ArmTaskNode::execute_grasp_flow() {
 
     // 强制规定姿态
     tf2::Quaternion quat;
-    quat.setRPY(0, M_PI / 2.0, 0);
+    quat.setRPY(0, M_PI / 2.0-0.25, 0);
     object_pose.pose.orientation.w = quat.getW();
     object_pose.pose.orientation.x = quat.getX();
     object_pose.pose.orientation.y = quat.getY();
