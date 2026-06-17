@@ -47,14 +47,6 @@ BT::Status CatchBoxAction::execute(BT& tree) {
     
 
 
-    // 发送抓取命令
-    robot_msgs::msg::Armmode msg;
-    msg.mode = 1;
-
-    arm_cmd_pub_->publish(msg);
-
-   
-
     // 4. 准备读取搬箱计划
     std::vector<MoveBoxPlan> move_plan;
 
@@ -85,6 +77,12 @@ BT::Status CatchBoxAction::execute(BT& tree) {
 
     // 8. 取出当前要执行的搬箱计划
     const auto& plan = move_plan[plan_index];
+
+    // 发送抓取命令
+    robot_msgs::msg::Armmode msg;
+    msg.mode = 1;
+
+    arm_cmd_pub_->publish(msg);
 
 
     RCLCPP_INFO(context->node_->get_logger(), "等待机械臂抓取完成");

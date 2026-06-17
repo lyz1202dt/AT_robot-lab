@@ -23,7 +23,7 @@ using namespace std::chrono_literals;
 namespace {
 
 constexpr std::array<const char*, 2> kRlRealNodeNames{"rl_real_atdog2", "rl_real_atdog3"};
-constexpr const char* kTargetBoxFrameId = "task_game_target_box";
+constexpr const char* kTargetBoxFrameId = "obgect_frame";
 
 void set_manual_mode(Robot* robot) {
     robot->cmd.mode = 1;
@@ -267,24 +267,32 @@ void Robot::publish_active_box_target_tf() {
         return;
     }
 
+    geometry_msgs::msg::TransformStamped target_tf;
     const auto stage = tree_start_key.load();
     const auto& current_plan = move_plan[plan_index];
     const std::array<float, 2>* target_box_pos = nullptr;
     if (stage == kTreeGeneratePlan || stage == kTreeArriveToBox || stage == kTreeCatchBox) {
         target_box_pos = &current_plan.src_box_pos;
+        target_tf.transform.translation.z = 0.25f;
     } else if (stage == kTreeArriveToTarget || stage == kTreePlaceBox) {
         target_box_pos = &current_plan.dst_box_pos;
+        if(current_plan.place_at_second_floor)
+        {
+            target_tf.transform.translation.z = 0.5f;
+        }
+        else
+        {
+            target_tf.transform.translation.z = 0.25f;
+        }
     } else {
         return;
     }
 
-    geometry_msgs::msg::TransformStamped target_tf;
     target_tf.header.stamp = node_->get_clock()->now();
     target_tf.header.frame_id = "map";
     target_tf.child_frame_id = kTargetBoxFrameId;
     target_tf.transform.translation.x = (*target_box_pos)[0];
     target_tf.transform.translation.y = (*target_box_pos)[1];
-    target_tf.transform.translation.z = 0.0;
     target_tf.transform.rotation.x = 0.0;
     target_tf.transform.rotation.y = 0.0;
     target_tf.transform.rotation.z = 0.0;

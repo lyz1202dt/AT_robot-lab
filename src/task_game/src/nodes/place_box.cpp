@@ -68,7 +68,7 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         
         subscriptions_ready_ = true;
     }
-    
+
     if (!wait_for_stage(context, Robot::kTreePlaceBox)) {
         context->pilot->stop();
         return BT::FAILED;
@@ -97,24 +97,10 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
     // =========================================================
     const auto& plan = move_plan[plan_index];
 
-    dst_box_pos_           = plan.dst_box_pos;
-    place_at_second_floor_ = plan.place_at_second_floor;
-
-
-
-    if (!place_at_second_floor_) {
 
         robot_msgs::msg::Armmode msg_Armmode;
         msg_Armmode.mode = 2;
         arm_cmd_pub_->publish(msg_Armmode);
-    } else {
-
-        robot_msgs::msg::Armmode msg_Armmode;
-        msg_Armmode.mode = 3;
-        arm_cmd_pub_->publish(msg_Armmode);
-    }
-
-
 
     // =========================================================
     // 等待执行结果
