@@ -30,6 +30,7 @@ private:
         robot_msgs::msg::Armmode>::SharedPtr arm_state_sub_;
 
     std::atomic<int> arm_state_{0};
+    bool subscriptions_ready_ = false;
 
     bool ros_initialized_ = false;
 };

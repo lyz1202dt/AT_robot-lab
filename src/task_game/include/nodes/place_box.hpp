@@ -27,6 +27,6 @@ protected:
     
     rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_cmd_pub_;
     rclcpp::Subscription<robot_msgs::msg::Armmode>::SharedPtr arm_state_sub;
-
+    bool subscriptions_ready_ = false;
    
 };

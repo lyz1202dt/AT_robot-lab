@@ -30,16 +30,21 @@ BT::Status CatchBoxAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    arm_cmd_pub_ = context->node_->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
+    if (!subscriptions_ready_) {
+        
+        arm_cmd_pub_ = context->node_->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
 
-    arm_state_sub_ = context->node_->create_subscription<robot_msgs::msg::Armmode>(
-        "arm_cmd_state", 10, std::bind(&CatchBoxAction::arm_cmd_callback, this, std::placeholders::_1));
-
-
-     if (!wait_for_stage(context, Robot::kTreeCatchBox)) {
-        context->pilot->stop();
-        return BT::FAILED;
+        arm_state_sub_ = context->node_->create_subscription<robot_msgs::msg::Armmode>(
+            "arm_cmd_state", 10, std::bind(&CatchBoxAction::arm_cmd_callback, this, std::placeholders::_1));
+    
+        subscriptions_ready_ = true;
     }
+
+        if (!wait_for_stage(context, Robot::kTreeCatchBox)) {
+            context->pilot->stop();
+            return BT::FAILED;
+        }
+    
 
 
     // 发送抓取命令
@@ -95,10 +100,6 @@ BT::Status CatchBoxAction::execute(BT& tree) {
 
             arm_state_ = 0;
 
-            if (!context->is_tree_debug_mode()) {
-                context->advance_tree_stage();
-            }
-
             return BT::SUCCESS;
         }
 
@@ -109,10 +110,6 @@ BT::Status CatchBoxAction::execute(BT& tree) {
 
             arm_state_ = 0;
 
-            if (!context->is_tree_debug_mode()) {
-                context->advance_tree_stage();
-            }
-
             return BT::SUCCESS;
         }
 
@@ -120,15 +117,15 @@ BT::Status CatchBoxAction::execute(BT& tree) {
         if (std::chrono::steady_clock::now() - start > 20s) {
             RCLCPP_ERROR(context->node_->get_logger(), "机械臂任务超时");
 
-            if (!context->is_tree_debug_mode()) {
-                context->advance_tree_stage();
-            }
-
             return BT::SUCCESS;
         }
 
         std::this_thread::sleep_for(5ms);
     }
+
+    if (!context->is_tree_debug_mode()) {
+            context->advance_tree_stage();
+        }
 
     // 10. 等待放置动作完成（最长10秒）
     // std::this_thread::sleep_for(6s);

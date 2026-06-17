@@ -60,12 +60,15 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
 
     RCLCPP_INFO(context->node_->get_logger(), "等待机械臂放置完成");
 
+    if (!subscriptions_ready_) {
+        arm_cmd_pub_ = context->node_->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
 
-    arm_cmd_pub_ = context->node_->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
-
-    arm_state_sub = context->node_->create_subscription<robot_msgs::msg::Armmode>(
-        "arm_cmd_place_state", 10, std::bind(&PlaceBoxAction::arm_place_cmd_callback, this, std::placeholders::_1));
-
+        arm_state_sub = context->node_->create_subscription<robot_msgs::msg::Armmode>(
+            "arm_cmd_place_state", 10, std::bind(&PlaceBoxAction::arm_place_cmd_callback, this, std::placeholders::_1));
+        
+        subscriptions_ready_ = true;
+    }
+    
     if (!wait_for_stage(context, Robot::kTreePlaceBox)) {
         context->pilot->stop();
         return BT::FAILED;
