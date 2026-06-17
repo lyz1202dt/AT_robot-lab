@@ -23,7 +23,7 @@ using namespace std::chrono_literals;
 namespace {
 
 constexpr std::array<const char*, 2> kRlRealNodeNames{"rl_real_atdog2", "rl_real_atdog3"};
-constexpr const char* kTargetBoxFrameId = "obgect_frame";
+constexpr const char* kTargetBoxFrameId = "object_frame";
 
 void set_manual_mode(Robot* robot) {
     robot->cmd.mode = 1;
