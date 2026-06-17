@@ -24,7 +24,7 @@ private:
         auto vip_msg = robot_msgs::msg::Int();
         vip_msg.data = 2;  // VIP 箱子 ID
         vip_pub_->publish(vip_msg);
-        RCLCPP_INFO(this->get_logger(), "发布 vip_box_id: %d", vip_msg.data);
+        //RCLCPP_INFO(this->get_logger(), "发布 vip_box_id: %d", vip_msg.data);
 
         // --- 发布 box_id_grid (2行×4列, 展平为 int32[8]) ---
         auto grid_msg = robot_msgs::msg::BoxIdGrid();
