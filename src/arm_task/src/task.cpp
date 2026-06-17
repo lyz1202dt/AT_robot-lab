@@ -232,6 +232,9 @@ void ArmTaskNode::execute_task_state_machine() {
 
     // 没任务
     if (current_mode == 0) {
+        execute_joint_space_trajectory(home_position_, 0.5);
+    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(0.5 * 1000) + 300));
+
         return;
     }
 
@@ -319,7 +322,7 @@ void ArmTaskNode::execute_grasp_flow() {
         arm_state_pub_1->publish(state_msg);
 
         RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-        execute_joint_space_trajectory(home_position_, trajectory_duration_);
+        execute_joint_space_trajectory(home_position_, 0.5);
         std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 500));
 
 

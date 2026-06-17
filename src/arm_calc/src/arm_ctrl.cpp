@@ -539,6 +539,7 @@ void ArmCtrlNode::publish_control_loop() {
             requested_motion_mode_ = MotionMode::kIdle;
             enter_idle_mode();
             target_point = idle_hold_point_;
+               
         }
         break;
 

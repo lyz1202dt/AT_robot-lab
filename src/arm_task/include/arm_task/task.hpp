@@ -158,7 +158,7 @@ private:
     // Joint positions from YAML
     std::map<int, std::vector<double>> arm_positions_;
     std::vector<double> ready_position{0.0, 2.1, 2.0, 3.0}; //机械臂抓块时的预设位置
-    std::vector<double> home_position_{0.0, 0.0, 0.0, 0.0};//机械臂初始0位置
+    std::vector<double> home_position_{0.0, 1.1, 0.0, 0.0};//机械臂初始0位置
     std::vector<double> grasp_position{0.0, 3.14159, 2.45, 2.48};
     std::vector<double> grasp_position_two{0.0, 3.14159, 2.4, 2.55};
     std::vector<double> place_position{0.0, 3.14159, 3.1, 3.1};
@@ -170,7 +170,7 @@ private:
     std::vector<double> look_middle_position_{0.0, 1.5, 2.45, 3.1};
     std::vector<double> look_right_position_{0.8, 1.5, 2.45, 3.1};
     
-    std::vector<double> grasp_finish_position{0.0, 0.0, 0.0, -0.3};
+    std::vector<double> grasp_finish_position{0.0, 0.1, 0.0, -0.8};
 
 
 

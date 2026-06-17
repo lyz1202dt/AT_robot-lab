@@ -35,6 +35,7 @@ public:
     robot_msgs::msg::Cmd cmd;
     rclcpp::Node::SharedPtr node_;
     BT bt;
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::atomic_bool auto_pilot_enabled{false};
     std::atomic_int32_t tree_start_key{kTreeIdle};
     std::atomic_bool tree_debug_mode{true};
@@ -49,7 +50,7 @@ private:
     //TODO:操作机械臂的话题，相机数据采集的话题等等
 
     //TF  获取机器人位置
-    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
     geometry_msgs::msg::TransformStamped robot_pos_transfer;
     std::array<double, 2> transfer_x_limits_{{-0.5, 6.5}};
