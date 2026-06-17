@@ -60,14 +60,14 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
 
     RCLCPP_INFO(context->node_->get_logger(), "等待机械臂放置完成");
 
-    if (!subscriptions_ready_) {
-        arm_cmd_pub_ = context->node_->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
+    // if (!subscriptions_ready_) {
+    //     arm_cmd_pub_ = context->node_->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
 
-        arm_state_sub = context->node_->create_subscription<robot_msgs::msg::Armmode>(
-            "arm_cmd_place_state", 10, std::bind(&PlaceBoxAction::arm_place_cmd_callback, this, std::placeholders::_1));
+    //     arm_state_sub = context->node_->create_subscription<robot_msgs::msg::Armmode>(
+    //         "arm_cmd_place_state", 10, std::bind(&PlaceBoxAction::arm_place_cmd_callback, this, std::placeholders::_1));
         
-        subscriptions_ready_ = true;
-    }
+    //     subscriptions_ready_ = true;
+    // }
 
     if (!wait_for_stage(context, Robot::kTreePlaceBox)) {
         context->pilot->stop();
@@ -98,41 +98,41 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
     const auto& plan = move_plan[plan_index];
 
 
-        robot_msgs::msg::Armmode msg_Armmode;
-        msg_Armmode.mode = 2;
-        arm_cmd_pub_->publish(msg_Armmode);
+    //     robot_msgs::msg::Armmode msg_Armmode;
+    //     msg_Armmode.mode = 2;
+    //     arm_cmd_pub_->publish(msg_Armmode);
 
-    // =========================================================
-    // 等待执行结果
-    // =========================================================
-    auto start = std::chrono::steady_clock::now();
+    // // =========================================================
+    // // 等待执行结果
+    // // =========================================================
+    // auto start = std::chrono::steady_clock::now();
 
-    while (rclcpp::ok()) {
+    // while (rclcpp::ok()) {
 
-        if (arm_state_ == 1) {
-            RCLCPP_INFO(context->node_->get_logger(), "放置完成");
-            arm_state_ = 0;
-            break;
-        }
+    //     if (arm_state_ == 1) {
+    //         RCLCPP_INFO(context->node_->get_logger(), "放置完成");
+    //         arm_state_ = 0;
+    //         break;
+    //     }
 
-        if (std::chrono::steady_clock::now() - start > 20s) {
-            RCLCPP_ERROR(context->node_->get_logger(), "机械臂任务超时");
+    //     if (std::chrono::steady_clock::now() - start > 20s) {
+    //         RCLCPP_ERROR(context->node_->get_logger(), "机械臂任务超时");
 
-            if (plan_index + 1 < static_cast<int>(move_plan.size())) {
-                tree.write_msg("plan_index", plan_index + 1);
-            } else {
-                RCLCPP_INFO(context->node_->get_logger(), "PlaceBoxAction: 全部搬箱计划执行完成");
-            }
+    //         if (plan_index + 1 < static_cast<int>(move_plan.size())) {
+    //             tree.write_msg("plan_index", plan_index + 1);
+    //         } else {
+    //             RCLCPP_INFO(context->node_->get_logger(), "PlaceBoxAction: 全部搬箱计划执行完成");
+    //         }
 
-            if (!context->is_tree_debug_mode()) {
-                context->advance_tree_stage();
-            }
+    //         if (!context->is_tree_debug_mode()) {
+    //             context->advance_tree_stage();
+    //         }
 
-            return BT::SUCCESS;
-        }
+    //         return BT::SUCCESS;
+    //     }
 
-        std::this_thread::sleep_for(10ms);
-    }
+    //     std::this_thread::sleep_for(10ms);
+    // }
 
     // std::this_thread::sleep_for(6s);
 
