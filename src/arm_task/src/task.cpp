@@ -246,11 +246,16 @@ void ArmTaskNode::execute_task_state_machine() {
             execute_move_to_position(position_index);
         }
 
+        if(current_mode)
+        {
+            current_mode   = 0;
+            arm_task_mode_ = 0;
+            this->set_parameter(rclcpp::Parameter("arm_task", 0));
+        }
+        else {
+        std::this_thread::sleep_for(100ms);
+        }
         // Reset mode to standby after completion
-        current_mode   = 0;
-        arm_task_mode_ = 0;
-        this->set_parameter(rclcpp::Parameter("arm_task", 0));
-
     } catch (const std::exception& e) {
         RCLCPP_ERROR(this->get_logger(), "Task execution failed: %s", e.what());
         current_mode   = 0;
