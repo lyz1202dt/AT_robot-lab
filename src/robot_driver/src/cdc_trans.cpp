@@ -29,9 +29,9 @@ bool CDCTrans::open(uint16_t vid, uint16_t pid) {
 
     // 根据 VID/PID 打开设备
     handle = libusb_open_device_with_vid_pid(ctx, vid, pid);
-    RCLCPP_ERROR(rclcpp::get_logger("cdc_device"), "\033[1;31m尝试打开USB-CDC\033[0m");
+    RCLCPP_INFO(rclcpp::get_logger("cdc_device"), "\033[1;31m尝试打开USB-CDC\033[0m");
     if (!handle) {
-       // RCLCPP_ERROR(rclcpp::get_logger("cdc_device"), "\033[1;31mUSB-CDC打开失败！！！！！！！\033[0m");
+       RCLCPP_ERROR(rclcpp::get_logger("cdc_device"), "\033[1;31mUSB-CDC打开失败！！！！！！！\033[0m");
         return false;
     }
 

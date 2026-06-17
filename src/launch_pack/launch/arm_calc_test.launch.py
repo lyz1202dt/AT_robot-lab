@@ -76,8 +76,7 @@ def generate_launch_description():
         output="screen",
     )
 
-    # Static transform from link4 to camera_link
-    # Based on robotic_arm.xml: camera at pos="0.1 0.09 -0.03" relative to link4
+    # Based on robotic_arm.xml: camera at pos="0.1 0.09 -0.03" relative to link5
     # xyaxes="0 0 1 0 1 0" means x-axis points in z direction, y-axis points in y direction
     # This is a 90-degree rotation about y-axis
     # Quaternion for 90-degree rotation about y-axis: (0, 0.7071, 0, 0.7071)
@@ -87,7 +86,7 @@ def generate_launch_description():
     arguments=[
         "-0.03165", "0.042", "0.0",
         "0.7071", "0.0", "0.7071", "0.0",
-        "link5",
+        "joint5",
         "camera_link"
     ],
     output="screen",

@@ -51,7 +51,7 @@ ArmNode::ArmNode()
     });
       
 
-    if (!cdc_trans->open(0x0483, 0x5740))     // 开启USB_CDC传输接口
+    if (!cdc_trans->open(0x0484, 0x5740))     // 开启USB_CDC传输接口(0x0484  机械臂下位机，0x0483是狗腿下位机)
         exit_thread = true;
 
     // 创建线程处理CDC消息（在 open 之后、publisher 创建之后）
