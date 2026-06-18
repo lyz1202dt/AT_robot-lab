@@ -14,6 +14,8 @@
 #include <robot_msgs/msg/box_id_grid.hpp>
 #include <robot_msgs/msg/int.hpp>
 #include <robot_msgs/msg/armmode.hpp>
+#include <std_msgs/msg/int32.hpp>
+#include <std_msgs/msg/int32_multi_array.hpp>
 
 #include "core/behavior_tree.hpp"
 
@@ -41,7 +43,7 @@ private:
     bool first_run_{true};
     rclcpp::Node::SharedPtr node_;
     rclcpp::Subscription<robot_msgs::msg::Int>::SharedPtr vip_box_id_sub_;
-    rclcpp::Subscription<robot_msgs::msg::BoxIdGrid>::SharedPtr box_id_grid_sub_;
+    rclcpp::Subscription<std_msgs::msg::Int32MultiArray>::SharedPtr box_grid_sub_;
 
     rclcpp::Publisher<
         robot_msgs::msg::Armmode>::SharedPtr arm_cmd_pub_;

@@ -15,13 +15,6 @@ using namespace std::chrono_literals;
 
 namespace arm_task {
 
-namespace {
-
-constexpr double kVisualServoExitPositionToleranceMeters = 0.015;
-constexpr double kVisualServoConvergenceTimeoutSec       = 20.0;
-
-} // namespace
-
 ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     : Node("arm_task", options) {
 
@@ -64,27 +57,23 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     // Create publishers
     visual_target_pub_      = this->create_publisher<geometry_msgs::msg::PoseStamped>("visual_target_pose", 10);
     joint_space_target_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("joint_space_target", 10);
-
     
     // 当发1时通知视觉可以开始全场扫描，当发2时通知视觉可以开始寻找并发布物块坐标使机械臂能够去抓取物块
-    arm_vision_command_pub_ = this->create_publisher<std_msgs::msg::Int32>("arm_command", 10);
+    vision_command_pub_ = this->create_publisher<std_msgs::msg::Int32>("arm_command", 10);
 
     // 结束扫描，机械臂需要回到初始位置
-    scan_finish_sub_ = this->create_subscription<robot_msgs::msg::Vis>(
-        "scan_finish", 10, std::bind(&ArmTaskNode::scan_result_callback, this, std::placeholders::_1));
+    box_grid_sub_ = this->create_subscription<std_msgs::msg::Int32MultiArray>(
+        "box_id_grid", 10, [this](){ scan_finished_ = 1;});
 
-    // 跟上层控制反馈当前机械臂放置状态，是否放置完成了
-    arm_place_finish_pub = this->create_publisher<robot_msgs::msg::Armmode>("arm_cmd_place_state", 10);
+    // // 跟上层控制反馈当前机械臂状态，是否抓到物块了
+    // arm_state_pub_1 = this->create_publisher<robot_msgs::msg::Armmode>("arm_cmd_state", 10);
 
-    // 跟上层控制反馈当前机械臂状态，是否抓到物块了
-    arm_state_pub_1 = this->create_publisher<robot_msgs::msg::Armmode>("arm_cmd_state", 10);
-
-    // 跟上层控制反馈当前机械臂搜索状态，是否找到物块了
-    arm_state_pub_2 = this->create_publisher<robot_msgs::msg::Armmode>("arm_search_state", 10);
+    // // 跟上层控制反馈当前机械臂搜索状态，是否找到物块了
+    // arm_state_pub_2 = this->create_publisher<robot_msgs::msg::Armmode>("arm_search_state", 10);
 
     // 上层控制命令订阅，告诉机械臂执行哪个任务
     arm_cmd_sub_ = this->create_subscription<robot_msgs::msg::Armmode>(
-        "arm_cmd", 10, std::bind(&ArmTaskNode::arm_cmd_callback, this, std::placeholders::_1));
+        "arm_cmd", 10, [this](const robot_msgs::msg::Armmode& msg){current_mode=msg.mode;});
 
     // 气泵的控制话题，发布机械臂需要的吸取和放置命令
     air_pub_ = this->create_publisher<robot_msgs::msg::Armmode>("air_pump_target", 10);
@@ -92,19 +81,6 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     // 参数服务的回调
     param_callback_ = this->add_on_set_parameters_callback(std::bind(&ArmTaskNode::on_parameters_changed, this, std::placeholders::_1));
 
-    // Create parameter client for arm_calc node
-    // 创建一个“远程参数客户端对象”，用于与另一个 ROS2 节点进行参数交互（读取/设置参数） 对arm_calc进行交互控制
-    // 具体来说：
-    // 1. 调用 std::make_shared 在堆上创建一个 rclcpp::AsyncParametersClient 实例，并返回 shared_ptr
-    // 2. 该 client 绑定当前节点（this），意味着它会使用当前节点的通信接口去发起参数请求
-    // 3. arm_calc_node_name_ 指定目标节点名称，client 后续所有操作都会发送到这个节点
-    // 4. AsyncParametersClient 底层通过 ROS2 的参数服务（/get_parameters, /set_parameters 等）实现跨节点通信
-    // 5. “Async” 表示参数请求是异步发送的（不会阻塞当前线程），通常返回 future，可选择等待或忽略结果
-    // 6. 创建完成后，可以用 arm_calc_param_client_：
-    //    - set_parameters(...) 向目标节点发送参数修改请求
-    //    - get_parameters(...) 从目标节点获取参数
-    //    - wait_for_service(...) 检查目标节点参数服务是否可用
-    // 7. 在本工程中，它被用作“控制通道”：通过修改 arm_calc 节点的参数来触发运动规划/执行等行为
     arm_calc_param_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, arm_calc_node_name_);
     RCLCPP_INFO(this->get_logger(), "Using arm_calc parameter client target: %s", arm_calc_node_name_.c_str());
 
@@ -159,14 +135,6 @@ void ArmTaskNode::load_arm_positions_from_yaml() {
     } catch (const std::exception& e) {
         RCLCPP_ERROR(this->get_logger(), "Failed to load arm positions: %s", e.what());
     }
-}
-
-// 用于接受视觉放置坐标的函数
-void ArmTaskNode::on_place_target_pose(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
-    std::lock_guard<std::mutex> lock(pose_mutex_);
-    place_target_pose_ = *msg;
-    has_place_target_  = true;
-    RCLCPP_INFO(this->get_logger(), "Received place target pose");
 }
 
 rcl_interfaces::msg::SetParametersResult ArmTaskNode::on_parameters_changed(const std::vector<rclcpp::Parameter>& params) {
@@ -292,15 +260,6 @@ void ArmTaskNode::execute_grasp_flow() {
     execute_joint_space_trajectory(ready_position, 0.3);
     std::this_thread::sleep_for(350ms);
 
-    //std::this_thread::sleep_for(std::chrono::seconds(2)); // 等待机械臂稳定，确保相机准确识别位置
-
-    // 告知相机可以开始读取数据了
-    std_msgs::msg::Int32 see_msg;
-    see_msg.data = 2;
-    arm_vision_command_pub_->publish(see_msg);
-    RCLCPP_INFO(this->get_logger(), "\033[1;32m通知视觉可以开始寻找物块了！！！！！！\033[0m");
-
-
     int count=100;      //等10s
     bool exit_lookup=false;
      geometry_msgs::msg::TransformStamped transfer;
@@ -352,16 +311,7 @@ void ArmTaskNode::execute_grasp_flow() {
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     execute_joint_space_trajectory(grasp_finish_position, 1.5);
 
-    std::this_thread::sleep_for(1000ms);
-
-    msg.mode = 1;
-    arm_state_pub_1->publish(msg);
-    
-    std::this_thread::sleep_for(600ms);
-
-    // 清状态，以便下位机反馈结果能正确更新状态，从下面开始就是接受三次距离反馈的结果，
-    // 如果三次距离都满足条件才认为抓取成功，否则认为抓取失败
-    catch_result_.store(0);
+    std::this_thread::sleep_for(1500ms);
 
     RCLCPP_INFO(this->get_logger(), "抓取流程完成");
 }
@@ -425,10 +375,6 @@ void ArmTaskNode::execute_place_flow_1() {
 
     std::this_thread::sleep_for(500ms);
 
-    robot_msgs::msg::Armmode place_finish_msg;
-    place_finish_msg.mode = 1;
-    arm_place_finish_pub->publish(place_finish_msg);
-
     RCLCPP_INFO(this->get_logger(), "第一层放块任务结束");
 }
 
@@ -491,36 +437,33 @@ void ArmTaskNode::execute_place_flow_2() {
 
     std::this_thread::sleep_for(500ms);
 
-    robot_msgs::msg::Armmode place_finish_msg;
-    place_finish_msg.mode = 1;
-    arm_place_finish_pub->publish(place_finish_msg);
-
     RCLCPP_INFO(this->get_logger(), "第二层放块任务结束");
 }
 
 
 void ArmTaskNode::execute_look_for() {
 
-    // 机械臂先预摆到一个合适的位置，方便相机识别全场箱子
-    execute_joint_space_trajectory(look_for_position_, trajectory_duration_);
-    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 500));
-
-    // 告知视觉可以开始全场扫描了
+    // 告知视觉开始全场扫描了
     std_msgs::msg::Int32 scan_msg;
     scan_msg.data = 1;
-    arm_vision_command_pub_->publish(scan_msg);
+    vision_command_pub_->publish(scan_msg);
+
+    // 机械臂先预摆到一个合适的位置，方便相机识别全场箱子
+    execute_joint_space_trajectory(look_for_position_, 1.5);
+    std::this_thread::sleep_for(1500ms);
 
     auto start_time = std::chrono::steady_clock::now();
 
+    auto start_joint_pos=look_for_position_;
+    auto stop_joint_pos=look_for_position_;
+    start_joint_pos[0]=-0.4;
+    stop_joint_pos[0]=0.4;
+
     // 在这里会阻塞等待视觉发布会扫描完成的消息（scan_finished_被置1），告诉机械臂可以结束等待了
     while (scan_finished_ == 0) {
-
-        // 超时10秒
-        if (std::chrono::steady_clock::now() - start_time > std::chrono::seconds(10)) {
-
-            RCLCPP_WARN(this->get_logger(), "\033[1;32mVision scan timeout!\033[0m");
-
-            break;
+        if (std::chrono::steady_clock::now() - start_time > 5s) {
+           execute_joint_space_trajectory(start_joint_pos, 0.2);    //机械臂旋转，执行扫描
+           execute_joint_space_trajectory(stop_joint_pos, 5.0);
         }
 
         std::this_thread::sleep_for(100ms);
@@ -529,41 +472,41 @@ void ArmTaskNode::execute_look_for() {
     scan_finished_ = 0; // 清状态
 
     // 机械臂回到初始位置，准备接受后续的抓取指令
-    execute_joint_space_trajectory(home_position_, trajectory_duration_);
-    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 500));
+    execute_joint_space_trajectory(home_position_, 0.5);
+    std::this_thread::sleep_for(500ms);
 }
 
 void ArmTaskNode::execute_lift_search() {
     RCLCPP_INFO(this->get_logger(), "开始搜索任务");
 
-    geometry_msgs::msg::PoseStamped object_pose;
+    // geometry_msgs::msg::PoseStamped object_pose;
 
-    robot_msgs::msg::Armmode state2_msg;
-
-
-    if (search_for_object(object_pose)) {
-
-        RCLCPP_INFO(
-            this->get_logger(), "找到目标: [%.3f %.3f %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
-            object_pose.pose.position.z);
-
-        state2_msg.mode = 1;
-        state2_msg.x    = object_pose.pose.position.x;
-        state2_msg.y    = object_pose.pose.position.y;
-        state2_msg.z    = object_pose.pose.position.z;
-        arm_state_pub_2->publish(state2_msg);
+    // robot_msgs::msg::Armmode state2_msg;
 
 
-    } else {
+    // if (search_for_object(object_pose)) {
 
-        RCLCPP_WARN(this->get_logger(), "搜索失败");
+    //     RCLCPP_INFO(
+    //         this->get_logger(), "找到目标: [%.3f %.3f %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
+    //         object_pose.pose.position.z);
 
-        state2_msg.mode = -1;
-        arm_state_pub_2->publish(state2_msg);
-    }
+    //     state2_msg.mode = 1;
+    //     state2_msg.x    = object_pose.pose.position.x;
+    //     state2_msg.y    = object_pose.pose.position.y;
+    //     state2_msg.z    = object_pose.pose.position.z;
+    //     arm_state_pub_2->publish(state2_msg);
 
-    execute_joint_space_trajectory(home_position_, trajectory_duration_);
-    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 500));
+
+    // } else {
+
+    //     RCLCPP_WARN(this->get_logger(), "搜索失败");
+
+    //     state2_msg.mode = -1;
+    //     arm_state_pub_2->publish(state2_msg);
+    // }
+    RCLCPP_INFO(this->get_logger(), "搜索任务结束");
+    //execute_joint_space_trajectory(home_position_, 1.5);
+    std::this_thread::sleep_for(1500ms);
     current_mode = 0;
 }
 
@@ -647,73 +590,4 @@ void ArmTaskNode::set_parameter_on_remote_node(
     }
 }
 
-void ArmTaskNode::scan_result_callback(const robot_msgs::msg::Vis& msg) {
-    scan_finished_ = msg.x;
-    RCLCPP_INFO(this->get_logger(), "\033[1;34m收到巡视结果: %d\033[0m", scan_finished_);
-}
-
-
-bool ArmTaskNode::search_for_object(geometry_msgs::msg::PoseStamped& object_pose) {
-    RCLCPP_INFO(this->get_logger(), "开始巡视寻找目标");
-
-    std::vector<std::vector<double>> search_positions = {
-
-        look_middle_position_,
-        look_left_position_,
-        look_right_position_,
-
-    };
-    for (const auto& joints : search_positions) {
-
-        // 移动机械臂
-        execute_joint_space_trajectory(joints, 4.0);
-
-        std::this_thread::sleep_for(2s);
-
-        // 在当前位置等待视觉
-        auto start = std::chrono::steady_clock::now();
-
-        while (rclcpp::ok()) {
-
-            // 检测到目标
-            // if (get_object_pose_in_base_frame(object_pose,0.0)) {
-
-            //     RCLCPP_INFO(this->get_logger(), "巡视发现目标");
-
-            //     // 等待视觉稳定
-            //     std::this_thread::sleep_for(1800ms);
-
-            //     // 再读取一次稳定值
-            //     if (get_object_pose_in_base_frame(object_pose,0.0)) {
-
-            //         RCLCPP_INFO(
-            //             this->get_logger(), "稳定目标坐标: [%.3f %.3f %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
-            //             object_pose.pose.position.z);
-
-            //         return true;
-            //     }
-            // }
-
-            // // 当前巡视点等待2秒
-            // auto now = std::chrono::steady_clock::now();
-
-            // if (now - start > 2s) {
-            //     break;
-            // }
-
-            std::this_thread::sleep_for(100ms);
-        }
-    }
-
-    return false;
-}
-
-
-
-void ArmTaskNode::arm_cmd_callback(const robot_msgs::msg::Armmode& msg) {
-
-     current_mode = msg.mode;
-}
-
-
-} // namespace arm_task
+}//namespace

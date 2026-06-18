@@ -6,6 +6,7 @@
 #include <cerrno>
 #include <cmath>
 #include <ctime>
+#include <std_msgs/msg/detail/int32_multi_array__struct.hpp>
 #include <thread>
 #include <functional>
 #include <limits>
@@ -330,7 +331,7 @@ void GeneratePlaneAction::init_subscriptions(const rclcpp::Node::SharedPtr& node
             sem_post(&vip_box_id_sem_);
         });
 
-    box_id_grid_sub_ = node_->create_subscription<robot_msgs::msg::BoxIdGrid>(
+    box_grid_sub_ = node_->create_subscription<std_msgs::msg::Int32MultiArray>(
         "box_id_grid", 10,
         [this](const robot_msgs::msg::BoxIdGrid& msg) {
             box_id_grid_[0][0] = msg.data[0];
