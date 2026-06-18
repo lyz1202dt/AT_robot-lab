@@ -380,7 +380,7 @@ void ArmTaskNode::execute_place_flow_1() {
     geometry_msgs::msg::PoseStamped object_pose;
     object_pose.pose.position.x=transfer.transform.translation.x;
     object_pose.pose.position.y=transfer.transform.translation.y;
-    object_pose.pose.position.z=-0.20;
+    object_pose.pose.position.z=-0.10;
     tf2::Quaternion quat;
     quat.setRPY(0, M_PI / 2.0-0.25, 0);
     object_pose.pose.orientation.w = quat.getW();
