@@ -333,15 +333,20 @@ void GeneratePlaneAction::init_subscriptions(const rclcpp::Node::SharedPtr& node
 
     box_grid_sub_ = node_->create_subscription<std_msgs::msg::Int32MultiArray>(
         "box_id_grid", 10,
-        [this](const robot_msgs::msg::BoxIdGrid& msg) {
-            box_id_grid_[0][0] = msg.data[0];
-            box_id_grid_[0][1] = msg.data[1];
-            box_id_grid_[0][2] = msg.data[2];
-            box_id_grid_[0][3] = msg.data[3];
-            box_id_grid_[1][0] = msg.data[4];
-            box_id_grid_[1][1] = msg.data[5];
-            box_id_grid_[1][2] = msg.data[6];
-            box_id_grid_[1][3] = msg.data[7];
+        [this](std_msgs::msg::Int32MultiArray::ConstSharedPtr msg) {
+            if (msg->data.size() < 8) {
+                RCLCPP_ERROR(node_->get_logger(), "box_id_grid 至少需要 8 个元素，当前只有 %zu 个", msg->data.size());
+                return;
+            }
+
+            box_id_grid_[0][0] = msg->data[0];
+            box_id_grid_[0][1] = msg->data[1];
+            box_id_grid_[0][2] = msg->data[2];
+            box_id_grid_[0][3] = msg->data[3];
+            box_id_grid_[1][0] = msg->data[4];
+            box_id_grid_[1][1] = msg->data[5];
+            box_id_grid_[1][2] = msg->data[6];
+            box_id_grid_[1][3] = msg->data[7];
             sem_post(&box_id_grid_sem_);
         });
 
