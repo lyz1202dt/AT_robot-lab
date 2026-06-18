@@ -304,6 +304,7 @@ void Pilot::set_state(const Eigen::Vector2d& pos, const float& yaw) {
 
 robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::high_resolution_clock> time) {
     std::function<void(int)> callback_to_call;
+    robot_msgs::msg::Cmd cmd = walk_zero_command();
 
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -317,7 +318,6 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
             return stand_command();
         }
 
-        robot_msgs::msg::Cmd cmd = walk_zero_command();
         TargetPoint& target = targets_[current_index_];
 
         if (state_ == PilotState::Adjusting) {
