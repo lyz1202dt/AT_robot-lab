@@ -312,7 +312,7 @@ void ArmTaskNode::execute_grasp_flow() {
     geometry_msgs::msg::PoseStamped object_pose;
     object_pose.pose.position.x=transfer.transform.translation.x;
     object_pose.pose.position.y=transfer.transform.translation.y;
-    object_pose.pose.position.z=-0.23;
+    object_pose.pose.position.z=-0.16;
     tf2::Quaternion quat;
     quat.setRPY(0, M_PI / 2.0-0.25, 0);
     object_pose.pose.orientation.w = quat.getW();
@@ -323,9 +323,8 @@ void ArmTaskNode::execute_grasp_flow() {
 
     // 3.笛卡尔轨迹规划使机械臂运动到物块的位置
     RCLCPP_INFO(this->get_logger(), "移动到块的位置");
-    object_pose.pose.position.z+=0.1;
     execute_cartesian_space_trajectory(object_pose, 0.5);
-    std::this_thread::sleep_for(100ms);
+    std::this_thread::sleep_for(300ms);
 
 
     // 通知气泵开始吸了
