@@ -463,7 +463,9 @@ void ArmTaskNode::execute_look_for() {
     while (scan_finished_ == 0) {
         if (std::chrono::steady_clock::now() - start_time > 5s) {
            execute_joint_space_trajectory(start_joint_pos, 0.2);    //机械臂旋转，执行扫描
+           std::this_thread::sleep_for(200ms);
            execute_joint_space_trajectory(stop_joint_pos, 5.0);
+           std::this_thread::sleep_for(5s);
         }
 
         std::this_thread::sleep_for(100ms);
