@@ -55,9 +55,6 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    if (context->auto_pilot_enabled.load()) {
-        context->cmd.mode = 2;
-    }
 
     std::vector<MoveBoxPlan> move_plan;
     int plan_index = 0;
