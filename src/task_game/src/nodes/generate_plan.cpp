@@ -21,7 +21,8 @@ using namespace std::chrono_literals;
 
 namespace {
 
-constexpr auto kSemaphoreTimeout = 10s;
+//constexpr auto kSemaphoreTimeout = 10s;
+ const auto kSemaphoreTimeout = std::chrono::hours(24 * 365 * 100);
 constexpr const char* kGeneratePlanConfigParam = "generate_plan_config";
 
 bool wait_for_stage(Robot* context, int32_t expected_stage) {
@@ -376,11 +377,14 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     // if (!wait_with_interrupt(context, 3s)) {
     //     return BT::FAILED;
     // }
-    if (context->auto_pilot_enabled.load()) {
-        context->cmd.mode = 1;
-    }
-    if (!wait_with_interrupt(context, 5s)) {
-        return BT::FAILED;
+    if(first_run_)
+    {
+        if (context->auto_pilot_enabled.load()) {
+            context->cmd.mode = 1;
+        }
+        if (!wait_with_interrupt(context, 5s)) {
+            return BT::FAILED;
+        }
     }
 
         robot_msgs::msg::Armmode msg;

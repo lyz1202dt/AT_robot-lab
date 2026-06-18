@@ -38,6 +38,7 @@ private:
     bool generated{false};
     bool subscriptions_ready_{false};
     bool publishers_ready_{false};
+    bool first_run_{true};
     rclcpp::Node::SharedPtr node_;
     rclcpp::Subscription<robot_msgs::msg::Int>::SharedPtr vip_box_id_sub_;
     rclcpp::Subscription<robot_msgs::msg::BoxIdGrid>::SharedPtr box_id_grid_sub_;
