@@ -333,19 +333,19 @@ void ArmTaskNode::execute_grasp_flow() {
     msg.mode = 1;
     air_pub_->publish(msg);
 
-    std::this_thread::sleep_for(300ms);
+    std::this_thread::sleep_for(600ms);
 
 
     // 6.回到初始位置
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(grasp_finish_position, 0.5);
+    execute_joint_space_trajectory(grasp_finish_position, 1.5);
 
-    std::this_thread::sleep_for(200ms);
+    std::this_thread::sleep_for(1000ms);
 
     msg.mode = 1;
     arm_state_pub_1->publish(msg);
     
-    std::this_thread::sleep_for(300ms);
+    std::this_thread::sleep_for(600ms);
 
     // 清状态，以便下位机反馈结果能正确更新状态，从下面开始就是接受三次距离反馈的结果，
     // 如果三次距离都满足条件才认为抓取成功，否则认为抓取失败
