@@ -344,6 +344,15 @@ void GeneratePlaneAction::init_subscriptions(const rclcpp::Node::SharedPtr& node
     subscriptions_ready_ = true;
 }
 
+void GeneratePlaneAction::init_publishers(const rclcpp::Node::SharedPtr& node) {
+    if (publishers_ready_) {
+        return;
+    }
+
+    arm_cmd_pub_ = node->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
+    publishers_ready_ = true;
+}
+
 // 行为树动作入口：等待箱子布局和 VIP ID 后生成完整搬箱顺序。
 BT::Status GeneratePlaneAction::execute(BT& tree) {
     auto* context = tree.get_context<Robot>();
@@ -356,12 +365,7 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     }
 
     init_subscriptions(context->node_);
-
-    if (!subscriptions_ready_) {
-        
-        arm_cmd_pub_ = context->node_->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
-        subscriptions_ready_ = true;
-    }
+    init_publishers(context->node_);
 
     if (!wait_for_stage(context, Robot::kTreeGeneratePlan)) {
         return BT::FAILED;

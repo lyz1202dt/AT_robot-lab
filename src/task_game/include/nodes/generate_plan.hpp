@@ -32,10 +32,12 @@ protected:
 
 private:
     void init_subscriptions(const rclcpp::Node::SharedPtr& node);
+    void init_publishers(const rclcpp::Node::SharedPtr& node);
 
 private:
     bool generated{false};
     bool subscriptions_ready_{false};
+    bool publishers_ready_{false};
     rclcpp::Node::SharedPtr node_;
     rclcpp::Subscription<robot_msgs::msg::Int>::SharedPtr vip_box_id_sub_;
     rclcpp::Subscription<robot_msgs::msg::BoxIdGrid>::SharedPtr box_id_grid_sub_;
