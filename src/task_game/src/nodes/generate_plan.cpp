@@ -64,7 +64,7 @@ bool wait_semaphore_with_timeout(sem_t* sem, const std::chrono::seconds timeout)
     return true;
 }
 
-// 三行四列的位置表：第 0 行为放置区，第 1/2 行为两排抓取区。
+// 三行四列的位置表：第 0 行为放置区，第 1/2 行为两条抓取线。
 using PositionGrid = std::array<std::array<std::tuple<float, float, float>, 4>, 3>;
 using BoxPositionGrid = std::array<std::array<std::array<float, 2>, 4>, 3>;
 
@@ -81,7 +81,8 @@ struct PlanConfig {
     RoutePoints route_e{};
     TargetPoint start_to_a1{};
     TargetPoint a1_to_a2{};
-    TargetPoint a2_to_src{};
+    TargetPoint a2_to_a3{};
+    TargetPoint a3_to_src{};
     TargetPoint src_to_dst{};
     TargetPoint dst_to_dst2{};
     TargetPoint dst2_to_src{};
@@ -93,8 +94,8 @@ struct BoxInfo {
     PositionGrid positions{};
     int vip_box_id{-1};
 
-    // 判断 VIP 箱子是否出现在第一行。
-    bool is_vip_in_first_row() const {
+    // 判断 VIP 箱子是否出现在第一条抓取线。
+    bool is_vip_in_first_line() const {
         for (int col = 0; col < 4; ++col) {
             if (box_ids[0][col] == vip_box_id) {
                 return true;
@@ -103,14 +104,14 @@ struct BoxInfo {
         return false;
     }
 
-    // 查找 vip_box_id 在 box_ids 中的所有索引 (row, col)
+    // 查找 vip_box_id 在 box_ids 中的所有索引 (line, col)
     // 支持同一个 ID 出现多次（如两个 VIP 箱子有相同 ID）
     std::vector<std::pair<int, int>> find_vip_indices() const {
         std::vector<std::pair<int, int>> results;
-        for (int row = 0; row < static_cast<int>(box_ids.size()); ++row) {
-            for (int col = 0; col < static_cast<int>(box_ids[row].size()); ++col) {
-                if (box_ids[row][col] == vip_box_id) {
-                    results.emplace_back(row, col);
+        for (int line = 0; line < static_cast<int>(box_ids.size()); ++line) {
+            for (int col = 0; col < static_cast<int>(box_ids[line].size()); ++col) {
+                if (box_ids[line][col] == vip_box_id) {
+                    results.emplace_back(line, col);
                 }
             }
         }
@@ -215,11 +216,11 @@ PlanConfig load_plan_config(const std::string& yaml_path) {
 
     PlanConfig config;
     config.arm_box_positions[0] = read_point2_row(arm_box_positions["arm_place"], "arm_box_positions.arm_place");
-    config.arm_box_positions[1] = read_point2_row(arm_box_positions["arm_pick_row_0"], "arm_box_positions.arm_pick_row_0");
-    config.arm_box_positions[2] = read_point2_row(arm_box_positions["arm_pick_row_1"], "arm_box_positions.arm_pick_row_1");
+    config.arm_box_positions[1] = read_point2_row(arm_box_positions["arm_pick_line_0"], "arm_box_positions.arm_pick_line_0");
+    config.arm_box_positions[2] = read_point2_row(arm_box_positions["arm_pick_line_1"], "arm_box_positions.arm_pick_line_1");
     config.positions[0] = read_point3_row(box_positions["place"], "box_positions.place");
-    config.positions[1] = read_point3_row(box_positions["pick_row_0"], "box_positions.pick_row_0");
-    config.positions[2] = read_point3_row(box_positions["pick_row_1"], "box_positions.pick_row_1");
+    config.positions[1] = read_point3_row(box_positions["pick_line_0"], "box_positions.pick_line_0");
+    config.positions[2] = read_point3_row(box_positions["pick_line_1"], "box_positions.pick_line_1");
 
     config.route_a.a1 = read_point3(routes["A"]["a1"], "routes.A.a1");
     config.route_a.a2 = read_point3(routes["A"]["a2"], "routes.A.a2");
@@ -230,7 +231,8 @@ PlanConfig load_plan_config(const std::string& yaml_path) {
 
     config.start_to_a1 = read_target_point(target_points["start_to_a1"], "target_points.start_to_a1");
     config.a1_to_a2 = read_target_point(target_points["a1_to_a2"], "target_points.a1_to_a2");
-    config.a2_to_src = read_target_point(target_points["a2_to_src"], "target_points.a2_to_src");
+    config.a2_to_a3 = read_target_point(target_points["a2_to_a3"], "target_points.a2_to_a3");
+    config.a3_to_src = read_target_point(target_points["a3_to_src"], "target_points.a3_to_src");
     config.src_to_dst = read_target_point(target_points["src_to_dst"], "target_points.src_to_dst");
     config.dst_to_dst2 = read_target_point(target_points["dst_to_dst2"], "target_points.dst_to_dst2");
     config.dst2_to_src = read_target_point(target_points["dst2_to_src"], "target_points.dst2_to_src");
@@ -243,7 +245,7 @@ float calc_distance(const std::array<float, 3>& point, const std::pair<float, fl
     float dy = point[1] - target.second;
     return std::sqrt(dx * dx + dy * dy);
 }
-// 计算点 a 到 positions 第 row 行各点的最小距离和对应的列索引
+// 计算点 a 到 positions 第 line 条抓取线各点的最小距离和对应的列索引
 struct NearestInfo {
     int col{-1};                    // 最近点的列索引
     float dist{std::numeric_limits<float>::max()};  // 最小距离
@@ -251,19 +253,19 @@ struct NearestInfo {
 
 NearestInfo find_nearest_box(const std::array<float, 3>& point,
                              const BoxInfo& box_info,
-                             int box_row,
+                             int box_line,
                              const std::array<std::array<bool, 4>, 2>& picked,
                              const std::function<bool(int)>& accept_box_id) {
     NearestInfo result;
-    const int position_row = box_row + 1;
+    const int position_line = box_line + 1;
     for (int col = 0; col < 4; ++col) {
-        if (picked[box_row][col] || !accept_box_id(box_info.box_ids[box_row][col])) {
+        if (picked[box_line][col] || !accept_box_id(box_info.box_ids[box_line][col])) {
             continue;
         }
 
         const float dist = calc_distance(point, {
-            std::get<0>(box_info.positions[position_row][col]),
-            std::get<1>(box_info.positions[position_row][col])});
+            std::get<0>(box_info.positions[position_line][col]),
+            std::get<1>(box_info.positions[position_line][col])});
         if (dist < result.dist) {
             result.dist = dist;
             result.col = col;
@@ -277,11 +279,11 @@ char detect_case(const BoxIdGrid& boxes, int vip_id) {
     bool in_col_0 = false;
     bool in_col_3 = false;
 
-    for (int row = 0; row < 2; ++row) {
-        if (boxes[row][0] == vip_id) {
+    for (int line = 0; line < 2; ++line) {
+        if (boxes[line][0] == vip_id) {
             in_col_0 = true;
         }
-        if (boxes[row][3] == vip_id) {
+        if (boxes[line][3] == vip_id) {
             in_col_3 = true;
         }
     }
@@ -423,15 +425,15 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     //VIP箱子ID
     box_info.vip_box_id = vip_box_id_;
 
-    // 查找 vip 箱子在 box_ids 中的所有索引 (row, col)
+    // 查找 vip 箱子在 box_ids 中的所有索引 (line, col)
     auto vip_indices = box_info.find_vip_indices();
     for (size_t i = 0; i < vip_indices.size(); ++i) {
-        RCLCPP_INFO(context->node_->get_logger(), "VIP 箱子 %zu: row=%d, col=%d",
+        RCLCPP_INFO(context->node_->get_logger(), "VIP 箱子 %zu: line=%d, col=%d",
                     i, vip_indices[i].first, vip_indices[i].second);
     }
 
-    //判断VIP箱子是否在第一排
-    const bool vip_in_first_row = box_info.is_vip_in_first_row();
+    //判断VIP箱子是否在第一条抓取线
+    const bool vip_in_first_line = box_info.is_vip_in_first_line();
     //判断VIP箱子列的信息
     const char plan_case = detect_case(box_info.box_ids, box_info.vip_box_id);
     const auto route_points = select_route_points(plan_config, plan_case);
@@ -468,15 +470,15 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     bool dog_to_middle = false;
 
     // 封装单次抓取/放置计划的生成逻辑。
-    auto append_plan = [&](int box_row, int col) {
-        const int position_row = box_row + 1;
-        const int box_id = box_info.box_ids[box_row][col];
-        const std::array<float, 2> src_box_pos = plan_config.arm_box_positions[position_row][col];
+    auto append_plan = [&](int box_line, int col) {
+        const int position_line = box_line + 1;
+        const int box_id = box_info.box_ids[box_line][col];
+        const std::array<float, 2> src_box_pos = plan_config.arm_box_positions[position_line][col];
         const std::array<float, 2> dst_box_pos = plan_config.arm_box_positions[0][box_id];
         const std::array<float, 3> src = {
-            std::get<0>(box_info.positions[position_row][col]),
-            std::get<1>(box_info.positions[position_row][col]),
-            std::get<2>(box_info.positions[position_row][col])};
+            std::get<0>(box_info.positions[position_line][col]),
+            std::get<1>(box_info.positions[position_line][col]),
+            std::get<2>(box_info.positions[position_line][col])};
         const std::array<float, 3> dst = {
             std::get<0>(box_info.positions[0][box_id]),
             std::get<1>(box_info.positions[0][box_id]),
@@ -486,14 +488,21 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
             dst[1],
             dst[2]};
 
+        const std::array<float, 3> a3 = {
+            a2[0],
+            src[1],
+            src[2]};
+
         MoveBoxPlan plan;
         if (!dog_to_middle) {
             plan.catch_trajectory.push_back(a1);
             plan.target_point.push_back(plan_config.start_to_a1);
             plan.catch_trajectory.push_back(a2);
             plan.target_point.push_back(plan_config.a1_to_a2);
+            plan.catch_trajectory.push_back(a3);
+            plan.target_point.push_back(plan_config.a2_to_a3);
             plan.catch_trajectory.push_back(src);
-            plan.target_point.push_back(plan_config.a2_to_src);
+            plan.target_point.push_back(plan_config.a3_to_src);
             dog_to_middle = true;
         } else {
             plan.catch_trajectory.push_back(last_dst2);
@@ -509,37 +518,37 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         plan.place_at_second_floor = placed_count[box_id] > 0;
         move_plan.push_back(plan);
 
-        picked[box_row][col] = true;
+        picked[box_line][col] = true;
         ++placed_count[box_id];
         last_expected_pos = dst2;
         last_dst2 = dst2;
 
         RCLCPP_INFO(
             context->node_->get_logger(),
-            "生成抓取计划: row=%d, col=%d, box_id=%d, second_floor=%s",
-            box_row,
+            "生成抓取计划: line=%d, col=%d, box_id=%d, second_floor=%s",
+            box_line,
             col,
             box_id,
             plan.place_at_second_floor ? "true" : "false");
     };
 
-    auto pick_nearest_in_row = [&](int box_row, const std::function<bool(int)>& accept_box_id) {
-        const auto nearest = find_nearest_box(last_expected_pos, box_info, box_row, picked, accept_box_id);
+    auto pick_nearest_in_line = [&](int box_line, const std::function<bool(int)>& accept_box_id) {
+        const auto nearest = find_nearest_box(last_expected_pos, box_info, box_line, picked, accept_box_id);
         if (nearest.col < 0) {
             return false;
         }
 
-        append_plan(box_row, nearest.col);
+        append_plan(box_line, nearest.col);
         return true;
     };
 
-    while (pick_nearest_in_row(0, [&](int box_id) { return box_id == box_info.vip_box_id; })) {
+    while (pick_nearest_in_line(0, [&](int box_id) { return box_id == box_info.vip_box_id; })) {
     }
-    while (pick_nearest_in_row(0, [](int) { return true; })) {
+    while (pick_nearest_in_line(0, [](int) { return true; })) {
     }
-    while (pick_nearest_in_row(1, [&](int box_id) { return box_id == box_info.vip_box_id; })) {
+    while (pick_nearest_in_line(1, [&](int box_id) { return box_id == box_info.vip_box_id; })) {
     }
-    while (pick_nearest_in_row(1, [](int) { return true; })) {
+    while (pick_nearest_in_line(1, [](int) { return true; })) {
     }
 
     tree.write_msg("move_plan", move_plan);
@@ -547,10 +556,10 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
 
     RCLCPP_INFO(
         context->node_->get_logger(),
-        "GeneratePlaneAction: case=%c, vip_box_id=%d, vip_in_first_row=%s, 已生成 %zu 条移动计划",
+        "GeneratePlaneAction: case=%c, vip_box_id=%d, vip_in_first_line=%s, 已生成 %zu 条移动计划",
         plan_case,
         box_info.vip_box_id,
-        vip_in_first_row ? "true" : "false",
+        vip_in_first_line ? "true" : "false",
         move_plan.size());
 
     generated=true;
