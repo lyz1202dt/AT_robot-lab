@@ -25,7 +25,7 @@ start_to_a1_target_point: &start_to_a1_target_point
   # 该段路线的最大角速度
   max_omega: 1.8
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [2.5, 2.5, 2.5]
+  kp: [2.0, 1.8, 1.8]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
@@ -53,7 +53,7 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 该段路线的最大角速度
   max_omega: 1.8
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [2.8, 2.5, 2.5]
+  kp: [2.5, 2.0, 2.0]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
