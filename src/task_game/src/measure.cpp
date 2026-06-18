@@ -33,7 +33,6 @@ constexpr const char* kRed = "\033[31m";
 constexpr const char* kReset = "\033[0m";
 
 struct Command {
-    std::string id;
     int line{-1};
     int column{-1};
 };
@@ -78,11 +77,7 @@ Command parse_command(const std::string& line) {
     std::string token;
 
     while (stream >> token) {
-        if (token == "-id") {
-            if (!(stream >> command.id)) {
-                throw std::runtime_error("-id 后缺少目标 ID");
-            }
-        } else if (token == "-line") {
+        if (token == "-line") {
             if (!(stream >> command.line)) {
                 throw std::runtime_error("-line 后缺少行号");
             }
@@ -95,9 +90,6 @@ Command parse_command(const std::string& line) {
         }
     }
 
-    if (command.id != "dog") {
-        throw std::runtime_error("当前只支持命令: -id dog -line <1|2|3> -row <1|2|3|4>");
-    }
     if (command.line < 1 || command.line > 3) {
         throw std::runtime_error("-line 必须是 1、2 或 3");
     }
@@ -309,7 +301,7 @@ std::optional<Measurement> MeasurePoint::lookup_measurement(std::string& error_m
 }
 
 void MeasurePoint::run() {
-    std::cout << "请输入: -id dog -line <1|2|3> -row <1|2|3|4>" << std::endl;
+    std::cout << "请输入: -line <1|2|3> -row <1|2|3|4>" << std::endl;
 
     std::string input;
     while (rclcpp::ok() && std::getline(std::cin, input)) {
@@ -319,6 +311,9 @@ void MeasurePoint::run() {
 
         try {
             const Command command = parse_command(input);
+            std::cout << "收到命令: line=" << command.line << ", row=" << command.column
+                      << "，正在等待 TF map->base_link 和 map->joint5（最多 5s）..." << std::endl;
+
             std::string error_message;
             const auto measurement = lookup_measurement(error_message);
             if (!measurement) {
@@ -337,6 +332,9 @@ void MeasurePoint::run() {
 
 int main(int argc, char** argv) {
     rclcpp::init(argc, argv);
+    std::cout << std::unitbuf;
+    std::cerr << std::unitbuf;
+
     MeasurePoint measure_point(std::make_shared<rclcpp::Node>("measure_node"));
     measure_point.run();
     rclcpp::shutdown();
