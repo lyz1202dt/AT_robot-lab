@@ -13,6 +13,7 @@
 #include <rclcpp/subscription.hpp>
 #include <robot_msgs/msg/box_id_grid.hpp>
 #include <robot_msgs/msg/int.hpp>
+#include <robot_msgs/msg/armmode.hpp>
 
 #include "core/behavior_tree.hpp"
 
@@ -38,6 +39,9 @@ private:
     rclcpp::Node::SharedPtr node_;
     rclcpp::Subscription<robot_msgs::msg::Int>::SharedPtr vip_box_id_sub_;
     rclcpp::Subscription<robot_msgs::msg::BoxIdGrid>::SharedPtr box_id_grid_sub_;
+
+    rclcpp::Publisher<
+        robot_msgs::msg::Armmode>::SharedPtr arm_cmd_pub_;
     int vip_box_id_{-1};
     BoxIdGrid box_id_grid_{};
     sem_t vip_box_id_sem_;

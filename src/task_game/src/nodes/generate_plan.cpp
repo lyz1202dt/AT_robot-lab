@@ -357,6 +357,12 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
 
     init_subscriptions(context->node_);
 
+    if (!subscriptions_ready_) {
+        
+        arm_cmd_pub_ = context->node_->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
+        subscriptions_ready_ = true;
+    }
+
     if (!wait_for_stage(context, Robot::kTreeGeneratePlan)) {
         return BT::FAILED;
     }
@@ -370,33 +376,13 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     if (!wait_with_interrupt(context, 5s)) {
         return BT::FAILED;
     }
-    // 创建异步参数客户端，目标节点是 "arm_task"
-    auto param_client = std::make_shared<rclcpp::AsyncParametersClient>(context->node_, "arm_task");
-    
-    // 等待参数服务可用
-    if (!param_client->wait_for_service(5s)) {
-        RCLCPP_ERROR(context->node_->get_logger(), "arm_task 节点的参数服务不可用");
-        //return BT::FAILED;
-    }
-    
-    // 异步设置 arm_task 参数为 5
-    auto future_results = param_client->set_parameters({rclcpp::Parameter("arm_task", 5)});
-    
-    // 等待设置完成（模拟同步行为）
-    if (rclcpp::spin_until_future_complete(context->node_, future_results, 5s) == 
-        rclcpp::FutureReturnCode::SUCCESS) {
-        auto results = future_results.get();
-        if (results[0].successful) {
-            RCLCPP_INFO(context->node_->get_logger(), "成功设置 arm_task 参数为 5");
-        } else {
-            RCLCPP_ERROR(context->node_->get_logger(), "设置 arm_task 参数失败: %s", 
-                         results[0].reason.c_str());
-            //return BT::FAILED;
-        }
-    } else {
-        RCLCPP_ERROR(context->node_->get_logger(), "设置 arm_task 参数超时");
-        //return BT::FAILED;
-    }
+
+        robot_msgs::msg::Armmode msg;
+        msg.mode = 5;
+
+        arm_cmd_pub_->publish(msg);
+
+
 
     //此处有个话题用来发布摄像头功能，暂定，无需改动
 
