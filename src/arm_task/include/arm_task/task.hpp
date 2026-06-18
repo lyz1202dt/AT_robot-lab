@@ -47,7 +47,8 @@ private:
     // State machine for task execution
     void execute_task_state_machine();
     void execute_grasp_flow();
-    void execute_place_flow();
+    void execute_place_flow_1();
+    void execute_place_flow_2();
 
     void execute_move_to_position(int position_index);
     void execute_look_for();

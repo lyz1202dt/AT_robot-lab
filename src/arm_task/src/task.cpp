@@ -228,9 +228,15 @@ void ArmTaskNode::execute_task_state_machine() {
 
         } else if (current_mode == 2) {
             // 执行第一层放置流程
-            RCLCPP_INFO(this->get_logger(), "开始放置任务");
-            execute_place_flow();
-        } else if (current_mode == 4) {
+            RCLCPP_INFO(this->get_logger(), "开始第一层放置任务");
+            execute_place_flow_1();
+        } 
+        else if (current_mode == 3) {
+            // 执行第一层放置流程
+            RCLCPP_INFO(this->get_logger(), "开始第二层放置任务");
+            execute_place_flow_2();
+        } 
+        else if (current_mode == 4) {
             // 当抓取失败时，上位层控制会发4告诉机械臂去执行抬高机械臂寻找物块的流程，以防止因为初始位置不合适导致相机看不到物块而抓取失败
             RCLCPP_INFO(this->get_logger(), "抓取过程未看到物块，抬高机械臂寻找");
             execute_lift_search();
@@ -272,9 +278,9 @@ void ArmTaskNode::execute_grasp_flow() {
     // 机械臂先预摆到一个合适的位置，方便相机观察和后续运动
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     execute_joint_space_trajectory(ready_position, 0.5);
-    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(0.5 * 1000) + 300));
+    std::this_thread::sleep_for(500ms);
 
-    std::this_thread::sleep_for(std::chrono::seconds(2)); // 等待机械臂稳定，确保相机准确识别位置
+    //std::this_thread::sleep_for(std::chrono::seconds(2)); // 等待机械臂稳定，确保相机准确识别位置
 
     // 告知相机可以开始读取数据了
     std_msgs::msg::Int32 see_msg;
@@ -288,7 +294,7 @@ void ArmTaskNode::execute_grasp_flow() {
      geometry_msgs::msg::TransformStamped transfer;
      do{
     try{
-        transfer=tf_buffer_->lookupTransform("object_frame","arm_base_link",tf2::TimePointZero, tf2::durationFromSec(0.08));
+        transfer=tf_buffer_->lookupTransform("arm_base_link","object_frame",tf2::TimePointZero, tf2::durationFromSec(0.08));
         exit_lookup=true;
     } catch (const tf2::TransformException& ex) {
             RCLCPP_WARN(get_logger(), "当前找不到目标物体的TF: %s", ex.what());
@@ -344,18 +350,18 @@ void ArmTaskNode::execute_grasp_flow() {
     RCLCPP_INFO(this->get_logger(), "抓取流程完成");
 }
 
-void ArmTaskNode::execute_place_flow() {
+void ArmTaskNode::execute_place_flow_1() {
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     execute_joint_space_trajectory(ready_position, 1.5);
-    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 300));
+    std::this_thread::sleep_for(1500ms);
 
     int count=100;      //等10s
     bool exit_lookup=false;
      geometry_msgs::msg::TransformStamped transfer;
      do{
     try{
-        transfer=tf_buffer_->lookupTransform("object_frame","arm_base_link",tf2::TimePointZero, tf2::durationFromSec(0.08));
+        transfer=tf_buffer_->lookupTransform("arm_base_link","object_frame",tf2::TimePointZero, tf2::durationFromSec(0.08));
         exit_lookup=true;
     } catch (const tf2::TransformException& ex) {
             RCLCPP_WARN(get_logger(), "当前找不到目标物体的TF: %s", ex.what());
@@ -374,7 +380,76 @@ void ArmTaskNode::execute_place_flow() {
     geometry_msgs::msg::PoseStamped object_pose;
     object_pose.pose.position.x=transfer.transform.translation.x;
     object_pose.pose.position.y=transfer.transform.translation.y;
-    object_pose.pose.position.z=transfer.transform.translation.z;
+    object_pose.pose.position.z=-0.20;
+    tf2::Quaternion quat;
+    quat.setRPY(0, M_PI / 2.0-0.25, 0);
+    object_pose.pose.orientation.w = quat.getW();
+    object_pose.pose.orientation.x = quat.getX();
+    object_pose.pose.orientation.y = quat.getY();
+
+    RCLCPP_INFO(
+        this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
+        object_pose.pose.position.z);
+
+    execute_cartesian_space_trajectory(object_pose, trajectory_duration_);
+
+    std::this_thread::sleep_for(3000ms);
+
+    RCLCPP_INFO(this->get_logger(), "关闭气泵");
+
+    robot_msgs::msg::Armmode msg;
+    msg.mode = 0;
+    air_pub_->publish(msg);
+
+    std::this_thread::sleep_for(500ms);
+
+    RCLCPP_INFO(this->get_logger(), "返回初始位置");
+
+    execute_joint_space_trajectory(home_position_, trajectory_duration_);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 500));
+
+    robot_msgs::msg::Armmode place_finish_msg;
+    place_finish_msg.mode = 1;
+    arm_place_finish_pub->publish(place_finish_msg);
+
+
+
+    RCLCPP_INFO(this->get_logger(), "第一层放块任务结束");
+}
+
+
+void ArmTaskNode::execute_place_flow_2() {
+
+    RCLCPP_INFO(this->get_logger(), "移动到准备位置");
+    execute_joint_space_trajectory(ready_position, 1.5);
+    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 300));
+
+    int count=100;      //等10s
+    bool exit_lookup=false;
+     geometry_msgs::msg::TransformStamped transfer;
+     do{
+    try{
+        transfer=tf_buffer_->lookupTransform("arm_base_link","object_frame",tf2::TimePointZero, tf2::durationFromSec(0.08));
+        exit_lookup=true;
+    } catch (const tf2::TransformException& ex) {
+            RCLCPP_WARN(get_logger(), "当前找不到目标物体的TF: %s", ex.what());
+            std::this_thread::sleep_for(100ms);
+            count--;
+    }
+    }while(count!=0&&exit_lookup==false);
+
+    if(count==0)
+    {
+        RCLCPP_INFO(get_logger(),"找不到要放置的目标");
+        return ;
+    }
+
+    // 强制规定姿态
+    geometry_msgs::msg::PoseStamped object_pose;
+    object_pose.pose.position.x=transfer.transform.translation.x;
+    object_pose.pose.position.y=transfer.transform.translation.y;
+    object_pose.pose.position.z=0.05;
     tf2::Quaternion quat;
     quat.setRPY(0, M_PI / 2.0-0.25, 0);
     object_pose.pose.orientation.w = quat.getW();
