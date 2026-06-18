@@ -179,7 +179,7 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    arm_stop_timer(context);
+    //arm_stop_timer(context);
 
     if (!context->is_tree_debug_mode()) {
         context->advance_tree_stage();
