@@ -273,7 +273,7 @@ bool Pilot::stop_if_generation_matches(std::uint64_t generation) {
     if (state_ == PilotState::Running || state_ == PilotState::Adjusting) {
         resume_state_ = state_;
         state_ = PilotState::Paused;
-    } else if (state_ != PilotState::Finished) {
+    } else {
         state_ = PilotState::Idle;
     }
     transition_ = CubicTransition{};
