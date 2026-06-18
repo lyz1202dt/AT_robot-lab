@@ -27,7 +27,7 @@ def generate_launch_description():
 
     show_rviz_arg = DeclareLaunchArgument(
         "show_rviz",
-        default_value="false",
+        default_value="true",
         description="Whether to start RViz2 from arm_vision_task.launch.py.",
     )
 
