@@ -45,19 +45,6 @@ def generate_launch_description():
         output="screen",
     )
 
-    measure_node = Node(
-        package="task_game",
-        executable="measure_node",
-        name="measure_node",
-        output="screen",
-        emulate_tty=True,
-        parameters=[
-            {
-                "point_yaml_path": LaunchConfiguration("point_yaml_path"),
-            }
-        ],
-    )
-
     static_tf_arm = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
@@ -81,7 +68,6 @@ def generate_launch_description():
             show_rviz_arg,
             arm_vision_launch,
             rl_real_atdog2_node,
-            static_tf_arm,
-            measure_node,
+            static_tf_arm
         ]
     )
