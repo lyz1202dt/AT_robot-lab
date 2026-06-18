@@ -63,7 +63,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
 
     // 结束扫描，机械臂需要回到初始位置
     box_grid_sub_ = this->create_subscription<std_msgs::msg::Int32MultiArray>(
-        "box_id_grid", 10, [this](){ scan_finished_ = 1;});
+        "box_id_grid", 10, [this](std_msgs::msg::Int32MultiArray::ConstSharedPtr /*msg*/) { scan_finished_ = 1; });     //该消息发出说明扫描结束
 
     // // 跟上层控制反馈当前机械臂状态，是否抓到物块了
     // arm_state_pub_1 = this->create_publisher<robot_msgs::msg::Armmode>("arm_cmd_state", 10);

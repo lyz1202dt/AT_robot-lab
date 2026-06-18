@@ -118,7 +118,7 @@ private:
     double visual_servo_max_linear_acc_{0.1};
     int air_pump_pin_{0};              // Parameter service index for air pump control
     int start_scan{0};
-    int scan_finished_{0}; // 0: not started, 1: finished
+    std::atomic<int> scan_finished_{0}; // 0: not started, 1: finished
 
     std::mutex arm_cmd_mutex_;
     std::atomic<int> arm_up_cmd_{0};
