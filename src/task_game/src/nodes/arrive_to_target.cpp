@@ -23,6 +23,27 @@ bool wait_for_stage(Robot* context, int32_t expected_stage) {
 ArriveToTargetAction::ArriveToTargetAction()
     : BT::ActionNode("arrive_to_target_action") {}
 
+void ArriveToTargetAction::ensure_stop_timer(Robot* context) {
+    if (stop_timer_) {
+        return;
+    }
+
+    stop_timer_ = context->node_->create_wall_timer(500ms, [this, context]() {
+        context->pilot->stop_if_generation_matches(stop_timer_generation_);
+        stop_timer_->cancel();
+    });
+    stop_timer_->cancel();
+}
+
+void ArriveToTargetAction::arm_stop_timer(Robot* context) {
+    ensure_stop_timer(context);
+    stop_timer_generation_ = context->pilot->generation();
+    if (!stop_timer_->is_canceled()) {
+        stop_timer_->cancel();
+    }
+    stop_timer_->reset();
+}
+
 BT::Status ArriveToTargetAction::execute(BT& tree) {
     auto* context = tree.get_context<Robot>();
     if (!context) {
@@ -163,17 +184,7 @@ BT::Status ArriveToTargetAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    if (!stop_timer_) {
-        stop_timer_ = context->node_->create_wall_timer(500ms, [this, context]() {
-            context->pilot->stop();
-            stop_timer_->cancel();
-        });
-        stop_timer_->cancel();
-    }
-
-    if (stop_timer_->is_canceled()) {
-        stop_timer_->reset();
-    }
+    arm_stop_timer(context);
 
     if (!context->is_tree_debug_mode()) {
         context->advance_tree_stage();

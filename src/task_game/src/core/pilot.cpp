@@ -161,7 +161,18 @@ robot_msgs::msg::Cmd Pilot::stand_command() const {
     return cmd;
 }
 
+robot_msgs::msg::Cmd Pilot::walk_zero_command() const {
+    robot_msgs::msg::Cmd cmd;
+    cmd.mode = kWalkMode;
+    cmd.vx = 0.0f;
+    cmd.vy = 0.0f;
+    cmd.vz = 0.0f;
+    cmd.wheel_vel = 0.0f;
+    return cmd;
+}
+
 void Pilot::reset_execution() {
+    ++generation_;
     current_index_ = 0;
     state_ = PilotState::Idle;
     adjust_phase_ = AdjustPhase::Position;
@@ -217,6 +228,7 @@ bool Pilot::start(std::function<void(int success)> finished_cb, bool stop_when_f
         return false;
     }
 
+    ++generation_;
     finished_cb_ = std::move(finished_cb);
     stop_when_finished_ = stop_when_finished;
     const auto now = std::chrono::high_resolution_clock::now();
@@ -252,6 +264,27 @@ bool Pilot::stop() {
     return true;
 }
 
+bool Pilot::stop_if_generation_matches(std::uint64_t generation) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (generation != generation_) {
+        return false;
+    }
+
+    if (state_ == PilotState::Running || state_ == PilotState::Adjusting) {
+        resume_state_ = state_;
+        state_ = PilotState::Paused;
+    } else if (state_ != PilotState::Finished) {
+        state_ = PilotState::Idle;
+    }
+    transition_ = CubicTransition{};
+    return true;
+}
+
+std::uint64_t Pilot::generation() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return generation_;
+}
+
 bool Pilot::set_target(const std::vector<TargetPoint>& target) {
     std::lock_guard<std::mutex> lock(mutex_);
     targets_ = target;
@@ -271,18 +304,21 @@ void Pilot::set_state(const Eigen::Vector2d& pos, const float& yaw) {
 
 robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::high_resolution_clock> time) {
     std::function<void(int)> callback_to_call;
-    robot_msgs::msg::Cmd cmd = stand_command();
 
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (targets_.empty() || state_ == PilotState::Idle || state_ == PilotState::Paused || state_ == PilotState::Finished ||
-            current_index_ >= targets_.size()) {
-            return cmd;
+        if (targets_.empty() || state_ == PilotState::Idle || state_ == PilotState::Paused) {
+            return stand_command();
+        }
+        if (state_ == PilotState::Finished) {
+            return stop_when_finished_ ? stand_command() : walk_zero_command();
+        }
+        if (current_index_ >= targets_.size()) {
+            return stand_command();
         }
 
+        robot_msgs::msg::Cmd cmd = walk_zero_command();
         TargetPoint& target = targets_[current_index_];
-        cmd.mode = kWalkMode;
-        cmd.wheel_vel = 0.0f;
 
         if (state_ == PilotState::Adjusting) {
             // 规划时间结束后进入微调：先修位置，再原地修最终方向，最后复检位置。
@@ -296,14 +332,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                 state_ = PilotState::Finished;
                 current_index_ = targets_.size();
                 callback_to_call = std::move(finished_cb_);
-                cmd = stop_when_finished_ ? stand_command() : robot_msgs::msg::Cmd{};
-                if (!stop_when_finished_) {
-                    cmd.mode = kWalkMode;
-                    cmd.vx = 0.0f;
-                    cmd.vy = 0.0f;
-                    cmd.vz = 0.0f;
-                    cmd.wheel_vel = 0.0f;
-                }
+                cmd = stop_when_finished_ ? stand_command() : walk_zero_command();
             };
 
             const auto set_position_adjust_command = [&]() {

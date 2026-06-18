@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <mutex>
 #include <vector>
@@ -34,10 +35,17 @@ public:
     ~Pilot();
 
     // 开始执行，让机器人行走到目标(到达目标后执行一次finished_cb)
+    // stop_when_finished=true: 完成后输出位控站立；false: 完成后持续输出行走零速，不切位控。
     bool start(std::function<void(int success)> finished_cb, bool stop_when_finished = true);
 
     // 进入位控站立
     bool stop();
+
+    // 仅当执行代次匹配时才停止，避免旧异步回调打断新轨迹。
+    bool stop_if_generation_matches(std::uint64_t generation);
+
+    // 返回当前轨迹执行代次；set_target/start/reset_execution 会推进代次。
+    std::uint64_t generation() const;
 
     // 设置机器人系列轨迹点
     bool set_target(const std::vector<TargetPoint> &target);
@@ -52,7 +60,7 @@ public:
     robot_msgs::msg::Cmd get_command(std::chrono::time_point<std::chrono::high_resolution_clock> time);
 
 private:
-    // Pilot 的内部执行状态：Idle/Paused/Finished 都输出站立零速。
+    // Pilot 的内部执行状态：Idle/Paused 输出站立零速；Finished 按 stop_when_finished_ 决定输出站立或行走零速。
     enum class PilotState {
         Idle,
         Running,
@@ -86,6 +94,7 @@ private:
     static Eigen::Vector2d world_to_body(const Eigen::Vector2d& vector, double yaw);
 
     robot_msgs::msg::Cmd stand_command() const;
+    robot_msgs::msg::Cmd walk_zero_command() const;
     void reset_execution();
     void begin_current_segment(std::chrono::time_point<std::chrono::high_resolution_clock> time, double start_speed);
     void finish_current_target(std::chrono::time_point<std::chrono::high_resolution_clock> time);
@@ -116,5 +125,6 @@ private:
     CubicTransition transition_;
     std::function<void(int success)> finished_cb_;
     bool stop_when_finished_{true};
+    std::uint64_t generation_{0};
 
 };
