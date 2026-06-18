@@ -28,7 +28,7 @@ namespace {
 constexpr const char* kMapFrame = "map";
 constexpr const char* kBaseFrame = "base_link";
 constexpr const char* kJoint5Frame = "joint5";
-constexpr const char* kDefaultPointYamlPath = "src/task_game/config/point.yaml";
+constexpr const char* kDefaultPointYamlPath = "/home/pc2/Desktop/AT_robot-lab/src/task_game/config/point.yaml";
 constexpr const char* kRed = "\033[31m";
 constexpr const char* kReset = "\033[0m";
 
