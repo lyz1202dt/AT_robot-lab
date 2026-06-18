@@ -370,8 +370,8 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     if (!wait_with_interrupt(context, 5s)) {
         return BT::FAILED;
     }
-    // 创建同步参数客户端，目标节点是 "arm_task"
-    auto param_client = std::make_shared<rclcpp::SyncParametersClient>(context->node_, "arm_task");
+    // 创建异步参数客户端，目标节点是 "arm_task"
+    auto param_client = std::make_shared<rclcpp::AsyncParametersClient>(context->node_, "arm_task");
     
     // 等待参数服务可用
     if (!param_client->wait_for_service(5s)) {
@@ -379,14 +379,22 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         //return BT::FAILED;
     }
     
-    // 同步设置 arm_task 参数为 5
-    auto results = param_client->set_parameters({rclcpp::Parameter("arm_task", 5)});
+    // 异步设置 arm_task 参数为 5
+    auto future_results = param_client->set_parameters({rclcpp::Parameter("arm_task", 5)});
     
-    if (results[0].successful) {
-        RCLCPP_INFO(context->node_->get_logger(), "成功设置 arm_task 参数为 5");
+    // 等待设置完成（模拟同步行为）
+    if (rclcpp::spin_until_future_complete(context->node_, future_results, 5s) == 
+        rclcpp::FutureReturnCode::SUCCESS) {
+        auto results = future_results.get();
+        if (results[0].successful) {
+            RCLCPP_INFO(context->node_->get_logger(), "成功设置 arm_task 参数为 5");
+        } else {
+            RCLCPP_ERROR(context->node_->get_logger(), "设置 arm_task 参数失败: %s", 
+                         results[0].reason.c_str());
+            //return BT::FAILED;
+        }
     } else {
-        RCLCPP_ERROR(context->node_->get_logger(), "设置 arm_task 参数失败: %s", 
-                     results[0].reason.c_str());
+        RCLCPP_ERROR(context->node_->get_logger(), "设置 arm_task 参数超时");
         //return BT::FAILED;
     }
 
