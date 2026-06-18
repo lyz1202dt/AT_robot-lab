@@ -277,8 +277,8 @@ void ArmTaskNode::execute_grasp_flow() {
 
     // 机械臂先预摆到一个合适的位置，方便相机观察和后续运动
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(ready_position, 0.5);
-    std::this_thread::sleep_for(500ms);
+    execute_joint_space_trajectory(ready_position, 0.3);
+    std::this_thread::sleep_for(350ms);
 
     //std::this_thread::sleep_for(std::chrono::seconds(2)); // 等待机械臂稳定，确保相机准确识别位置
 
@@ -324,8 +324,8 @@ void ArmTaskNode::execute_grasp_flow() {
     // 3.笛卡尔轨迹规划使机械臂运动到物块的位置
     RCLCPP_INFO(this->get_logger(), "移动到块的位置");
     object_pose.pose.position.z+=0.1;
-    execute_cartesian_space_trajectory(object_pose, 1.5);
-    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(1.5 * 1000) + 500));
+    execute_cartesian_space_trajectory(object_pose, 0.5);
+    std::this_thread::sleep_for(100ms);
 
 
     // 通知气泵开始吸了
@@ -334,18 +334,23 @@ void ArmTaskNode::execute_grasp_flow() {
     msg.mode = 1;
     air_pub_->publish(msg);
 
+    std::this_thread::sleep_for(300ms);
+
 
     // 6.回到初始位置
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(grasp_finish_position, trajectory_duration_);
-    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 500));
+    execute_joint_space_trajectory(grasp_finish_position, 0.5);
+
+    std::this_thread::sleep_for(200ms);
+
+    msg.mode = 1;
+    arm_state_pub_1->publish(msg);
+    
+    std::this_thread::sleep_for(300ms);
 
     // 清状态，以便下位机反馈结果能正确更新状态，从下面开始就是接受三次距离反馈的结果，
     // 如果三次距离都满足条件才认为抓取成功，否则认为抓取失败
     catch_result_.store(0);
-
-    msg.mode = 1;
-    arm_state_pub_1->publish(msg);
 
     RCLCPP_INFO(this->get_logger(), "抓取流程完成");
 }
@@ -353,8 +358,8 @@ void ArmTaskNode::execute_grasp_flow() {
 void ArmTaskNode::execute_place_flow_1() {
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(ready_position, 1.5);
-    std::this_thread::sleep_for(1500ms);
+    execute_joint_space_trajectory(ready_position, 2.0);
+    std::this_thread::sleep_for(2100ms);
 
     int count=100;      //等10s
     bool exit_lookup=false;
@@ -391,9 +396,9 @@ void ArmTaskNode::execute_place_flow_1() {
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
         object_pose.pose.position.z);
 
-    execute_cartesian_space_trajectory(object_pose, trajectory_duration_);
+    execute_cartesian_space_trajectory(object_pose, 1.0);
 
-    std::this_thread::sleep_for(3000ms);
+    std::this_thread::sleep_for(1000ms);
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
@@ -401,29 +406,26 @@ void ArmTaskNode::execute_place_flow_1() {
     msg.mode = 0;
     air_pub_->publish(msg);
 
-    std::this_thread::sleep_for(500ms);
+    std::this_thread::sleep_for(200ms);
 
     RCLCPP_INFO(this->get_logger(), "返回初始位置");
 
-    execute_joint_space_trajectory(home_position_, trajectory_duration_);
+    execute_joint_space_trajectory(home_position_, 0.5);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 500));
+    std::this_thread::sleep_for(500ms);
 
     robot_msgs::msg::Armmode place_finish_msg;
     place_finish_msg.mode = 1;
     arm_place_finish_pub->publish(place_finish_msg);
 
-
-
     RCLCPP_INFO(this->get_logger(), "第一层放块任务结束");
 }
-
 
 void ArmTaskNode::execute_place_flow_2() {
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(ready_position, 1.5);
-    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 300));
+    execute_joint_space_trajectory(ready_position, 2.0);
+    std::this_thread::sleep_for(2100ms);
 
     int count=100;      //等10s
     bool exit_lookup=false;
@@ -449,7 +451,7 @@ void ArmTaskNode::execute_place_flow_2() {
     geometry_msgs::msg::PoseStamped object_pose;
     object_pose.pose.position.x=transfer.transform.translation.x;
     object_pose.pose.position.y=transfer.transform.translation.y;
-    object_pose.pose.position.z=0.05;
+    object_pose.pose.position.z=0.15;
     tf2::Quaternion quat;
     quat.setRPY(0, M_PI / 2.0-0.25, 0);
     object_pose.pose.orientation.w = quat.getW();
@@ -460,9 +462,9 @@ void ArmTaskNode::execute_place_flow_2() {
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
         object_pose.pose.position.z);
 
-    execute_cartesian_space_trajectory(object_pose, trajectory_duration_);
+    execute_cartesian_space_trajectory(object_pose, 1.0);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 500));
+    std::this_thread::sleep_for(1000ms);
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
@@ -470,21 +472,19 @@ void ArmTaskNode::execute_place_flow_2() {
     msg.mode = 0;
     air_pub_->publish(msg);
 
-    std::this_thread::sleep_for(500ms);
+    std::this_thread::sleep_for(200ms);
 
     RCLCPP_INFO(this->get_logger(), "返回初始位置");
 
-    execute_joint_space_trajectory(home_position_, trajectory_duration_);
+    execute_joint_space_trajectory(home_position_, 0.5);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 500));
+    std::this_thread::sleep_for(500ms);
 
     robot_msgs::msg::Armmode place_finish_msg;
     place_finish_msg.mode = 1;
     arm_place_finish_pub->publish(place_finish_msg);
 
-
-
-    RCLCPP_INFO(this->get_logger(), "第一层放块任务结束");
+    RCLCPP_INFO(this->get_logger(), "第二层放块任务结束");
 }
 
 
