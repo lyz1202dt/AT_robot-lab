@@ -35,7 +35,7 @@ start_to_a1_target_point: &start_to_a1_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.3
+  adjust_min_omega: 0.5
   # 是否允许较大的 y 向速度
   allow_y_vel: true
   # 轨迹衔接半径，0 表示不用曲线连接
@@ -63,7 +63,7 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.3
+  adjust_min_omega: 0.5
   # 是否允许较大的 y 向速度
   allow_y_vel: false
   # 轨迹衔接半径，0 表示不用曲线连接
@@ -91,7 +91,7 @@ a2_to_src_target_point: &a2_to_src_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.3
+  adjust_min_omega: 0.5
   # 是否允许较大的 y 向速度
   allow_y_vel: true
   # 轨迹衔接半径，0 表示不用曲线连接
@@ -119,7 +119,7 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.3
+  adjust_min_omega: 0.5
   # 是否允许较大的 y 向速度
   allow_y_vel: false
   # 轨迹衔接半径，0 表示不用曲线连接
@@ -147,7 +147,7 @@ dst_to_dst2_target_point: &dst_to_dst2_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.3
+  adjust_min_omega: 0.5
   # 是否允许较大的 y 向速度
   allow_y_vel: true
   # 轨迹衔接半径，0 表示不用曲线连接
@@ -175,7 +175,7 @@ dst2_to_src_target_point: &dst2_to_src_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.3
+  adjust_min_omega: 0.5
   # 是否允许较大的 y 向速度
   allow_y_vel: false
   # 轨迹衔接半径，0 表示不用曲线连接
@@ -218,10 +218,10 @@ box_positions:
     - [2.97, -3.275, 3.1415926] # col 3
   # 抓取区第二排 4 个槽位，格式为 [x, y, yaw]
   pick_row_1:
-    - [1.967, -0.725, 3.1415926] # col 0
-    - [1.967, -1.575, 3.1415926] # col 1
-    - [1.967, -2.425, 3.1415926] # col 2
-    - [1.967, -3.275, 3.1415926] # col 3
+    - [2.027, -0.725, 3.1415926] # col 0
+    - [2.027, -1.575, 3.1415926] # col 1
+    - [2.027, -2.425, 3.1415926] # col 2
+    - [2.027, -3.275, 3.1415926] # col 3
 #-0.43-0.125
 routes:
   # 根据 VIP 所在边列选择进入路线：
