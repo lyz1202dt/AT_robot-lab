@@ -370,8 +370,25 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     if (!wait_with_interrupt(context, 5s)) {
         return BT::FAILED;
     }
-
-    context->node_->set_parameter(rclcpp::Parameter("arm_task", 5));
+    // 创建同步参数客户端，目标节点是 "arm_task"
+    auto param_client = std::make_shared<rclcpp::SyncParametersClient>(context->node_, "arm_task");
+    
+    // 等待参数服务可用
+    if (!param_client->wait_for_service(5s)) {
+        RCLCPP_ERROR(context->node_->get_logger(), "arm_task 节点的参数服务不可用");
+        //return BT::FAILED;
+    }
+    
+    // 同步设置 arm_task 参数为 5
+    auto results = param_client->set_parameters({rclcpp::Parameter("arm_task", 5)});
+    
+    if (results[0].successful) {
+        RCLCPP_INFO(context->node_->get_logger(), "成功设置 arm_task 参数为 5");
+    } else {
+        RCLCPP_ERROR(context->node_->get_logger(), "设置 arm_task 参数失败: %s", 
+                     results[0].reason.c_str());
+        //return BT::FAILED;
+    }
 
     //此处有个话题用来发布摄像头功能，暂定，无需改动
 
