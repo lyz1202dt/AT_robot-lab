@@ -53,6 +53,10 @@ add_executable(test_node
   src/test.cpp
 )
 
+add_executable(measure_node
+  src/measure.cpp
+)
+
 
 target_include_directories(robot_control
 PUBLIC
@@ -79,9 +83,21 @@ ament_target_dependencies(
   robot_msgs
 )
 
+ament_target_dependencies(
+  measure_node
+  rclcpp
+  geometry_msgs
+  tf2
+  tf2_ros
+  robot_msgs
+)
+
+target_link_libraries(measure_node yaml-cpp)
+
 install(TARGETS
 robot_control
 test_node
+measure_node
 DESTINATION lib/${PROJECT_NAME}
 )
 

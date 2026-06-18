@@ -204,6 +204,13 @@ void ArmTaskNode::task_execution_thread() {
     RCLCPP_INFO(this->get_logger(), "线程结束");
 }
 
+void ArmTaskNode::execut_pos_record()
+{
+    RCLCPP_INFO(this->get_logger(), "移动到准备位置");
+    execute_joint_space_trajectory(ready_position, 0.7);
+    std::this_thread::sleep_for(750ms);
+}
+
 // 这个函数是整个机械臂任务的核心，它根据当前的任务模式（arm_task_mode_）来决定执行哪个具体的任务流程（抓取、放置、搜索等）。它还负责管理任务的状态，
 // 确保在一个任务执行过程中不会被新的任务打断，并且在任务完成后重置状态以准备下一次任务。
 // 该函数为线性执行函数
@@ -244,8 +251,13 @@ void ArmTaskNode::execute_task_state_machine() {
             // 在比赛开始时，机械臂需要先巡视扫描场地上的物块，确定狗的巡线流程
             RCLCPP_INFO(this->get_logger(), "巡视扫描物块");
             execute_look_for();
-
-        } else if (current_mode >= 10 && current_mode < 20) {
+        }
+        else if(current_mode==6)
+        {
+            RCLCPP_INFO(this->get_logger(), "调试录点模式");
+            execut_pos_record();
+        }
+        else if (current_mode >= 10 && current_mode < 20) {
             // Move to position x
             int position_index = current_mode - 10;
             RCLCPP_INFO(this->get_logger(), "Moving to position %d", position_index);

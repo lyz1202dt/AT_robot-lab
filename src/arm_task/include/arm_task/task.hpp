@@ -49,6 +49,7 @@ private:
     void execute_grasp_flow();
     void execute_place_flow_1();
     void execute_place_flow_2();
+    void execut_pos_record();
 
     void execute_move_to_position(int position_index);
     void execute_look_for();
