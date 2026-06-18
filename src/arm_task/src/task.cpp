@@ -369,7 +369,7 @@ void ArmTaskNode::execute_grasp_flow() {
 void ArmTaskNode::execute_place_flow_1() {
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(ready_position, 2.0);
+    execute_joint_space_trajectory(place_position, 2.0);
     std::this_thread::sleep_for(2100ms);
 
     int count=100;      //等10s
@@ -435,7 +435,7 @@ void ArmTaskNode::execute_place_flow_1() {
 void ArmTaskNode::execute_place_flow_2() {
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(ready_position, 2.0);
+    execute_joint_space_trajectory(place_position_2, 2.0);
     std::this_thread::sleep_for(2100ms);
 
     int count=100;      //等10s

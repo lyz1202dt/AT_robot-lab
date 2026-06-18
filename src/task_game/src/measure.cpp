@@ -104,9 +104,9 @@ RowKeys keys_for_line(int line) {
     // 现场输入的 line 与配置文件中的行名保持固定映射。
     switch (line) {
         case 1:
-            return {"arm_pick_row_0", "pick_row_0"};
+            return {"arm_pick_line_1", "pick_line_1"};
         case 2:
-            return {"arm_pick_row_1", "pick_row_1"};
+            return {"arm_pick_line_0", "pick_line_0"};
         case 3:
             return {"arm_place", "place"};
         default:
