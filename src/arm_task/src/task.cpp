@@ -378,7 +378,7 @@ void ArmTaskNode::execute_place_flow_1() {
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
     std_msgs::msg::Int32 msg;
-    msg.data = 1;
+    msg.data = 0;
     air_pub_->publish(msg);
 
     std::this_thread::sleep_for(200ms);
@@ -446,7 +446,7 @@ void ArmTaskNode::execute_place_flow_2() {
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
     std_msgs::msg::Int32 msg;
-    msg.data = 1;
+    msg.data = 0;
     air_pub_->publish(msg);
 
     std::this_thread::sleep_for(200ms);
@@ -492,6 +492,7 @@ void ArmTaskNode::execute_look_for() {
            std::this_thread::sleep_for(200ms);
            execute_joint_space_trajectory(stop_joint_pos, 8.0);
            std::this_thread::sleep_for(8s);
+           RCLCPP_INFO(get_logger(),"搜索箱子...");
         }
 
         std::this_thread::sleep_for(100ms);
