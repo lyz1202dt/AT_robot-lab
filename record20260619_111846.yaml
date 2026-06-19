@@ -259,21 +259,6 @@ paths:
     min_omega: 0.3
   - policy_id: 2
     target_pos:
-      x: -5.15096
-      y: 0.936411
-    target_vel: 0
-    max_velocity: 0.7
-    max_accelation: 0.4
-    kp:
-      x: 0.2
-      y: 0.2
-      yaw: 0.4
-    allow_start_dir_error: 0.2
-    err_allow: 0.2
-    adjust_min_vel: 0.2
-    min_omega: 0.3
-  - policy_id: 2
-    target_pos:
       x: -5.11311
       y: 0.987531
     target_vel: 0
