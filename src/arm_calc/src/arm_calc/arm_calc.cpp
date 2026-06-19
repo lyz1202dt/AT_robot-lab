@@ -290,7 +290,6 @@ JointVector ArmCalc::joint_pos_as(const CartesianPose& pose) {
 
     last_joint_solution_ = to_kdl_joints(best_solution);
 
-    RCLCPP_INFO(rclcpp::get_logger("logger"),"解析解逆解器被调用");
     return best_solution;
 }
 

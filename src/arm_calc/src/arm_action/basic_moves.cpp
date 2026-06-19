@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <rclcpp/rclcpp.hpp>
 
 namespace arm_action {
 
