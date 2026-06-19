@@ -6,6 +6,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <robot_msgs/msg/armmode.hpp>
+#include <std_msgs/msg/int32.hpp>
 
 class Robot;
 
@@ -23,8 +24,7 @@ protected:
 
 private:
 
-    rclcpp::Publisher<
-        robot_msgs::msg::Armmode>::SharedPtr arm_cmd_pub_;
+    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr arm_cmd_pub_;
 
     rclcpp::Subscription<
         robot_msgs::msg::Armmode>::SharedPtr arm_state_sub_;

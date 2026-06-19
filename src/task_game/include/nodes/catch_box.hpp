@@ -5,7 +5,6 @@
 #include <atomic>
 
 #include <rclcpp/rclcpp.hpp>
-#include <robot_msgs/msg/armmode.hpp>
 #include <std_msgs/msg/int32.hpp>
 class Robot;
 

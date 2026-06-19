@@ -7,7 +7,6 @@
 #include <robot_msgs/msg/arm.hpp>
 #include <robot_msgs/msg/arm4.hpp>
 #include <robot_msgs/msg/vis.hpp>
-#include <robot_msgs/msg/armmode.hpp>
 #include <robot_msgs/msg/int.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <thread>

@@ -30,7 +30,7 @@ BT::Status LiftSearchAction::execute(BT& tree)
     }
     // arm_cmd_pub_ =
     //         context->node_->create_publisher<
-    //             robot_msgs::msg::Armmode>(
+    //             std_msgs::msg::Int32>(
     //                 "arm_cmd",
     //                 10);
 
@@ -46,8 +46,8 @@ BT::Status LiftSearchAction::execute(BT& tree)
 
     
     // // 发送抓取命令
-    // robot_msgs::msg::Armmode msg;
-    // msg.mode = 4;
+    // std_msgs::msg::Int32 msg;
+    // msg.data = 4;
 
     // arm_cmd_pub_->publish(msg);
 

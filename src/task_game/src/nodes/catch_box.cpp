@@ -78,10 +78,6 @@ BT::Status CatchBoxAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-
-    // 8. 取出当前要执行的搬箱计划
-    const auto& plan = move_plan[plan_index];
-
     // 发送抓取命令
     std_msgs::msg::Int32 msg;
     msg.data = 1;

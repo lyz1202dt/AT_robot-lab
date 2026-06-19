@@ -9,10 +9,8 @@
 #include <memory>
 #include <mutex>
 #include <rclcpp/rclcpp.hpp>
-#include <robot_msgs/msg/armmode.hpp>
 #include <robot_msgs/msg/vis.hpp>
 #include <robot_msgs/msg/int.hpp>
-#include <std_msgs/msg/detail/int32__struct.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <string>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -80,7 +78,7 @@ private:
     // rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_state_pub_2;
 
     // Subscribers
-    rclcpp::Subscription<robot_msgs::msg::Armmode>::SharedPtr arm_cmd_sub_;
+    rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr arm_cmd_sub_;
 
 
     // Parameters

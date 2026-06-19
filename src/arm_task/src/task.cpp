@@ -4,9 +4,7 @@
 #include <cmath>
 #include <geometry_msgs/msg/detail/pose_stamped__struct.hpp>
 #include <rclcpp/logging.hpp>
-#include <robot_msgs/msg/armmode.hpp>
 #include <robot_msgs/msg/vis.hpp>
-#include <std_msgs/msg/detail/int32__struct.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <thread>
@@ -73,8 +71,8 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     // arm_state_pub_2 = this->create_publisher<robot_msgs::msg::Armmode>("arm_search_state", 10);
 
     // 上层控制命令订阅，告诉机械臂执行哪个任务
-    arm_cmd_sub_ = this->create_subscription<robot_msgs::msg::Armmode>(
-        "arm_cmd", 10, [this](const robot_msgs::msg::Armmode& msg){current_mode=msg.mode;});
+    arm_cmd_sub_ = this->create_subscription<std_msgs::msg::Int32>(
+        "arm_cmd", 10, [this](const std_msgs::msg::Int32& msg){current_mode=msg.data;});
 
     // 气泵的控制话题，发布机械臂需要的吸取和放置命令
     air_pub_ = this->create_publisher<std_msgs::msg::Int32>("air_pump_target", 10);

@@ -4,6 +4,7 @@
 #include <atomic>
 #include <rclcpp/logging.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/int32.hpp>
 #include <thread>
 #include <vector>
 
@@ -22,25 +23,6 @@ bool wait_for_stage(Robot* context, int32_t expected_stage) {
     }
     return rclcpp::ok() && context->auto_pilot_enabled.load();
 }
-
-bool wait_with_interrupt(Robot* context, const std::chrono::milliseconds duration) {
-    auto remaining = duration;
-
-    while (remaining.count() > 0) {
-        if (!rclcpp::ok() || !context->auto_pilot_enabled.load()) {
-            return false;
-        }
-
-        const auto step = std::min(remaining, std::chrono::milliseconds(50));
-        std::this_thread::sleep_for(step);
-
-        remaining -= step;
-    }
-
-    return true;
-}
-
-
 
 } // namespace
 
@@ -99,14 +81,14 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
     place_at_second_floor_ = plan.place_at_second_floor;
 
     if (!place_at_second_floor_) {
-        std_msgs::msg::Int32 msg_Armmode;
-        msg_Armmode.data = 2;
-        arm_cmd_pub_->publish(msg_Armmode);
+        std_msgs::msg::Int32 msg;
+        msg.data = 2;
+        arm_cmd_pub_->publish(msg);
     } else {
 
-        std_msgs::msg::Int32 msg_Armmode;
-        msg_Armmode.data = 3;
-        arm_cmd_pub_->publish(msg_Armmode);
+        std_msgs::msg::Int32 msg;
+        msg.data = 3;
+        arm_cmd_pub_->publish(msg);
     }
     // =========================================================
     // 等待执行结果

@@ -11,9 +11,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/subscription.hpp>
-#include <robot_msgs/msg/box_id_grid.hpp>
 #include <robot_msgs/msg/int.hpp>
-#include <robot_msgs/msg/armmode.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <std_msgs/msg/int32_multi_array.hpp>
 #include <std_msgs/msg/int32.hpp>

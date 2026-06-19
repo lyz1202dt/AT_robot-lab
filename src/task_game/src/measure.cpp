@@ -5,8 +5,8 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 #include <yaml-cpp/yaml.h>
-#include <robot_msgs/msg/armmode.hpp>
 #include <robot_msgs/msg/cmd.hpp>
+#include <std_msgs/msg/int32.hpp>
 
 #include <chrono>
 #include <cmath>
@@ -235,7 +235,7 @@ private:
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
     std::string point_yaml_path_;
 
-    rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_cmd_pub_;    //发布机械臂动作命令，用于抬起机械臂到合适的位置
+    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr arm_cmd_pub_;        //发布机械臂动作命令，用于抬起机械臂到合适的位置
     rclcpp::Publisher<robot_msgs::msg::Cmd>::SharedPtr cmd_pub_;            //发布狗身动作命令，用于保持位控站立
 };
 
@@ -246,7 +246,7 @@ MeasurePoint::MeasurePoint(rclcpp::Node::SharedPtr node)
     node_->declare_parameter<std::string>("point_yaml_path", kDefaultPointYamlPath);
     point_yaml_path_ = node_->get_parameter("point_yaml_path").as_string();
 
-    arm_cmd_pub_ = node_->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
+    arm_cmd_pub_ = node_->create_publisher<std_msgs::msg::Int32>("arm_cmd", 10);
     cmd_pub_ = node_->create_publisher<robot_msgs::msg::Cmd>("robot_move_cmd", 10);
 
     RCLCPP_INFO(node_->get_logger(), "point.yaml 路径: %s", point_yaml_path_.c_str());
@@ -260,8 +260,8 @@ void MeasurePoint::ready()
 {
     //arm_cmd_pub_发送机械臂命令6展开机械臂
     //cmd_pub_发送mode=1让狗子处于站立位控
-    robot_msgs::msg::Armmode arm_msg;
-    arm_msg.mode = 6;       //发送机械臂抬起的指令，准备录制
+    std_msgs::msg::Int32 arm_msg;
+    arm_msg.data = 6;       //发送机械臂抬起的指令，准备录制
 
     robot_msgs::msg::Cmd dog_msg;
     dog_msg.mode = 1;

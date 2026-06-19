@@ -6,7 +6,6 @@
 #include <cerrno>
 #include <cmath>
 #include <ctime>
-#include <std_msgs/msg/detail/int32_multi_array__struct.hpp>
 #include <thread>
 #include <functional>
 #include <limits>

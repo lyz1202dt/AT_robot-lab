@@ -6,7 +6,6 @@
 #include "cdc_trans.hpp"
 #include <robot_msgs/msg/arm.hpp>
 #include <robot_msgs/msg/arm4.hpp>
-#include <robot_msgs/msg/armmode.hpp>
 #include <robot_msgs/msg/int.hpp>
 #include "data_pack.h"
 #include <std_msgs/msg/int32.hpp>

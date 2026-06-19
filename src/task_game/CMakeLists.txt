@@ -16,6 +16,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -68,6 +69,7 @@ ament_target_dependencies(
   rclcpp
   geometry_msgs
   sensor_msgs
+  std_msgs
   visualization_msgs
   tf2
   tf2_ros
@@ -81,6 +83,7 @@ ament_target_dependencies(
   rclcpp
   sensor_msgs
   robot_msgs
+  std_msgs
 )
 
 ament_target_dependencies(
@@ -90,6 +93,7 @@ ament_target_dependencies(
   tf2
   tf2_ros
   robot_msgs
+  std_msgs
 )
 
 target_link_libraries(measure_node yaml-cpp)
