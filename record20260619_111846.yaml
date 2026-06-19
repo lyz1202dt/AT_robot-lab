@@ -133,8 +133,8 @@ paths:
       x: 1.0
       y: 1.0
       yaw: 1.5
-    allow_start_dir_error: 0.2
-    err_allow: 0.2
+    allow_start_dir_error: 0.1
+    err_allow: 0.1
     adjust_min_vel: 0.2
     min_omega: 0.3
   - policy_id: 2
@@ -148,8 +148,8 @@ paths:
       x: 1.0
       y: 1.0
       yaw: 1.5
-    allow_start_dir_error: 0.2
-    err_allow: 0.2
+    allow_start_dir_error: 0.1
+    err_allow: 0.1
     adjust_min_vel: 0.2
     min_omega: 0.3
   - policy_id: 2
@@ -163,8 +163,8 @@ paths:
       x: 1.0
       y: 1.0
       yaw: 1.5
-    allow_start_dir_error: 0.2
-    err_allow: 0.2
+    allow_start_dir_error: 0.1
+    err_allow: 0.1
     adjust_min_vel: 0.2
     min_omega: 0.3
   - policy_id: 2
@@ -178,8 +178,8 @@ paths:
       x: 1.0
       y: 1.0
       yaw: 1.5
-    allow_start_dir_error: 0.2
-    err_allow: 0.2
+    allow_start_dir_error: 0.1
+    err_allow: 0.1
     adjust_min_vel: 0.2
     min_omega: 0.3
   - policy_id: 2
@@ -193,8 +193,8 @@ paths:
       x: 1.0
       y: 1.0
       yaw: 1.5
-    allow_start_dir_error: 0.2
-    err_allow: 0.2
+    allow_start_dir_error: 0.1
+    err_allow: 0.1
     adjust_min_vel: 0.2
     min_omega: 0.3
   - policy_id: 2
@@ -208,8 +208,8 @@ paths:
       x: 1.0
       y: 1.0
       yaw: 1.5
-    allow_start_dir_error: 0.2
-    err_allow: 0.2
+    allow_start_dir_error: 0.1
+    err_allow: 0.1
     adjust_min_vel: 0.2
     min_omega: 0.3
   - policy_id: 2
@@ -230,7 +230,7 @@ paths:
   - policy_id: 5
     target_pos:
       x: -2.46665
-      y: -2.48734
+      y: -2.50734
     target_vel: 0
     max_velocity: 0.7
     max_accelation: 0.3
