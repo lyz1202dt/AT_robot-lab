@@ -161,14 +161,20 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
         return cmd;
     }
 
-    const double target_heading = std::atan2(pos_err.y(), pos_err.x());
-    const double yaw_err = normalize_angle(target_heading - current_yaw_);
-
     Eigen::Vector2d segment_direction = get_segment_direction(path);
     if (segment_direction.dot(pos_err) <= 0.0 && distance > 1e-6) {
         // The fixed segment feedforward would increase distance after overshooting the target.
         segment_direction = pos_err.normalized();
     }
+
+    const double alignment_heading = get_alignment_heading(path, pos_err);
+    const double alignment_yaw_err = normalize_angle(alignment_heading - current_yaw_);
+    const bool need_heading_alignment = std::abs(alignment_yaw_err) > path.allow_start_dir_error;
+    const double target_heading = std::atan2(pos_err.y(), pos_err.x());
+    const double yaw_err = need_heading_alignment
+        ? alignment_yaw_err
+        : normalize_angle(target_heading - current_yaw_);
+
     const double feedforward_speed = compute_feedforward_speed(path, distance, dt);
     const Eigen::Vector2d feedforward_world_vel = segment_direction * feedforward_speed;
     const Eigen::Vector2d feedback_world_vel(path.kp.x() * pos_err.x(), path.kp.y() * pos_err.y());
@@ -179,7 +185,6 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
         desired_world_vel *= (path.max_velocity / desired_speed);
     }
 
-    const bool need_heading_alignment = std::abs(yaw_err) > path.allow_start_dir_error;
     if (need_heading_alignment) {
         desired_world_vel.setZero();
         current_linear_speed_ = 0.0;
@@ -260,6 +265,22 @@ Eigen::Vector2d Pilot::get_segment_direction(const PathPoint &path) const
         return Eigen::Vector2d::Zero();
     }
     return direction.normalized();
+}
+
+double Pilot::get_alignment_heading(const PathPoint &path, const Eigen::Vector2d &position_error) const
+{
+    Eigen::Vector2d direction = get_segment_direction(path);
+    if (direction.dot(position_error) <= 0.0 && position_error.norm() > 1e-6) {
+        direction = position_error.normalized();
+    } else if (direction.norm() <= 1e-6 && position_error.norm() > 1e-6) {
+        direction = position_error.normalized();
+    }
+
+    if (direction.norm() <= 1e-6) {
+        return current_yaw_;
+    }
+
+    return std::atan2(direction.y(), direction.x());
 }
 
 double Pilot::compute_feedforward_speed(const PathPoint &path, double distance, double dt)

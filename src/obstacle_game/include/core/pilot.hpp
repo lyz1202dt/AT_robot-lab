@@ -48,6 +48,7 @@ private:
     bool load_paths(const std::string &yaml_path);
     void reset_segment_progress();
     bool advance_if_current_target_reached();
+    double get_alignment_heading(const PathPoint &path, const Eigen::Vector2d &position_error) const;
     Eigen::Vector2d get_segment_direction(const PathPoint &path) const;
     double compute_feedforward_speed(const PathPoint &path, double distance, double dt);
     robot_msgs::msg::Cmd make_zero_command() const;
