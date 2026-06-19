@@ -52,7 +52,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     this->get_parameter("arm_calc_node_name", arm_calc_node_name_);
 
     // Load arm positions from YAML
-    load_arm_positions_from_yaml();
+    //load_arm_positions_from_yaml();
 
     // Create publishers
     visual_target_pub_      = this->create_publisher<geometry_msgs::msg::PoseStamped>("visual_target_pose", 10);
