@@ -172,7 +172,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         return result;
     });
 
-    control_timer = node_->create_wall_timer(50ms, [this]() {
+    control_timer = node_->create_wall_timer(10ms, [this]() {
         geometry_msgs::msg::TransformStamped transfer;
         try {
                 transfer = tf_buffer_->lookupTransform("map","base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));
