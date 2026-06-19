@@ -138,7 +138,7 @@ private:
     std::vector<double> look_middle_position_{0.0, 1.5, 2.45, 3.1};
     std::vector<double> look_right_position_{0.8, 1.5, 2.45, 3.1};
     
-    std::vector<double> grasp_finish_position{0.0, 0.1, 0.0, -0.8};
+    std::vector<double> grasp_finish_position{0.0, 0.1, 0.1, -0.8};
     
     // Parameter callback handle
     rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_callback_;
