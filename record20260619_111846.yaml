@@ -10,9 +10,9 @@ paths:
     max_velocity: 1.0
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -20,14 +20,14 @@ paths:
   - policy_id: 5
     target_pos:
       x: 0.26529
-      y: 0.902743
+      y: 0.952743
     target_vel: 0
     max_velocity: 1.0
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -40,9 +40,9 @@ paths:
     max_velocity: 1.0
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -55,9 +55,9 @@ paths:
     max_velocity: 1.0
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -70,9 +70,9 @@ paths:
     max_velocity: 1.0
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -85,24 +85,24 @@ paths:
     max_velocity: 1.0
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
     min_omega: 0.3
   - policy_id: 3
     target_pos:
-      x: 2.54781
+      x: 2.44781
       y: -1.88696
     target_vel: 0
     max_velocity: 1.0
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -115,9 +115,9 @@ paths:
     max_velocity: 0.7
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -130,9 +130,9 @@ paths:
     max_velocity: 0.7
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.1
     err_allow: 0.1
     adjust_min_vel: 0.2
@@ -145,9 +145,9 @@ paths:
     max_velocity: 0.7
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.1
     err_allow: 0.1
     adjust_min_vel: 0.2
@@ -160,9 +160,9 @@ paths:
     max_velocity: 0.7
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.1
     err_allow: 0.1
     adjust_min_vel: 0.2
@@ -175,9 +175,9 @@ paths:
     max_velocity: 0.7
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.1
     err_allow: 0.1
     adjust_min_vel: 0.2
@@ -190,9 +190,9 @@ paths:
     max_velocity: 0.7
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.1
     err_allow: 0.1
     adjust_min_vel: 0.2
@@ -205,9 +205,9 @@ paths:
     max_velocity: 0.7
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.1
     err_allow: 0.1
     adjust_min_vel: 0.2
@@ -220,9 +220,9 @@ paths:
     max_velocity: 0.7
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -235,9 +235,9 @@ paths:
     max_velocity: 0.7
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.05
     err_allow: 0.05
     adjust_min_vel: 0.2
@@ -250,9 +250,9 @@ paths:
     max_velocity: 0.7
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -265,9 +265,9 @@ paths:
     max_velocity: 0.7
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -280,9 +280,9 @@ paths:
     max_velocity: 0.7
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -295,9 +295,9 @@ paths:
     max_velocity: 0.7
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
@@ -310,9 +310,9 @@ paths:
     max_velocity: 0.7
     max_accelation: 0.3
     kp:
-      x: 1.0
-      y: 1.0
-      yaw: 1.5
+      x: 1.5
+      y: 2.0
+      yaw: 2.0
     allow_start_dir_error: 0.2
     err_allow: 0.2
     adjust_min_vel: 0.2
