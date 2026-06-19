@@ -48,7 +48,7 @@ bool wait_with_interrupt(Robot* context, const std::chrono::milliseconds duratio
 PlaceBoxAction::PlaceBoxAction()
     : BT::ActionNode("place_box_action") {}
 
-void PlaceBoxAction::arm_place_cmd_callback(const robot_msgs::msg::Armmode::SharedPtr msg) { arm_state_ = msg->mode; }
+void PlaceBoxAction::arm_place_cmd_callback(const std_msgs::msg::Int32::SharedPtr msg) { arm_state_ = msg->data; }
 
 
 BT::Status PlaceBoxAction::execute(BT& tree) {
@@ -61,9 +61,9 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
     RCLCPP_INFO(context->node_->get_logger(), "等待机械臂放置完成");
 
     if (!subscriptions_ready_) {
-        arm_cmd_pub_ = context->node_->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
+        arm_cmd_pub_ = context->node_->create_publisher<std_msgs::msg::Int32>("arm_cmd", 10);
 
-        arm_state_sub = context->node_->create_subscription<robot_msgs::msg::Armmode>(
+        arm_state_sub = context->node_->create_subscription<std_msgs::msg::Int32>(
             "arm_cmd_place_state", 10, std::bind(&PlaceBoxAction::arm_place_cmd_callback, this, std::placeholders::_1));
         
         subscriptions_ready_ = true;
@@ -99,13 +99,13 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
     place_at_second_floor_ = plan.place_at_second_floor;
 
     if (!place_at_second_floor_) {
-        robot_msgs::msg::Armmode msg_Armmode;
-        msg_Armmode.mode = 2;
+        std_msgs::msg::Int32 msg_Armmode;
+        msg_Armmode.data = 2;
         arm_cmd_pub_->publish(msg_Armmode);
     } else {
 
-        robot_msgs::msg::Armmode msg_Armmode;
-        msg_Armmode.mode = 3;
+        std_msgs::msg::Int32 msg_Armmode;
+        msg_Armmode.data = 3;
         arm_cmd_pub_->publish(msg_Armmode);
     }
     // =========================================================

@@ -358,7 +358,7 @@ void GeneratePlaneAction::init_publishers(const rclcpp::Node::SharedPtr& node) {
         return;
     }
 
-    arm_cmd_pub_ = node->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
+    arm_cmd_pub_ = node->create_publisher<std_msgs::msg::Int32>("arm_cmd", 10);
     publishers_ready_ = true;
 }
 
@@ -393,8 +393,8 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         }
     }
 
-        robot_msgs::msg::Armmode msg;
-        msg.mode = 5;
+        std_msgs::msg::Int32 msg;
+        msg.data = 5;
 
         arm_cmd_pub_->publish(msg);
 

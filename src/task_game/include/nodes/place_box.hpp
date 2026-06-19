@@ -10,12 +10,13 @@
 #include <robot_msgs/msg/armmode.hpp>
 #include <atomic>
 #include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/int32.hpp>
 class Robot;
 
 class PlaceBoxAction : public BT::ActionNode {
 public:
     PlaceBoxAction();
-    void arm_place_cmd_callback(const robot_msgs::msg::Armmode::SharedPtr msg);
+    void arm_place_cmd_callback(const std_msgs::msg::Int32::SharedPtr msg);
 
 protected:
     BT::Status execute(BT& tree) override;
@@ -25,8 +26,8 @@ protected:
     std::atomic<int> arm_state_{0};
 
     
-    rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_cmd_pub_;
-    rclcpp::Subscription<robot_msgs::msg::Armmode>::SharedPtr arm_state_sub;
+    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr arm_cmd_pub_;
+    rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr arm_state_sub;
     bool subscriptions_ready_ = false;
    
 };

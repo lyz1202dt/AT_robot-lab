@@ -16,7 +16,7 @@
 #include <robot_msgs/msg/armmode.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <std_msgs/msg/int32_multi_array.hpp>
-
+#include <std_msgs/msg/int32.hpp>
 #include "core/behavior_tree.hpp"
 
 class Robot;
@@ -46,7 +46,7 @@ private:
     rclcpp::Subscription<std_msgs::msg::Int32MultiArray>::SharedPtr box_grid_sub_;
 
     rclcpp::Publisher<
-        robot_msgs::msg::Armmode>::SharedPtr arm_cmd_pub_;
+        std_msgs::msg::Int32>::SharedPtr arm_cmd_pub_;
     int vip_box_id_{-1};
     BoxIdGrid box_id_grid_{};
     sem_t vip_box_id_sem_;
