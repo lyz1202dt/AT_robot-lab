@@ -34,6 +34,8 @@ BT::Status CatchBoxAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
+    arm_state_ = 0;
+
     if (!subscriptions_ready_) {
         
         arm_cmd_pub_ = context->node_->create_publisher<std_msgs::msg::Int32>("arm_cmd", 10);

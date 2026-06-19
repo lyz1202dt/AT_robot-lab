@@ -40,6 +40,8 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
+    arm_state_ = 0;
+
     RCLCPP_INFO(context->node_->get_logger(), "等待机械臂放置完成");
 
     if (!subscriptions_ready_) {
