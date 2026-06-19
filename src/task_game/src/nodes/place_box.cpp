@@ -46,7 +46,7 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         arm_cmd_pub_ = context->node_->create_publisher<std_msgs::msg::Int32>("arm_cmd", 10);
 
         arm_state_sub = context->node_->create_subscription<std_msgs::msg::Int32>(
-            "arm_cmd_place_state", 10, std::bind(&PlaceBoxAction::arm_place_cmd_callback, this, std::placeholders::_1));
+            "arm_cmd_state", 10, std::bind(&PlaceBoxAction::arm_place_cmd_callback, this, std::placeholders::_1));
         
         subscriptions_ready_ = true;
     }
