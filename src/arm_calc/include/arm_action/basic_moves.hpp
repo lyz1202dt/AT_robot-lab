@@ -11,7 +11,6 @@ using arm_calc::ArmCalc;
 using arm_calc::CartesianPose;
 using arm_calc::CartesianState;
 using arm_calc::CartesianTrajectoryPoint;
-using arm_calc::CartesianVector;
 using arm_calc::JointState;
 using arm_calc::JointTrajectoryPoint;
 using arm_calc::JointVector;
@@ -28,7 +27,6 @@ public:
     bool started() const;
 
 private:
-    std::shared_ptr<ArmCalc> arm_calc_;
     arm_calc::TrajectoryCalc trajectory_;
     JointState start_state_{};
     JointState goal_state_{};

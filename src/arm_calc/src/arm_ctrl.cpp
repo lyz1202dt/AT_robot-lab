@@ -48,15 +48,11 @@ geometry_msgs::msg::Quaternion ToMsgQuaternion(const Eigen::Quaterniond& q) {
 }
 
 // 辅助函数：构建静态关节目标点，用于预览或保持
-// 参数：arm_calc - 运动学计算器，position - 目标关节位置
-// 返回：JointTrajectoryPoint，包含位置、速度、加速度和扭矩
-JointTrajectoryPoint BuildStaticJointTarget(const std::shared_ptr<ArmCalc>& arm_calc, const JointVector& position) {
+// 参数：position - 目标关节位置
+// 返回：JointTrajectoryPoint，包含位置
+JointTrajectoryPoint BuildStaticJointTarget(const JointVector& position) {
     JointTrajectoryPoint point;
     point.position = position; // 设置目标位置
-    // point.velocity.setZero();   // 速度设为零（静态）
-    // point.acceleration.setZero();  // 加速度设为零
-    // // 计算逆动力学扭矩，确保关节保持在目标位置
-    // point.torque = arm_calc->joint_torque_inverse_dynamics(position, JointVector::Zero(), JointVector::Zero());
     return point;
 }
 
@@ -308,21 +304,11 @@ void ArmCtrlNode::refresh_plan(double now_sec) {
 
 void ArmCtrlNode::capture_idle_hold_from_current_state() {
     idle_hold_point_.position = current_joint_state_.position;                                  // 设置位置为当前关节位置
-    //     idle_hold_point_.velocity.setZero();  // 速度设为零
-    //     idle_hold_point_.acceleration.setZero();  // 加速度设为零
-    //     // 计算逆动力学扭矩，确保保持位置
-    //     idle_hold_point_.torque = arm_calc_->joint_torque_inverse_dynamics(
-    //    idle_hold_point_.position, JointVector::Zero(), JointVector::Zero());
     idle_hold_initialized_ = true; // 标记空闲保持点已初始化
 }
 
 void ArmCtrlNode::set_idle_hold_point(const JointTrajectoryPoint& point) {
     idle_hold_point_ = point;      // 对当前位置进行保存
-    // idle_hold_point_.velocity.setZero();  // 确保速度为零
-    // idle_hold_point_.acceleration.setZero();  // 确保加速度为零
-    //  重新计算扭矩
-    // idle_hold_point_.torque = arm_calc_->joint_torque_inverse_dynamics(
-    //   idle_hold_point_.position, JointVector::Zero(), JointVector::Zero());
     idle_hold_initialized_ = true; // 标记初始化
 }
 
@@ -445,7 +431,7 @@ void ArmCtrlNode::set_execute_trajectory_flag(bool value) {
 JointTrajectoryPoint ArmCtrlNode::build_preview_target() const {
     switch (requested_motion_mode_) {
     case MotionMode::kJointSpace:                                               // 关节空间模式：直接使用目标关节角度
-        return BuildStaticJointTarget(arm_calc_, joint_target_state_.position); // 直接使用关节目标
+        return BuildStaticJointTarget(joint_target_state_.position);            // 直接使用关节目标
 
     case MotionMode::kCartesianSpace: {                                         // 笛卡尔空间模式：需逆运动学（IK）求解
         int result = -1;                                                        // IK 求解结果标志
@@ -459,7 +445,7 @@ JointTrajectoryPoint ArmCtrlNode::build_preview_target() const {
             RCLCPP_INFO(this->get_logger(), "\033[1;31mhas_joint_state_ = %s\033[0m", has_joint_state_ ? "true" : "false");
             return idle_hold_point_;                                // 回退到空闲保持点，避免显示错误
         }
-        return BuildStaticJointTarget(arm_calc_, preview_position); // 构建静态关节目标点
+        return BuildStaticJointTarget(preview_position); // 构建静态关节目标点
     }
 
     case MotionMode::kVisualServo: {                                // 视觉伺服模式：同样需要 IK 求解视觉目标
@@ -470,7 +456,7 @@ JointTrajectoryPoint ArmCtrlNode::build_preview_target() const {
             RCLCPP_WARN(this->get_logger(), "\033[1;31mFailed to solve IK for visual target preview, keeping current display\033[0m");
             return idle_hold_point_;
         }
-        return BuildStaticJointTarget(arm_calc_, preview_position);
+        return BuildStaticJointTarget(preview_position);
     }
 
     case MotionMode::kIdle:                                         // 空闲模式或其他未知模式
@@ -497,24 +483,12 @@ void ArmCtrlNode::publish_control_loop() {
 
     const double now_sec = this->get_clock()->now().seconds(); // 获取当前 ROS 时间（秒）
 
-    if (last_ee_log_time_sec_ < 0.0 || (now_sec - last_ee_log_time_sec_) >= 0.25) {
-        const CartesianPose ee_pose  = arm_calc_->end_pose(current_joint_state_.position);
-        const Eigen::Vector3d ee_rpy = ee_pose.orientation.toRotationMatrix().eulerAngles(0, 1, 2);
-        // RCLCPP_INFO(
-        //     get_logger(), "EE pose pos=(%.4f, %.4f, %.4f) rpy=(%.4f, %.4f, %.4f)", ee_pose.position.x(), ee_pose.position.y(),
-        //     ee_pose.position.z(), ee_rpy.x(), ee_rpy.y(), ee_rpy.z());
-        last_ee_log_time_sec_ = now_sec;
-    }
-
     apply_requested_mode(now_sec);
     JointTrajectoryPoint target_point;                         // 本次控制循环的目标关节点
     // 根据当前激活的运动模式采样目标点
     switch (active_motion_mode_) {
     case MotionMode::kIdle: // 空闲模式：保持当前位置
         target_point = idle_hold_point_;
-        // 重新计算关节力矩（逆动力学），保证力控或仿真时姿态稳定
-        // target_point.torque = arm_calc_->joint_torque_inverse_dynamics(
-        //     target_point.position, JointVector::Zero(), JointVector::Zero());
         // RCLCPP_INFO(get_logger(),"target_point=(%lf,%lf,%lf)",target_point.position[0],target_point.position[1],target_point.position[2]);
         break;
 

@@ -39,24 +39,33 @@ Eigen::Vector3d ClampVectorNorm(const Eigen::Vector3d& vector, double limit) {
 }
 
 
-JointTrajectoryPoint BuildJointPoint(std::shared_ptr<ArmCalc> arm_calc,
-                                     const JointVector& position) {
-                                    //  ,const JointVector& velocity,
-                                    //  const JointVector& acceleration) {
+JointTrajectoryPoint BuildJointPoint(const JointVector& position) {
     JointTrajectoryPoint point;
     point.position = position;
-   // point.velocity = velocity;
-    // point.acceleration = acceleration;
-    // if (arm_calc) {
-    //     point.torque = arm_calc->joint_torque_inverse_dynamics(position, velocity, acceleration);
-    // }
+    return point;
+}
+
+CartesianState BuildCartesianState(const std::shared_ptr<ArmCalc>& arm_calc, const JointVector& joint_pos) {
+    CartesianState state;
+    if (arm_calc) {
+        state.pose = arm_calc->end_pose(joint_pos);
+    }
+    return state;
+}
+
+JointTrajectoryPoint BuildJointPoint(const std::shared_ptr<ArmCalc>& arm_calc,
+                                     const CartesianTrajectoryPoint& cartesian_target) {
+    JointTrajectoryPoint point;
+    if (arm_calc) {
+        int result     = -1;
+        point.position = arm_calc->joint_pos(cartesian_target.pose, &result);
+    }
     return point;
 }
 
 }  // namespace
 
-JointSpaceMove::JointSpaceMove(std::shared_ptr<ArmCalc> arm_calc)
-    : arm_calc_(std::move(arm_calc)) {}
+JointSpaceMove::JointSpaceMove(std::shared_ptr<ArmCalc>) {}
 
 void JointSpaceMove::set_start_state(const JointState& state) {
     start_state_ = state;
@@ -76,11 +85,10 @@ void JointSpaceMove::start(double start_time_sec) {
 
 JointTrajectoryPoint JointSpaceMove::sample(double current_time_sec) const {
     if (!started_) {
-        return BuildJointPoint(arm_calc_, start_state_.position);
+        return BuildJointPoint(start_state_.position);
     }
 
     JointTrajectoryPoint point = trajectory_.sample(current_time_sec - start_time_sec_);
-    //point.torque = arm_calc_->joint_torque_inverse_dynamics(point.position, point.velocity, point.acceleration);
     return point;
 }
 
@@ -98,7 +106,7 @@ JCartesianSpaceMove::JCartesianSpaceMove(std::shared_ptr<ArmCalc> arm_calc)
 void JCartesianSpaceMove::set_start_state(const JointState& state) {
     start_joint_state_ = state;
     if (arm_calc_) {
-        start_cartesian_state_ = arm_calc_->end_state(state.position);
+        start_cartesian_state_ = BuildCartesianState(arm_calc_, state.position);
     }
 
     JointVector pos_start = JointVector::Zero();
@@ -128,9 +136,9 @@ void JCartesianSpaceMove::start(double start_time_sec) {
 
 JointTrajectoryPoint JCartesianSpaceMove::sample(double current_time_sec) {
     if (!started_ || !arm_calc_) {
-        return BuildJointPoint(arm_calc_, start_joint_state_.position);
+        return BuildJointPoint(start_joint_state_.position);
     }
-    return arm_calc_->signal_arm_calc(build_cartesian_target(current_time_sec));
+    return BuildJointPoint(arm_calc_, build_cartesian_target(current_time_sec));
 }
 
 bool JCartesianSpaceMove::active(double current_time_sec) const {
@@ -148,13 +156,9 @@ CartesianTrajectoryPoint JCartesianSpaceMove::build_cartesian_target(double curr
 
     CartesianTrajectoryPoint target;
     target.pose.position = pos_sample.position.head<3>();
-    //target.linear_velocity = pos_sample.velocity.head<3>();
-    //target.linear_acceleration = pos_sample.acceleration.head<3>();
 
     const Eigen::Vector3d rotation_vector = rot_sample.position.head<3>();
     target.pose.orientation = RotationVectorToQuaternion(start_cartesian_state_.pose.orientation, rotation_vector);
-    //target.angular_velocity = rot_sample.velocity.head<3>();
-    //target.angular_acceleration = rot_sample.acceleration.head<3>();
     return target;
 }
 
@@ -165,7 +169,7 @@ void VisualServoMove::set_current_joint_state(const JointState& state) {
     current_joint_state_ = state;
     has_joint_state_ = true;
     if (arm_calc_) {
-        current_cartesian_state_ = arm_calc_->end_state(state.position);
+        current_cartesian_state_ = BuildCartesianState(arm_calc_, state.position);
     }
 }
 
@@ -184,10 +188,10 @@ void VisualServoMove::set_max_linear_acceleration(double max_linear_acceleration
 
 JointTrajectoryPoint VisualServoMove::sample(double current_time_sec) {
     if (!arm_calc_ || !has_joint_state_) {
-        return BuildJointPoint(arm_calc_, current_joint_state_.position);
+        return BuildJointPoint(current_joint_state_.position);
     }
 
-    current_cartesian_state_ = arm_calc_->end_state(current_joint_state_.position);
+    current_cartesian_state_ = BuildCartesianState(arm_calc_, current_joint_state_.position);
 
     if (!servo_initialized_) {
         desired_position_ = current_cartesian_state_.pose.position;
@@ -198,7 +202,7 @@ JointTrajectoryPoint VisualServoMove::sample(double current_time_sec) {
     }
 
     if (!has_target_pose_) {
-        return BuildJointPoint(arm_calc_, current_joint_state_.position);
+        return BuildJointPoint(current_joint_state_.position);
     }
 
     const double dt = std::clamp(current_time_sec - last_sample_time_sec_, 1e-4, 0.1);
@@ -212,13 +216,9 @@ JointTrajectoryPoint VisualServoMove::sample(double current_time_sec) {
 
     CartesianTrajectoryPoint cartesian_target;
     cartesian_target.pose.position = desired_position_;
-    cartesian_target.linear_velocity = desired_velocity_;
-    cartesian_target.linear_acceleration = desired_acceleration_;
     cartesian_target.pose.orientation = target_pose_.orientation;
-    cartesian_target.angular_velocity.setZero();
-    cartesian_target.angular_acceleration.setZero();
 
-    return arm_calc_->signal_arm_calc(cartesian_target);
+    return BuildJointPoint(arm_calc_, cartesian_target);
 }
 
 }  // namespace arm_action
