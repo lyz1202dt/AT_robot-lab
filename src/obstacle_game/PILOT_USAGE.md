@@ -45,28 +45,72 @@ source install/setup.bash
 
 ## 3. 启动方式
 
-### 3.1 使用默认参数启动
+### 3.1 使用自动路径选择启动
 
 ```bash
 ros2 run obstacle_game robot_control
 ```
 
-默认路径参数在 `src/obstacle_game/src/core/robot.cpp` 中由 `scene_path` 声明。
+默认情况下，`scene_path` 为空，程序会自动选择要执行的 YAML 文件。
 
-### 3.2 指定路径 YAML 启动
+自动选择顺序：
 
-推荐显式传入路径文件：
+1. 如果启动参数显式传入了 `scene_path`，直接使用该文件。
+2. 如果没有传入 `scene_path`，优先查找录制目录下的：
+   ```text
+   obstacle_game.yaml
+   ```
+3. 如果没有 `obstacle_game.yaml`，则查找录制目录下最新的：
+   ```text
+   record*.yaml
+   ```
+4. 如果都没有找到，Pilot 轨迹为空，自动模式下触发开始会失败。
+
+这里“最新”按文件名排序判断，因为 Record 生成的文件名格式是：
+
+```text
+recordYYYYMMDD_HHMMSS.yaml
+```
+
+文件名越大，时间越新。
+
+### 3.2 推荐使用方式
+
+平时录制会生成类似：
+
+```text
+record20260619_153000.yaml
+```
+
+测试后如果这条路径效果比较好，可以手动改名为：
+
+```text
+obstacle_game.yaml
+```
+
+之后直接启动：
+
+```bash
+ros2 run obstacle_game robot_control
+```
+
+程序会自动优先使用 `obstacle_game.yaml`。
+
+### 3.3 指定路径 YAML 启动
+
+如果临时想测试某个指定文件，可以显式传入：
 
 ```bash
 ros2 run obstacle_game robot_control --ros-args \
   -p scene_path:=/home/qi/AT_DOG/AT_robot-lab/record20260619_142926.yaml
 ```
 
-### 3.3 指定录制输出前缀
+只要 `scene_path` 非空，就不会走自动查找逻辑。
+
+### 3.4 指定录制输出前缀
 
 ```bash
 ros2 run obstacle_game robot_control --ros-args \
-  -p scene_path:=/home/qi/AT_DOG/AT_robot-lab/record20260619_142926.yaml \
   -p yaml_file_path:=/home/qi/AT_DOG/AT_robot-lab/record
 ```
 
@@ -74,6 +118,26 @@ ros2 run obstacle_game robot_control --ros-args \
 
 ```text
 /home/qi/AT_DOG/AT_robot-lab/record20260619_153000.yaml
+```
+
+自动查找路径时，会根据 `yaml_file_path` 的父目录确定搜索目录。以上面的参数为例，搜索顺序是：
+
+```text
+/home/qi/AT_DOG/AT_robot-lab/obstacle_game.yaml
+/home/qi/AT_DOG/AT_robot-lab/record*.yaml 中文件名最新的文件
+```
+
+如果 `yaml_file_path` 使用默认值：
+
+```text
+./record
+```
+
+则搜索顺序是：
+
+```text
+./obstacle_game.yaml
+./record*.yaml 中文件名最新的文件
 ```
 
 ---
