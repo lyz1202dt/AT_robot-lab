@@ -475,7 +475,7 @@ void ArmTaskNode::execute_place_flow_2() {
 
     RCLCPP_INFO(this->get_logger(), "返回初始位置");
 
-    execute_joint_space_trajectory(home_position_, 0.5);
+    execute_joint_space_trajectory(place_position_2, 0.2);
 
     std::this_thread::sleep_for(200ms);
 
@@ -483,7 +483,11 @@ void ArmTaskNode::execute_place_flow_2() {
     ret.data=1;
     arm_finished_pub->publish(ret);
 
-    std::this_thread::sleep_for(300ms);
+    std::this_thread::sleep_for(500ms);     //等待狗子离开
+
+    execute_joint_space_trajectory(home_position_, 0.5);
+
+    std::this_thread::sleep_for(500ms);
 
     RCLCPP_INFO(this->get_logger(), "第二层放块任务结束");
 }
