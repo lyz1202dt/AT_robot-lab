@@ -9,6 +9,7 @@
 #include <robot_msgs/msg/vis.hpp>
 #include <robot_msgs/msg/armmode.hpp>
 #include <robot_msgs/msg/int.hpp>
+#include <std_msgs/msg/detail/int32__struct.hpp>
 #include <thread>
 
 
@@ -28,7 +29,7 @@ ArmNode::ArmNode()
     arm_sub = this->create_subscription<robot_msgs::msg::Arm>(
         "myjoints_target", 10, std::bind(&ArmNode::armSubscribCb, this, std::placeholders::_1));
 
-    air_sub = this->create_subscription<robot_msgs::msg::Armmode>(
+    air_sub = this->create_subscription<std_msgs::msg::Int32>(
         "air_pump_target", 10, std::bind(&ArmNode::airSubscribCb, this, std::placeholders::_1));
 
     
@@ -119,7 +120,7 @@ void ArmNode::armSubscribCb(const robot_msgs::msg::Arm& msg) {
     first_update = false;
 }
 
-void ArmNode::airSubscribCb(const robot_msgs::msg::Armmode& msg) {
-   air_pump = msg.mode;
+void ArmNode::airSubscribCb(const std_msgs::msg::Int32& msg) {
+   air_pump = msg.data;
     
 }

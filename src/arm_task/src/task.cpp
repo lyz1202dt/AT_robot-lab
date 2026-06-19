@@ -6,6 +6,7 @@
 #include <rclcpp/logging.hpp>
 #include <robot_msgs/msg/armmode.hpp>
 #include <robot_msgs/msg/vis.hpp>
+#include <std_msgs/msg/detail/int32__struct.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <thread>
@@ -66,7 +67,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
         "box_id_grid", 10, [this](std_msgs::msg::Int32MultiArray::ConstSharedPtr /*msg*/) { scan_finished_ = 1; });     //该消息发出说明扫描结束
 
     // // 跟上层控制反馈当前机械臂状态，是否抓到物块了
-    // arm_state_pub_1 = this->create_publisher<robot_msgs::msg::Armmode>("arm_cmd_state", 10);
+    arm_finished_pub = this->create_publisher<std_msgs::msg::Int32>("arm_cmd_state", 10);
 
     // // 跟上层控制反馈当前机械臂搜索状态，是否找到物块了
     // arm_state_pub_2 = this->create_publisher<robot_msgs::msg::Armmode>("arm_search_state", 10);
@@ -76,7 +77,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
         "arm_cmd", 10, [this](const robot_msgs::msg::Armmode& msg){current_mode=msg.mode;});
 
     // 气泵的控制话题，发布机械臂需要的吸取和放置命令
-    air_pub_ = this->create_publisher<robot_msgs::msg::Armmode>("air_pump_target", 10);
+    air_pub_ = this->create_publisher<std_msgs::msg::Int32>("air_pump_target", 10);
 
     // 参数服务的回调
     param_callback_ = this->add_on_set_parameters_callback(std::bind(&ArmTaskNode::on_parameters_changed, this, std::placeholders::_1));
@@ -260,29 +261,38 @@ void ArmTaskNode::execute_grasp_flow() {
     execute_joint_space_trajectory(ready_position, 0.3);
     std::this_thread::sleep_for(350ms);
 
+    std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
+    int i=0;
     int count=100;      //等10s
-    bool exit_lookup=false;
      geometry_msgs::msg::TransformStamped transfer;
      do{
     try{
-        transfer=tf_buffer_->lookupTransform("arm_base_link","object_frame",tf2::TimePointZero, tf2::durationFromSec(0.08));
-        exit_lookup=true;
+        transfer_array[i]=tf_buffer_->lookupTransform("arm_base_link","object_frame",tf2::TimePointZero, tf2::durationFromSec(0.02));
+        i++;
+        std::this_thread::sleep_for(20ms);
     } catch (const tf2::TransformException& ex) {
             RCLCPP_WARN(get_logger(), "当前找不到目标物体的TF: %s", ex.what());
             std::this_thread::sleep_for(100ms);
             count--;
     }
-    }while(count!=0&&exit_lookup==false);
+    }while(count!=0&&i==8);
 
     if(count==0)
     {
         return ;
     }
 
+    double x=0,y=0;
+    for(int i=0;i<8;i++)
+    {
+        x+=transfer_array[i].transform.translation.x;
+        y+=transfer_array[i].transform.translation.y;
+    }
+
     // 强制规定姿态
     geometry_msgs::msg::PoseStamped object_pose;
-    object_pose.pose.position.x=transfer.transform.translation.x;
-    object_pose.pose.position.y=transfer.transform.translation.y;
+    object_pose.pose.position.x=x;
+    object_pose.pose.position.y=y;
     object_pose.pose.position.z=-0.16;
     tf2::Quaternion quat;
     quat.setRPY(0, M_PI / 2.0-0.25, 0);
@@ -300,8 +310,8 @@ void ArmTaskNode::execute_grasp_flow() {
 
     // 通知气泵开始吸了
     RCLCPP_INFO(this->get_logger(), "启动气泵");
-    robot_msgs::msg::Armmode msg;
-    msg.mode = 1;
+    std_msgs::msg::Int32 msg;
+    msg.data = 1;
     air_pub_->publish(msg);
 
     std::this_thread::sleep_for(600ms);
@@ -311,7 +321,13 @@ void ArmTaskNode::execute_grasp_flow() {
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     execute_joint_space_trajectory(grasp_finish_position, 1.5);
 
-    std::this_thread::sleep_for(1500ms);
+    std::this_thread::sleep_for(500ms);
+
+    std_msgs::msg::Int32 ret;
+    ret.data=1;
+    arm_finished_pub->publish(ret);
+
+    std::this_thread::sleep_for(1000ms);
 
     RCLCPP_INFO(this->get_logger(), "抓取流程完成");
 }
@@ -363,8 +379,8 @@ void ArmTaskNode::execute_place_flow_1() {
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
-    robot_msgs::msg::Armmode msg;
-    msg.mode = 0;
+    std_msgs::msg::Int32 msg;
+    msg.data = 1;
     air_pub_->publish(msg);
 
     std::this_thread::sleep_for(200ms);
@@ -373,7 +389,13 @@ void ArmTaskNode::execute_place_flow_1() {
 
     execute_joint_space_trajectory(home_position_, 0.5);
 
-    std::this_thread::sleep_for(500ms);
+    std::this_thread::sleep_for(200ms);
+
+    std_msgs::msg::Int32 ret;
+    ret.data=1;
+    arm_finished_pub->publish(ret);
+
+    std::this_thread::sleep_for(300ms);
 
     RCLCPP_INFO(this->get_logger(), "第一层放块任务结束");
 }
@@ -425,8 +447,8 @@ void ArmTaskNode::execute_place_flow_2() {
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
-    robot_msgs::msg::Armmode msg;
-    msg.mode = 0;
+    std_msgs::msg::Int32 msg;
+    msg.data = 1;
     air_pub_->publish(msg);
 
     std::this_thread::sleep_for(200ms);
@@ -435,7 +457,13 @@ void ArmTaskNode::execute_place_flow_2() {
 
     execute_joint_space_trajectory(home_position_, 0.5);
 
-    std::this_thread::sleep_for(500ms);
+    std::this_thread::sleep_for(200ms);
+
+    std_msgs::msg::Int32 ret;
+    ret.data=1;
+    arm_finished_pub->publish(ret);
+
+    std::this_thread::sleep_for(300ms);
 
     RCLCPP_INFO(this->get_logger(), "第二层放块任务结束");
 }
@@ -464,8 +492,8 @@ void ArmTaskNode::execute_look_for() {
         if (std::chrono::steady_clock::now() - start_time > 5s) {
            execute_joint_space_trajectory(start_joint_pos, 0.2);    //机械臂旋转，执行扫描
            std::this_thread::sleep_for(200ms);
-           execute_joint_space_trajectory(stop_joint_pos, 5.0);
-           std::this_thread::sleep_for(5s);
+           execute_joint_space_trajectory(stop_joint_pos, 8.0);
+           std::this_thread::sleep_for(8s);
         }
 
         std::this_thread::sleep_for(100ms);

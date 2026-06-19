@@ -12,6 +12,7 @@
 #include <robot_msgs/msg/armmode.hpp>
 #include <robot_msgs/msg/vis.hpp>
 #include <robot_msgs/msg/int.hpp>
+#include <std_msgs/msg/detail/int32__struct.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <string>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -71,11 +72,11 @@ private:
     // Publishers
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr visual_target_pub_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr joint_space_target_pub_;
-    rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr air_pub_;
+    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr air_pub_;
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr vision_command_pub_;
     rclcpp::Subscription<std_msgs::msg::Int32MultiArray>::SharedPtr box_grid_sub_;
 
-    // rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_state_pub_1;
+    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr arm_finished_pub;
     // rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_state_pub_2;
 
     // Subscribers

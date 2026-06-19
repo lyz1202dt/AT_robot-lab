@@ -9,6 +9,7 @@
 #include <robot_msgs/msg/armmode.hpp>
 #include <robot_msgs/msg/int.hpp>
 #include "data_pack.h"
+#include <std_msgs/msg/detail/int32__struct.hpp>
 #include <thread>
 #include "sensor_msgs/msg/imu.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
@@ -31,7 +32,7 @@ private:
     int target_log_update_cnt{50};
     bool enable_control{false};
     void armSubscribCb(const robot_msgs::msg::Arm& msg);
-    void airSubscribCb(const robot_msgs::msg::Armmode& msg);
+    void airSubscribCb(const std_msgs::msg::Int32& msg);
     void publishredState(const state_pack_t *arm_state);
     
     int air_pump;
@@ -41,7 +42,7 @@ private:
     state_pack_t arm_state;
     rclcpp::Publisher<robot_msgs::msg::Int>::SharedPtr red_pub;
     rclcpp::Subscription<robot_msgs::msg::Arm>::SharedPtr arm_sub;
-    rclcpp::Subscription<robot_msgs::msg::Armmode>::SharedPtr air_sub;
+    rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr air_sub;
     
     OnSetParametersCallbackHandle::SharedPtr param_server_;
     
