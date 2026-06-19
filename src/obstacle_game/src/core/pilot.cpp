@@ -5,14 +5,136 @@
 #include <algorithm>
 #include <cmath>
 #include <exception>
+#include <utility>
 
 namespace {
 
-constexpr double kMaxYawRate = 1.5;
+constexpr int kStandMode = 1;
+constexpr int kWalkMode = 2;
+constexpr double kPi = 3.14159265358979323846;
+constexpr double kMinDistance = 1e-4;
+constexpr double kMinDuration = 0.05;
+constexpr double kDefaultAccel = 0.25;
+constexpr double kDefaultVelocity = 0.7;
+constexpr double kTinyError = 1e-5;
 
-double read_required_double(const YAML::Node &node, const std::string &key)
+struct MotionSample {
+    double position{0.0};
+    double velocity{0.0};
+    double duration{0.0};
+};
+
+double read_required_double(const YAML::Node& node, const std::string& key)
 {
     return node[key].as<double>();
+}
+
+double read_optional_double(const YAML::Node& node, const std::string& key, double default_value)
+{
+    return node[key] ? node[key].as<double>() : default_value;
+}
+
+bool read_optional_bool(const YAML::Node& node, const std::string& key, bool default_value)
+{
+    return node[key] ? node[key].as<bool>() : default_value;
+}
+
+MotionSample sample_trapezoid_profile(
+    double distance,
+    double elapsed,
+    double start_velocity,
+    double end_velocity,
+    double max_velocity,
+    double max_acceleration)
+{
+    MotionSample sample;
+    if (distance <= kMinDistance) {
+        return sample;
+    }
+
+    const double vmax = std::max(max_velocity, 0.05);
+    const double accel = std::max(max_acceleration, 0.05);
+    const double v0 = std::clamp(start_velocity, 0.0, vmax);
+    const double v1 = std::clamp(end_velocity, 0.0, vmax);
+    const double peak_for_triangle = std::sqrt(std::max(0.0, accel * distance + 0.5 * (v0 * v0 + v1 * v1)));
+    const double vpeak = std::min(vmax, std::max({peak_for_triangle, v0, v1}));
+
+    const double accel_time = std::max(0.0, (vpeak - v0) / accel);
+    const double decel_time = std::max(0.0, (vpeak - v1) / accel);
+    const double accel_dist = (vpeak * vpeak - v0 * v0) / (2.0 * accel);
+    const double decel_dist = (vpeak * vpeak - v1 * v1) / (2.0 * accel);
+    const double cruise_dist = std::max(0.0, distance - accel_dist - decel_dist);
+    const double cruise_time = vpeak > kMinDistance ? cruise_dist / vpeak : 0.0;
+
+    sample.duration = std::max(kMinDuration, accel_time + cruise_time + decel_time);
+    const double t = std::clamp(elapsed, 0.0, sample.duration);
+
+    if (t < accel_time) {
+        sample.velocity = v0 + accel * t;
+        sample.position = v0 * t + 0.5 * accel * t * t;
+        return sample;
+    }
+
+    if (t < accel_time + cruise_time) {
+        const double cruise_elapsed = t - accel_time;
+        sample.velocity = vpeak;
+        sample.position = accel_dist + vpeak * cruise_elapsed;
+        return sample;
+    }
+
+    const double decel_elapsed = t - accel_time - cruise_time;
+    sample.velocity = std::max(v1, vpeak - accel * decel_elapsed);
+    sample.position = accel_dist + cruise_dist + vpeak * decel_elapsed - 0.5 * accel * decel_elapsed * decel_elapsed;
+
+    if (elapsed >= sample.duration) {
+        sample.position = distance;
+        sample.velocity = v1;
+    } else {
+        sample.position = std::clamp(sample.position, 0.0, distance);
+    }
+    return sample;
+}
+
+void clamp_translation(Eigen::Vector2d& velocity, double max_velocity)
+{
+    const double limit = std::max(max_velocity, 0.0);
+    const double norm = velocity.norm();
+    if (limit > 0.0 && norm > limit) {
+        velocity *= limit / norm;
+    }
+}
+
+void apply_minimum(double& command, double error, double minimum)
+{
+    if (std::abs(error) <= kTinyError || minimum <= 0.0) {
+        return;
+    }
+    if (std::abs(command) < minimum) {
+        command = std::copysign(minimum, command == 0.0 ? error : command);
+    }
+}
+
+void apply_translation_minimum(Eigen::Vector2d& velocity, const Eigen::Vector2d& error, double minimum)
+{
+    if (error.norm() <= kTinyError || minimum <= 0.0) {
+        return;
+    }
+
+    const double norm = velocity.norm();
+    if (norm > minimum) {
+        return;
+    }
+
+    if (norm > kTinyError) {
+        velocity *= minimum / norm;
+    } else {
+        velocity = error.normalized() * minimum;
+    }
+}
+
+bool translation_is_above_minimum(const Eigen::Vector2d& velocity, double minimum)
+{
+    return minimum > 0.0 && velocity.norm() > minimum;
 }
 
 }  // namespace
@@ -33,178 +155,340 @@ Pilot::~Pilot() = default;
 
 bool Pilot::start()
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (paths_.empty()) {
         RCLCPP_WARN(node_->get_logger(), "轨迹为空，无法开始执行");
         return false;
     }
 
-    if (is_finished_) {
-        current_path_index_ = 0;
-        reset_segment_progress();
-        is_finished_ = false;
-        current_linear_speed_ = 0.0;
+    const auto now = std::chrono::high_resolution_clock::now();
+    if (state_ == PilotState::Paused) {
+        state_ = resume_state_ == PilotState::Finished ? PilotState::Running : resume_state_;
+        if (state_ == PilotState::Running) {
+            begin_current_segment(now, 0.0);
+        }
+        return true;
     }
 
-    is_running_ = true;
-    first_run = false;
+    if (state_ == PilotState::Finished || current_path_index_ >= paths_.size()) {
+        current_path_index_ = 0;
+    }
+
+    state_ = PilotState::Running;
+    begin_current_segment(now, 0.0);
     return true;
 }
 
 bool Pilot::stop()
 {
-    is_running_ = false;
-    current_linear_speed_ = 0.0;
-    first_run = false;
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (state_ == PilotState::Running || state_ == PilotState::Adjusting) {
+        resume_state_ = state_;
+        state_ = PilotState::Paused;
+    } else if (state_ != PilotState::Finished) {
+        state_ = PilotState::Idle;
+    }
+    transition_ = CubicTransition{};
     return true;
 }
 
 bool Pilot::reset()
 {
-    current_path_index_ = 0;
-    is_running_ = false;
-    is_finished_ = paths_.empty();
-    current_linear_speed_ = 0.0;
-    first_run = false;
-    reset_segment_progress();
+    std::lock_guard<std::mutex> lock(mutex_);
+    reset_execution();
     return !paths_.empty();
 }
 
-void Pilot::set_state(const Eigen::Vector2d &pos, const double &yaw)
+void Pilot::set_state(const Eigen::Vector2d& pos, const double& yaw)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     current_pos_ = pos;
-    current_yaw_ = yaw;
+    current_yaw_ = normalize_angle(yaw);
     has_state_ = true;
 }
 
-bool Pilot::get_current_path_info(uint32_t &path_num, float &time_rate)
+bool Pilot::get_current_path_info(uint32_t& path_num, float& time_rate)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (paths_.empty()) {
         return false;
     }
 
-    if (is_finished_) {
+    if (state_ == PilotState::Finished || current_path_index_ >= paths_.size()) {
         path_num = static_cast<uint32_t>(paths_.size() - 1);
         time_rate = 1.0f;
         return true;
     }
 
     path_num = static_cast<uint32_t>(current_path_index_);
-
-    if (!has_state_) {
+    const double total_distance = (paths_[current_path_index_].target_pos - segment_start_pos_).norm();
+    if (!has_state_ || total_distance <= kMinDistance) {
         time_rate = 0.0f;
         return true;
     }
 
-    if (!segment_initialized_) {
-        segment_start_pos_ = current_pos_;
-        segment_start_distance_ = (paths_[current_path_index_].target_pos - segment_start_pos_).norm();
-        segment_initialized_ = true;
-    }
-
-    if (segment_start_distance_ <= 1e-6) {
-        time_rate = 1.0f;
-        return true;
-    }
-
     const double remain_distance = (paths_[current_path_index_].target_pos - current_pos_).norm();
-    const double progress = std::clamp(1.0 - remain_distance / segment_start_distance_, 0.0, 1.0);
-    time_rate = static_cast<float>(progress);
+    time_rate = static_cast<float>(std::clamp(1.0 - remain_distance / total_distance, 0.0, 1.0));
     return true;
 }
 
 robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::high_resolution_clock> time)
 {
-    robot_msgs::msg::Cmd cmd = make_zero_command();
+    robot_msgs::msg::Cmd cmd = walk_zero_command();
 
-    if (paths_.empty() || !has_state_ || !is_running_ || is_finished_) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (paths_.empty() || !has_state_ || state_ == PilotState::Idle || state_ == PilotState::Paused) {
+        return stand_command();
+    }
+    if (state_ == PilotState::Finished) {
+        return stand_command();
+    }
+    if (current_path_index_ >= paths_.size()) {
+        return stand_command();
+    }
+
+    PathPoint& path = paths_[current_path_index_];
+    cmd.mode = policy_id_to_cmd_mode(path.policy_id);
+
+    if (state_ == PilotState::Adjusting) {
+        const Eigen::Vector2d pos_error_world = path.target_pos - current_pos_;
+        const Eigen::Vector2d pos_error_body = world_to_body(pos_error_world, current_yaw_);
+        const double yaw_error = path.constraint_target_yaw ? normalize_angle(path.target_yaw - current_yaw_) : 0.0;
+        const bool pos_ok = pos_error_world.norm() <= path.allow_final_pos_allow;
+        const bool yaw_ok = !path.constraint_target_yaw || std::abs(yaw_error) <= path.allow_final_dir_error;
+
+        const auto finish_path = [&]() {
+            state_ = PilotState::Finished;
+            current_path_index_ = paths_.size();
+            cmd = stand_command();
+        };
+
+        const auto set_position_adjust_command = [&]() {
+            Eigen::Vector2d velocity_body = Eigen::Vector2d::Zero();
+            velocity_body.x() = path.kp.x() * pos_error_body.x();
+            velocity_body.y() = path.kp.y() * pos_error_body.y();
+            clamp_translation(velocity_body, path.max_velocity);
+            const bool translation_above_minimum = translation_is_above_minimum(velocity_body, path.adjust_min_vel);
+            if (!translation_above_minimum) {
+                apply_translation_minimum(velocity_body, pos_error_body, path.adjust_min_vel);
+                clamp_translation(velocity_body, path.max_velocity);
+            }
+
+            cmd.vx = static_cast<float>(velocity_body.x());
+            cmd.vy = static_cast<float>(velocity_body.y());
+            cmd.vz = 0.0f;
+        };
+
+        const auto set_yaw_adjust_command = [&]() {
+            double omega = 0.0;
+            if (path.constraint_target_yaw && !yaw_ok) {
+                omega = path.kp.z() * yaw_error;
+                apply_minimum(omega, yaw_error, path.adjust_min_omega);
+            }
+            omega = clamp_abs(omega, path.max_omega);
+            cmd.vx = 0.0f;
+            cmd.vy = 0.0f;
+            cmd.vz = static_cast<float>(omega);
+        };
+
+        for (int step = 0; step < 3; ++step) {
+            if (adjust_phase_ == AdjustPhase::Position) {
+                if (!pos_ok) {
+                    set_position_adjust_command();
+                    break;
+                }
+                adjust_phase_ = path.constraint_target_yaw ? AdjustPhase::Yaw : AdjustPhase::FinalPosition;
+                continue;
+            }
+
+            if (adjust_phase_ == AdjustPhase::Yaw) {
+                if (!yaw_ok) {
+                    set_yaw_adjust_command();
+                    break;
+                }
+                adjust_phase_ = AdjustPhase::FinalPosition;
+                continue;
+            }
+
+            if (!pos_ok) {
+                set_position_adjust_command();
+                break;
+            }
+            finish_path();
+            break;
+        }
         return cmd;
+    }
+
+    Eigen::Vector2d reference_pos = path.target_pos;
+    Eigen::Vector2d reference_vel = Eigen::Vector2d::Zero();
+    double reference_yaw = path.constraint_target_yaw ? path.target_yaw : current_yaw_;
+    double reference_omega = 0.0;
+    double segment_duration = kMinDuration;
+    double segment_progress = 1.0;
+
+    if (transition_.active) {
+        const double elapsed = std::chrono::duration<double>(time - transition_.start_time).count();
+        const double duration = std::max(transition_.duration, kMinDuration);
+        const double u = std::clamp(elapsed / duration, 0.0, 1.0);
+        const double u2 = u * u;
+        const double u3 = u2 * u;
+        const double h00 = 2.0 * u3 - 3.0 * u2 + 1.0;
+        const double h10 = u3 - 2.0 * u2 + u;
+        const double h01 = -2.0 * u3 + 3.0 * u2;
+        const double h11 = u3 - u2;
+        const double dh00 = 6.0 * u2 - 6.0 * u;
+        const double dh10 = 3.0 * u2 - 4.0 * u + 1.0;
+        const double dh01 = -6.0 * u2 + 6.0 * u;
+        const double dh11 = 3.0 * u2 - 2.0 * u;
+
+        reference_pos = h00 * transition_.start_pos + h10 * duration * transition_.start_vel + h01 * transition_.end_pos +
+                        h11 * duration * transition_.end_vel;
+        reference_vel = (dh00 * transition_.start_pos + dh10 * duration * transition_.start_vel + dh01 * transition_.end_pos +
+                         dh11 * duration * transition_.end_vel) /
+                        duration;
+
+        const double yaw_delta = normalize_angle(transition_.end_yaw - transition_.start_yaw);
+        reference_yaw = normalize_angle(transition_.start_yaw + yaw_delta * u);
+        reference_omega = yaw_delta / duration;
+
+        if (elapsed >= duration) {
+            ++current_path_index_;
+            segment_start_pos_ = transition_.end_pos;
+            segment_start_yaw_ = transition_.end_yaw;
+            segment_start_speed_ = transition_.end_vel.norm();
+            segment_start_time_ = time;
+            transition_ = CubicTransition{};
+            aiming_done_ = true;
+            if (current_path_index_ >= paths_.size()) {
+                state_ = PilotState::Adjusting;
+                adjust_phase_ = AdjustPhase::Position;
+            }
+        }
+    } else {
+        Eigen::Vector2d segment_vec = path.target_pos - segment_start_pos_;
+        double distance = segment_vec.norm();
+
+        if (distance <= kMinDistance) {
+            finish_current_target(time);
+            return cmd;
+        }
+
+        Eigen::Vector2d direction = segment_vec / distance;
+        const double path_yaw = std::atan2(direction.y(), direction.x());
+
+        if (!path.allow_y_vel && !aiming_done_) {
+            const double yaw_error = normalize_angle(path_yaw - current_yaw_);
+            if (std::abs(yaw_error) < path.allow_start_dir_error) {
+                begin_current_segment(time, 0.0);
+                aiming_done_ = true;
+                segment_vec = path.target_pos - segment_start_pos_;
+                distance = segment_vec.norm();
+                if (distance <= kMinDistance) {
+                    finish_current_target(time);
+                    return cmd;
+                }
+                direction = segment_vec / distance;
+            } else {
+                double omega = path.kp.z() * yaw_error;
+                apply_minimum(omega, yaw_error, path.adjust_min_omega);
+                cmd.vx = 0.0f;
+                cmd.vy = 0.0f;
+                cmd.vz = static_cast<float>(clamp_abs(omega, path.max_omega));
+                return cmd;
+            }
+        }
+
+        const double elapsed = std::chrono::duration<double>(time - segment_start_time_).count();
+        const MotionSample profile = sample_trapezoid_profile(
+            distance,
+            elapsed,
+            segment_start_speed_,
+            std::max(0.0, path.target_vel),
+            path.max_velocity > 0.0 ? path.max_velocity : kDefaultVelocity,
+            path.max_accelation > 0.0 ? path.max_accelation : kDefaultAccel);
+
+        segment_duration = profile.duration;
+        segment_progress = distance > kMinDistance ? std::clamp(profile.position / distance, 0.0, 1.0) : 1.0;
+        reference_pos = segment_start_pos_ + direction * profile.position;
+        reference_vel = direction * profile.velocity;
+
+        if (!path.allow_y_vel) {
+            reference_yaw = path_yaw;
+            reference_omega = 0.0;
+        } else if (path.constraint_target_yaw) {
+            const double yaw_delta = normalize_angle(path.target_yaw - segment_start_yaw_);
+            reference_yaw = normalize_angle(segment_start_yaw_ + yaw_delta * segment_progress);
+            reference_omega = segment_duration > kMinDuration ? yaw_delta / segment_duration : 0.0;
+        } else {
+            reference_yaw = current_yaw_;
+        }
+
+        const double connection_radius = path.trajectory_connection_radius;
+        if (current_path_index_ + 1 < paths_.size() && connection_radius > 0.0 &&
+            (path.target_pos - current_pos_).norm() < connection_radius) {
+            const PathPoint& next_path = paths_[current_path_index_ + 1];
+            const Eigen::Vector2d next_vec = next_path.target_pos - path.target_pos;
+            const double next_distance = next_vec.norm();
+            if (next_distance > kMinDistance) {
+                const Eigen::Vector2d next_direction = next_vec / next_distance;
+                const double blend_distance = std::min(connection_radius, next_distance * 0.5);
+                const double blend_speed = std::max({profile.velocity, next_path.target_vel, 0.2});
+
+                transition_.active = true;
+                transition_.start_time = time;
+                transition_.start_pos = reference_pos;
+                transition_.start_vel = reference_vel;
+                transition_.end_pos = path.target_pos + next_direction * blend_distance;
+                transition_.end_vel = next_direction * std::min(
+                    blend_speed,
+                    next_path.max_velocity > 0.0 ? next_path.max_velocity : kDefaultVelocity);
+                transition_.duration = std::max(
+                    kMinDuration,
+                    (transition_.end_pos - transition_.start_pos).norm() / std::max(transition_.start_vel.norm(), 0.2));
+                transition_.start_yaw = reference_yaw;
+                transition_.end_yaw = next_path.constraint_target_yaw ? next_path.target_yaw : std::atan2(next_direction.y(), next_direction.x());
+            }
+        }
+
+        if (elapsed >= profile.duration && !transition_.active) {
+            finish_current_target(time);
+            return cmd;
+        }
     }
 
     if (current_path_index_ >= paths_.size()) {
-        is_running_ = false;
-        is_finished_ = true;
         return cmd;
     }
 
-    if (!first_run) {
-        last_command_time_ = time;
-        first_run = true;
+    PathPoint& active_path = paths_[current_path_index_];
+    cmd.mode = policy_id_to_cmd_mode(active_path.policy_id);
+    const Eigen::Vector2d pos_error_body = world_to_body(reference_pos - current_pos_, current_yaw_);
+    Eigen::Vector2d velocity_body = world_to_body(reference_vel, current_yaw_);
+    velocity_body.x() += active_path.kp.x() * pos_error_body.x();
+    velocity_body.y() += active_path.kp.y() * pos_error_body.y();
+    const Eigen::Vector2d target_error_body = world_to_body(active_path.target_pos - current_pos_, current_yaw_);
+    clamp_translation(velocity_body, active_path.max_velocity);
+    const bool translation_above_minimum = translation_is_above_minimum(velocity_body, active_path.adjust_min_vel);
+    if (!translation_above_minimum) {
+        apply_translation_minimum(velocity_body, target_error_body, active_path.adjust_min_vel);
+        clamp_translation(velocity_body, active_path.max_velocity);
     }
 
-    if (!segment_initialized_) {
-        segment_start_pos_ = current_pos_;
-        segment_start_distance_ = (paths_[current_path_index_].target_pos - segment_start_pos_).norm();
-        segment_initialized_ = true;
+    const double yaw_error = normalize_angle(reference_yaw - current_yaw_);
+    double omega = reference_omega + active_path.kp.z() * yaw_error;
+    if (!translation_above_minimum) {
+        apply_minimum(omega, yaw_error, active_path.adjust_min_omega);
     }
+    omega = clamp_abs(omega, active_path.max_omega);
 
-    if (advance_if_current_target_reached()) {
-        return make_zero_command();
-    }
-
-    const PathPoint &path = paths_[current_path_index_];
-    const auto elapsed = time - last_command_time_;
-    last_command_time_ = time;
-
-    double dt = std::chrono::duration<double>(elapsed).count();
-    if (dt < 0.0) {
-        dt = 0.0;
-    }
-    dt = std::min(dt, 0.1);
-
-    const Eigen::Vector2d pos_err = path.target_pos - current_pos_;
-    const double distance = pos_err.norm();
-
-    if (distance <= path.err_allow) {
-        if (advance_if_current_target_reached()) {
-            return make_zero_command();
-        }
-        return cmd;
-    }
-
-    const double target_heading = std::atan2(pos_err.y(), pos_err.x());
-    const double yaw_err = normalize_angle(target_heading - current_yaw_);
-
-    Eigen::Vector2d segment_direction = get_segment_direction(path);
-    if (segment_direction.dot(pos_err) <= 0.0 && distance > 1e-6) {
-        // The fixed segment feedforward would increase distance after overshooting the target.
-        segment_direction = pos_err.normalized();
-    }
-    const double feedforward_speed = compute_feedforward_speed(path, distance, dt);
-    const Eigen::Vector2d feedforward_world_vel = segment_direction * feedforward_speed;
-    const Eigen::Vector2d feedback_world_vel(path.kp.x() * pos_err.x(), path.kp.y() * pos_err.y());
-    Eigen::Vector2d desired_world_vel = feedforward_world_vel + feedback_world_vel;
-
-    const double desired_speed = desired_world_vel.norm();
-    if (desired_speed > path.max_velocity && desired_speed > 1e-6) {
-        desired_world_vel *= (path.max_velocity / desired_speed);
-    }
-
-    const bool need_heading_alignment = std::abs(yaw_err) > path.allow_start_dir_error;
-    if (need_heading_alignment) {
-        desired_world_vel.setZero();
-        current_linear_speed_ = 0.0;
-    }
-
-    double yaw_rate = clamp_abs(path.kp.z() * yaw_err, kMaxYawRate);
-    if (std::abs(yaw_err) > 1e-6 && path.min_omega > 0.0) {
-        const double min_omega = std::min(path.min_omega, kMaxYawRate);
-        if (std::abs(yaw_rate) < min_omega) {
-            yaw_rate = std::copysign(min_omega, yaw_err);
-        }
-    }
-
-    const double cos_yaw = std::cos(current_yaw_);
-    const double sin_yaw = std::sin(current_yaw_);
-    cmd.vx = static_cast<float>(cos_yaw * desired_world_vel.x() + sin_yaw * desired_world_vel.y());
-    cmd.vy = static_cast<float>(-sin_yaw * desired_world_vel.x() + cos_yaw * desired_world_vel.y());
-    cmd.vz = static_cast<float>(yaw_rate);
-    cmd.mode = policy_id_to_cmd_mode(path.policy_id);
-    cmd.wheel_vel = 0.0f;
-
+    cmd.vx = static_cast<float>(velocity_body.x());
+    cmd.vy = static_cast<float>(velocity_body.y());
+    cmd.vz = static_cast<float>(omega);
     return cmd;
 }
 
-bool Pilot::load_paths(const std::string &yaml_path)
+bool Pilot::load_paths(const std::string& yaml_path)
 {
     try {
         const YAML::Node root = YAML::LoadFile(yaml_path);
@@ -214,118 +498,130 @@ bool Pilot::load_paths(const std::string &yaml_path)
             return false;
         }
 
-        paths_.clear();
-        paths_.reserve(paths_node.size());
-        for (const auto &path_node : paths_node) {
+        std::vector<PathPoint> loaded_paths;
+        loaded_paths.reserve(paths_node.size());
+        for (const auto& path_node : paths_node) {
             PathPoint point;
             point.policy_id = path_node["policy_id"].as<int32_t>();
             point.target_pos.x() = read_required_double(path_node["target_pos"], "x");
             point.target_pos.y() = read_required_double(path_node["target_pos"], "y");
-            point.target_vel = path_node["target_vel"].as<double>();
-            point.max_velocity = path_node["max_velocity"].as<double>();
-            point.max_accelation = path_node["max_accelation"].as<double>();
-            point.kp.x() = read_required_double(path_node["kp"], "x");
-            point.kp.y() = read_required_double(path_node["kp"], "y");
-            point.kp.z() = read_required_double(path_node["kp"], "yaw");
-            point.allow_start_dir_error = path_node["allow_start_dir_error"].as<double>();
-            point.err_allow = path_node["err_allow"].as<double>();
-            point.adjust_min_vel = path_node["adjust_min_vel"].as<double>();
-            point.min_omega = path_node["min_omega"] ? path_node["min_omega"].as<double>() : 0.0;
-            paths_.push_back(point);
+            point.target_vel = read_optional_double(path_node, "target_vel", point.target_vel);
+            point.max_velocity = read_optional_double(path_node, "max_velocity", point.max_velocity);
+            point.max_accelation = read_optional_double(path_node, "max_accelation", point.max_accelation);
+            point.max_omega = read_optional_double(path_node, "max_omega", point.max_omega);
+            if (path_node["kp"]) {
+                point.kp.x() = read_optional_double(path_node["kp"], "x", point.kp.x());
+                point.kp.y() = read_optional_double(path_node["kp"], "y", point.kp.y());
+                point.kp.z() = read_optional_double(path_node["kp"], "yaw", point.kp.z());
+            }
+            point.allow_start_dir_error = read_optional_double(path_node, "allow_start_dir_error", point.allow_start_dir_error);
+            point.allow_final_dir_error = read_optional_double(path_node, "allow_final_dir_error", point.allow_start_dir_error);
+            point.allow_final_pos_allow = read_optional_double(path_node, "allow_final_pos_allow", read_optional_double(path_node, "err_allow", point.allow_final_pos_allow));
+            point.adjust_min_vel = read_optional_double(path_node, "adjust_min_vel", point.adjust_min_vel);
+            point.adjust_min_omega = read_optional_double(path_node, "adjust_min_omega", read_optional_double(path_node, "min_omega", point.adjust_min_omega));
+            point.constraint_target_yaw = read_optional_bool(path_node, "constraint_target_yaw", point.constraint_target_yaw);
+            point.target_yaw = read_optional_double(path_node, "target_yaw", point.target_yaw);
+            point.allow_y_vel = read_optional_bool(path_node, "allow_y_vel", point.allow_y_vel);
+            point.trajectory_connection_radius = read_optional_double(path_node, "trajectory_connection_radius", point.trajectory_connection_radius);
+            loaded_paths.push_back(point);
         }
 
+        std::lock_guard<std::mutex> lock(mutex_);
+        paths_ = std::move(loaded_paths);
+        reset_execution();
         RCLCPP_INFO(node_->get_logger(), "成功加载%zu个导航点: %s", paths_.size(), yaml_path.c_str());
         return !paths_.empty();
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         RCLCPP_ERROR(node_->get_logger(), "加载导航点失败: %s, error: %s", yaml_path.c_str(), e.what());
+        std::lock_guard<std::mutex> lock(mutex_);
         paths_.clear();
+        reset_execution();
         return false;
     }
 }
 
-void Pilot::reset_segment_progress()
+void Pilot::reset_execution()
 {
-    segment_start_pos_.setZero();
-    segment_start_distance_ = 0.0;
-    segment_initialized_ = false;
+    current_path_index_ = 0;
+    state_ = paths_.empty() ? PilotState::Finished : PilotState::Idle;
+    adjust_phase_ = AdjustPhase::Position;
+    resume_state_ = PilotState::Running;
+    segment_start_pos_ = current_pos_;
+    segment_start_yaw_ = current_yaw_;
+    segment_start_speed_ = 0.0;
+    aiming_done_ = false;
+    transition_ = CubicTransition{};
 }
 
-Eigen::Vector2d Pilot::get_segment_direction(const PathPoint &path) const
+void Pilot::begin_current_segment(std::chrono::time_point<std::chrono::high_resolution_clock> time, double start_speed)
 {
-    Eigen::Vector2d direction = path.target_pos - segment_start_pos_;
-    if (direction.norm() <= 1e-6) {
-        direction = path.target_pos - current_pos_;
+    segment_start_pos_ = current_pos_;
+    segment_start_yaw_ = current_yaw_;
+    segment_start_speed_ = start_speed;
+    segment_start_time_ = time;
+    transition_ = CubicTransition{};
+
+    if (current_path_index_ < paths_.size()) {
+        aiming_done_ = paths_[current_path_index_].allow_y_vel;
+    } else {
+        aiming_done_ = true;
     }
-    if (direction.norm() <= 1e-6) {
-        return Eigen::Vector2d::Zero();
-    }
-    return direction.normalized();
 }
 
-double Pilot::compute_feedforward_speed(const PathPoint &path, double distance, double dt)
+void Pilot::finish_current_target(std::chrono::time_point<std::chrono::high_resolution_clock> time)
 {
-    double target_speed = path.max_velocity;
-    const double stop_limited_speed = std::sqrt(
-        std::max(0.0, path.target_vel * path.target_vel + 2.0 * path.max_accelation * distance));
-    target_speed = std::min(target_speed, stop_limited_speed);
-
-    if (distance <= 2.0 * path.err_allow) {
-        target_speed = std::max(target_speed, path.adjust_min_vel);
-    }
-
-    if (dt > 0.0) {
-        const double max_speed_step = path.max_accelation * dt;
-        if (target_speed > current_linear_speed_) {
-            target_speed = std::min(target_speed, current_linear_speed_ + max_speed_step);
-        } else {
-            target_speed = std::max(target_speed, current_linear_speed_ - max_speed_step);
-        }
-    }
-
-    current_linear_speed_ = std::clamp(target_speed, 0.0, path.max_velocity);
-    return current_linear_speed_;
-}
-
-bool Pilot::advance_if_current_target_reached()
-{
-    while (current_path_index_ < paths_.size()) {
-        const PathPoint &path = paths_[current_path_index_];
-        const double distance = (path.target_pos - current_pos_).norm();
-        if (distance > path.err_allow) {
-            return false;
-        }
-
+    if (current_path_index_ + 1 < paths_.size()) {
+        const auto previous_path = paths_[current_path_index_];
         RCLCPP_INFO(
             node_->get_logger(),
             "目标点%zu/%zu执行完成: target=(%.3f, %.3f), policy_id=%d",
             current_path_index_ + 1,
             paths_.size(),
-            path.target_pos.x(),
-            path.target_pos.y(),
-            path.policy_id);
-
-        current_linear_speed_ = path.target_vel;
+            previous_path.target_pos.x(),
+            previous_path.target_pos.y(),
+            previous_path.policy_id);
         ++current_path_index_;
-        reset_segment_progress();
-
-        if (current_path_index_ < paths_.size()) {
-            segment_start_pos_ = current_pos_;
-            segment_start_distance_ = (paths_[current_path_index_].target_pos - segment_start_pos_).norm();
-            segment_initialized_ = true;
-        }
+        segment_start_pos_ = previous_path.target_pos;
+        segment_start_yaw_ = current_yaw_;
+        segment_start_speed_ = std::max(0.0, previous_path.target_vel);
+        segment_start_time_ = time;
+        transition_ = CubicTransition{};
+        aiming_done_ = paths_[current_path_index_].allow_y_vel;
+        state_ = PilotState::Running;
+        return;
     }
 
-    is_running_ = false;
-    is_finished_ = true;
-    current_linear_speed_ = 0.0;
-    first_run = false;
-    return true;
+    if (current_path_index_ < paths_.size()) {
+        const auto& final_path = paths_[current_path_index_];
+        RCLCPP_INFO(
+            node_->get_logger(),
+            "目标点%zu/%zu执行完成: target=(%.3f, %.3f), policy_id=%d",
+            current_path_index_ + 1,
+            paths_.size(),
+            final_path.target_pos.x(),
+            final_path.target_pos.y(),
+            final_path.policy_id);
+    }
+    state_ = PilotState::Adjusting;
+    adjust_phase_ = AdjustPhase::Position;
+    transition_ = CubicTransition{};
 }
 
-robot_msgs::msg::Cmd Pilot::make_zero_command() const
+robot_msgs::msg::Cmd Pilot::stand_command() const
 {
     robot_msgs::msg::Cmd cmd;
-    cmd.mode = 1;
+    cmd.mode = kStandMode;
+    cmd.vx = 0.0f;
+    cmd.vy = 0.0f;
+    cmd.vz = 0.0f;
+    cmd.wheel_vel = 0.0f;
+    return cmd;
+}
+
+robot_msgs::msg::Cmd Pilot::walk_zero_command() const
+{
+    robot_msgs::msg::Cmd cmd;
+    cmd.mode = kWalkMode;
     cmd.vx = 0.0f;
     cmd.vy = 0.0f;
     cmd.vz = 0.0f;
@@ -335,9 +631,6 @@ robot_msgs::msg::Cmd Pilot::make_zero_command() const
 
 int32_t Pilot::policy_id_to_cmd_mode(int32_t policy_id)
 {
-    // YAML policy_id encoding:
-    // 5 -> slope (runtime mode 6)
-    // 6 -> bar   (runtime mode 5)
     if (policy_id == 5) {
         return 6;
     }
@@ -349,7 +642,6 @@ int32_t Pilot::policy_id_to_cmd_mode(int32_t policy_id)
 
 double Pilot::normalize_angle(double angle)
 {
-    constexpr double kPi = 3.14159265358979323846;
     while (angle > kPi) {
         angle -= 2.0 * kPi;
     }
@@ -361,5 +653,15 @@ double Pilot::normalize_angle(double angle)
 
 double Pilot::clamp_abs(double value, double limit)
 {
-    return std::clamp(value, -limit, limit);
+    const double abs_limit = std::abs(limit);
+    if (abs_limit <= 0.0) {
+        return 0.0;
+    }
+    return std::clamp(value, -abs_limit, abs_limit);
+}
+
+Eigen::Vector2d Pilot::world_to_body(const Eigen::Vector2d& vector, double yaw)
+{
+    Eigen::Rotation2Dd rotation(-yaw);
+    return rotation * vector;
 }

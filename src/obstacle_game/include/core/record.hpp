@@ -18,14 +18,20 @@ public:
     struct PathPoint {
         int32_t policy_id{0};
         Eigen::Vector2d target_pos{Eigen::Vector2d::Zero()};
+        double target_yaw{0.0};
+        bool constraint_target_yaw{false};
         double target_vel{0.0};
-        double max_velocity{0.0};
-        double max_accelation{0.0};
-        Eigen::Vector3d kp{Eigen::Vector3d::Zero()};
-        double allow_start_dir_error{0.0};
-        double err_allow{0.0};
-        double adjust_min_vel{0.0};
-        double min_omega{0.0};
+        double max_velocity{0.7};
+        double max_accelation{0.25};
+        double max_omega{1.0};
+        Eigen::Vector3d kp{0.2, 0.2, 0.5};
+        double allow_start_dir_error{0.2};
+        double allow_final_dir_error{0.2};
+        double allow_final_pos_allow{0.2};
+        double adjust_min_vel{0.25};
+        double adjust_min_omega{0.15};
+        bool allow_y_vel{false};
+        double trajectory_connection_radius{0.0};
     };
 
     Record(rclcpp::Node::SharedPtr node);
