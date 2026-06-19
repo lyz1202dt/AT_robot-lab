@@ -158,7 +158,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     control_timer = node_->create_wall_timer(50ms, [this]() {
         geometry_msgs::msg::TransformStamped transfer;
         try {
-                transfer = tf_buffer_->lookupTransform("odom","base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));
+                transfer = tf_buffer_->lookupTransform("map","base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));
                 robot_pos_transfer=transfer;
                 RCLCPP_INFO_THROTTLE(
                     node_->get_logger(),
