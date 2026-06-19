@@ -7,7 +7,8 @@
 #include <robot_msgs/msg/arm.hpp>
 #include <robot_msgs/msg/arm4.hpp>
 #include <robot_msgs/msg/vis.hpp>
-#include <robot_msgs/msg/armmode.hpp>
+#include <robot_msgs/msg/int.hpp>
+#include <std_msgs/msg/int32.hpp>
 #include <thread>
 
 
@@ -22,33 +23,35 @@ ArmNode::ArmNode()
          exit_thread = false;
     
    
-    //arm_pub = this->create_publisher<robot_msgs::msg::Arm>("arm_status", 10);
+    red_pub = this->create_publisher<robot_msgs::msg::Int>("red_distance", 10);
 
     arm_sub = this->create_subscription<robot_msgs::msg::Arm>(
         "myjoints_target", 10, std::bind(&ArmNode::armSubscribCb, this, std::placeholders::_1));
 
-    air_sub = this->create_subscription<robot_msgs::msg::Armmode>(
+    air_sub = this->create_subscription<std_msgs::msg::Int32>(
         "air_pump_target", 10, std::bind(&ArmNode::airSubscribCb, this, std::placeholders::_1));
 
     
 
-     cdc_trans = std::make_unique<CDCTrans>();          
+    cdc_trans = std::make_unique<CDCTrans>();          
 
-     /*                         // 创建CDC传输对象
+                             // 创建CDC传输对象
     cdc_trans->regeiser_recv_cb([this](const uint8_t* data, int size) { // 注册接收回调
         // RCLCPP_INFO(this->get_logger(), "接收到了数据包,长度%d", size);
         if (size == sizeof(state_pack_t)) // 验证包长度，可以被视作四条腿的状态数据包
         {
             const state_pack_t* pack = reinterpret_cast<const state_pack_t*>(data);
-            if (pack->pack_type == 0)         // 确认包类型正确
-                publishArmState(pack);        // 一旦接收，立即发布狗臂状态
+            if (pack->pack_type == 1)         // 确认包类型正确
+                publishredState(pack);        // 一旦接收，立即发布状态
+                
+
             else
                 RCLCPP_ERROR(this->get_logger(), "接收到错误的数据包类型%d", pack->pack_type);
         }
     });
-      */
+      
 
-    if (!cdc_trans->open(0x0483, 0x5740))     // 开启USB_CDC传输接口
+    if (!cdc_trans->open(0x0484, 0x5740))     // 开启USB_CDC传输接口(0x0484  机械臂下位机，0x0483是狗腿下位机)
         exit_thread = true;
 
     // 创建线程处理CDC消息（在 open 之后、publisher 创建之后）
@@ -75,22 +78,21 @@ ArmNode::~ArmNode() {
     }
 }
 
-/*
-void ArmNode::publishArmState(const state_pack_t *arm_state){
-    robot_msgs::msg::Arm msg;
-    msg.servo2.low=arm_state->servo2.low;
-    msg.servo2.up=arm_state->servo2.up;
-    msg.rob01.rad=arm_state->robstride01.state.rad;
-    msg.rob01.omega=arm_state->robstride01.state.omega;
-    msg.rob01.torque=arm_state->robstride01.state.torque;
-    msg.rob02.rad=arm_state->GM6020.Angle_DEG;
-    msg.rob02.omega=arm_state->GM6020.Speed;
-    msg.rob02.torque=arm_state->GM6020.TorqueCurrent;
 
-    arm_pub->publish(msg);
-     
+void ArmNode::publishredState(const state_pack_t *arm_state){
+
+     if (arm_state->red_distance == 0)
+    {
+        return;
+    }
+
+    robot_msgs::msg::Int msg;
+    msg.data = arm_state->red_distance;
+    red_pub->publish(msg);
+    RCLCPP_INFO(this->get_logger(), "\033[35m发布了红外距离 %d\033[0m", arm_state->red_distance);
+       
 }
-*/
+
 
 
 void ArmNode::armSubscribCb(const robot_msgs::msg::Arm& msg) {
@@ -117,7 +119,7 @@ void ArmNode::armSubscribCb(const robot_msgs::msg::Arm& msg) {
     first_update = false;
 }
 
-void ArmNode::airSubscribCb(const robot_msgs::msg::Armmode& msg) {
-   air_pump = msg.mode;
+void ArmNode::airSubscribCb(const std_msgs::msg::Int32& msg) {
+   air_pump = msg.data;
     
 }

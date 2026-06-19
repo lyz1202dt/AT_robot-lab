@@ -16,6 +16,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -53,6 +54,10 @@ add_executable(test_node
   src/test.cpp
 )
 
+add_executable(measure_node
+  src/measure.cpp
+)
+
 
 target_include_directories(robot_control
 PUBLIC
@@ -64,6 +69,7 @@ ament_target_dependencies(
   rclcpp
   geometry_msgs
   sensor_msgs
+  std_msgs
   visualization_msgs
   tf2
   tf2_ros
@@ -77,11 +83,25 @@ ament_target_dependencies(
   rclcpp
   sensor_msgs
   robot_msgs
+  std_msgs
 )
+
+ament_target_dependencies(
+  measure_node
+  rclcpp
+  geometry_msgs
+  tf2
+  tf2_ros
+  robot_msgs
+  std_msgs
+)
+
+target_link_libraries(measure_node yaml-cpp)
 
 install(TARGETS
 robot_control
 test_node
+measure_node
 DESTINATION lib/${PROJECT_NAME}
 )
 

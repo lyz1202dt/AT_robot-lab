@@ -23,6 +23,18 @@ def generate_launch_description():
         executable="remote_node",
         output="screen",
     )
+    
+    static_tf_arm = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        arguments=[
+            "0.146", "0.0", "0.073",
+            "0.0", "0.0", "0.0", "1.0",
+            "base_link",
+            "arm_base_link"
+        ],
+        output="screen",
+    )
 
     test_node = Node(
         package="task_game",
@@ -33,5 +45,6 @@ def generate_launch_description():
     return LaunchDescription([
         test_node,
         robot_control_node,
+        static_tf_arm
         #remote_node,
     ])

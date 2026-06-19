@@ -11,9 +11,10 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/subscription.hpp>
-#include <robot_msgs/msg/box_id_grid.hpp>
 #include <robot_msgs/msg/int.hpp>
-
+#include <std_msgs/msg/int32.hpp>
+#include <std_msgs/msg/int32_multi_array.hpp>
+#include <std_msgs/msg/int32.hpp>
 #include "core/behavior_tree.hpp"
 
 class Robot;
@@ -31,13 +32,19 @@ protected:
 
 private:
     void init_subscriptions(const rclcpp::Node::SharedPtr& node);
+    void init_publishers(const rclcpp::Node::SharedPtr& node);
 
 private:
     bool generated{false};
     bool subscriptions_ready_{false};
+    bool publishers_ready_{false};
+    bool first_run_{true};
     rclcpp::Node::SharedPtr node_;
     rclcpp::Subscription<robot_msgs::msg::Int>::SharedPtr vip_box_id_sub_;
-    rclcpp::Subscription<robot_msgs::msg::BoxIdGrid>::SharedPtr box_id_grid_sub_;
+    rclcpp::Subscription<std_msgs::msg::Int32MultiArray>::SharedPtr box_grid_sub_;
+
+    rclcpp::Publisher<
+        std_msgs::msg::Int32>::SharedPtr arm_cmd_pub_;
     int vip_box_id_{-1};
     BoxIdGrid box_id_grid_{};
     sem_t vip_box_id_sem_;

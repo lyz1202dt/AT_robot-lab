@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -8,8 +9,8 @@
 #include <memory>
 #include <mutex>
 #include <rclcpp/rclcpp.hpp>
-#include <robot_msgs/msg/armmode.hpp>
 #include <robot_msgs/msg/vis.hpp>
+#include <robot_msgs/msg/int.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <string>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -19,6 +20,7 @@
 #include <thread>
 #include <vector>
 #include <std_msgs/msg/int32.hpp>
+#include <std_msgs/msg/int32_multi_array.hpp>
 
 
 namespace arm_task {
@@ -29,13 +31,6 @@ public:
     ~ArmTaskNode();
 
 private:
-    void vision_callback(const robot_msgs::msg::Vis& msg);
-    void if_catch_callback(const robot_msgs::msg::Vis& msg);
-    void arm_cmd_callback(const robot_msgs::msg::Armmode& msg);
-    void scan_result_callback(const robot_msgs::msg::Vis& msg);
-    void place_position_down_callback(const robot_msgs::msg::Vis& msg);
-    void place_position_up_callback(const robot_msgs::msg::Vis& msg);
-    bool search_for_object(geometry_msgs::msg::PoseStamped& object_pose);
 
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
@@ -45,12 +40,12 @@ private:
     // State machine for task execution
     void execute_task_state_machine();
     void execute_grasp_flow();
-    void execute_place_flow_first();
-    void execute_move_to_position(int position_index);
-    void execute_place_flow_second();
-    void execute_place_place_rad();
-    void execute_place_flow_rad();
+    void execute_place_flow_1();
+    void execute_place_flow_2();
+    void execut_pos_record();
     void execute_look_for();
+
+    void execute_move_to_position(int position_index);
     void execute_lift_search();
 
 
@@ -58,22 +53,15 @@ private:
     void stop_arm_motion();
     void execute_joint_space_trajectory(const std::vector<double>& joint_angles, double duration);
     void execute_cartesian_space_trajectory(const geometry_msgs::msg::PoseStamped& target_pose, double duration);
-    void execute_visual_servo(const geometry_msgs::msg::PoseStamped& target_pose);
-    bool wait_for_visual_servo_convergence(double position_tolerance_m, double timeout_sec);
-    bool wait_for_catch_result();
+    
 
     // Helper methods
-    bool get_object_pose_in_base_frame(geometry_msgs::msg::PoseStamped& pose_out);
+    bool get_object_pose_in_base_frame(geometry_msgs::msg::PoseStamped& pose_out,float z);
     void set_parameter_on_remote_node(const std::string& node_name, const std::string& param_name, const rclcpp::Parameter& param);
     void load_arm_positions_from_yaml();
-    geometry_msgs::msg::PoseStamped create_approach_pose(const geometry_msgs::msg::PoseStamped& target_pose, double distance);
 
     // Callbacks
-    void on_place_target_pose(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
     rcl_interfaces::msg::SetParametersResult on_parameters_changed(const std::vector<rclcpp::Parameter>& params);
-
-    // Visual servo publishing thread
-    void visual_servo_publish_thread();
 
     // TF2 for transforms
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -82,20 +70,15 @@ private:
     // Publishers
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr visual_target_pub_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr joint_space_target_pub_;
-    rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr air_pub_;
-    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr arm_vision_command_pub_;
-    rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_state_pub_1;
-    rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_state_pub_2;
-    rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_place_finish_pub;
+    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr air_pub_;
+    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr vision_command_pub_;
+    rclcpp::Subscription<std_msgs::msg::Int32MultiArray>::SharedPtr box_grid_sub_;
+
+    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr arm_finished_pub;
+    // rclcpp::Publisher<robot_msgs::msg::Armmode>::SharedPtr arm_state_pub_2;
 
     // Subscribers
-    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr place_target_sub_;
-    rclcpp::Subscription<robot_msgs::msg::Vis>::SharedPtr vision_sub_;
-    rclcpp::Subscription<robot_msgs::msg::Vis>::SharedPtr scan_finish_sub_;
-    rclcpp::Subscription<robot_msgs::msg::Vis>::SharedPtr arm_if_catch;
-    rclcpp::Subscription<robot_msgs::msg::Vis>::SharedPtr place_position_down_sub;
-    rclcpp::Subscription<robot_msgs::msg::Vis>::SharedPtr place_position_up_sub;
-    rclcpp::Subscription<robot_msgs::msg::Armmode>::SharedPtr arm_cmd_sub_;
+    rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr arm_cmd_sub_;
 
 
     // Parameters
@@ -123,28 +106,18 @@ private:
     bool has_place_target_{false};
 
     // Configuration
-    std::string base_frame_{"base_link"};
+    std::string base_frame_{"arm_base_link"};
     std::string camera_frame_{"camera_link"};
     std::string object_frame_{"target_object"};
     std::string tip_frame_{"link5"};
     std::string arm_calc_node_name_{"arm_calc_node"};
     double approach_distance_{0.1};    // meters above target
-    double trajectory_duration_{4.0};  // seconds
+    double trajectory_duration_{3.0};  // seconds
     double visual_servo_kp_{0.1};
     double visual_servo_max_linear_acc_{0.1};
     int air_pump_pin_{0};              // Parameter service index for air pump control
     int start_scan{0};
-    int scan_finished_{0}; // 0: not started, 1: finished
-    float place_up_position_x{0.0};
-    float place_up_position_y{0.0};
-    float place_up_position_z{0.0};
-    float place_down_position_x{0.0};
-    float place_down_position_y{0.0};
-    float place_down_position_z{0.0};
-
-    int last_arm_up_cmd{0};
-    std::atomic<int> catch_result_{0}; // 0等待 1成功 -1失败              // 0: unknown, 1: success, -1: failure
-    
+    std::atomic<int> scan_finished_{0}; // 0: not started, 1: finished
 
     std::mutex arm_cmd_mutex_;
     std::atomic<int> arm_up_cmd_{0};
@@ -152,35 +125,26 @@ private:
 
     // Joint positions from YAML
     std::map<int, std::vector<double>> arm_positions_;
-    std::vector<double> ready_position_; // Preparation position
-    std::vector<double> home_position_{0.0, 0.0, 0.0, 0.0};
+    std::vector<double> ready_position{0.0, 2.1, 2.0, 3.0}; //机械臂抓块时的预设位置
+    std::vector<double> home_position_{0.0, 0.1, 0.0, 0.0};//机械臂初始0位置
     std::vector<double> grasp_position{0.0, 3.14159, 2.45, 2.48};
     std::vector<double> grasp_position_two{0.0, 3.14159, 2.4, 2.55};
-    std::vector<double> place_position{0.0, 3.14159, 3.1, 3.1};
-    std::vector<double> place_position_2{0.0, 3.14159, 3.1, 3.1};
-    std::vector<double> look_for_position_{0.0, 1.5, 2.45, 2.48};
-    std::vector<double> look_left_position_{-1.0, 1.5, 2.45, 2.48};
-    std::vector<double> look_middle_position_{0.0, 1.5, 2.45, 2.48};
-    std::vector<double> look_right_position_{1.0, 1.5, 2.45, 2.48};
-    std::vector<double> grasp_finish_position{0.0, 0.0, 0.0, -0.3};
-
-
-
+    std::vector<double> place_position{0.0, 2.1, 2.0, 3.0};
+    std::vector<double> place_position_2{0.0, 1.57, 2.0, 2.3};
+    std::vector<double> look_for_position_{0.0, 1.2, 2.3, 2.8};   //这是全场扫描时机械臂合适的位置    //0.0 1.0 2.45 3.1
+    
+    //下面三个位置是机械臂当抓取过程识别不到物块时，会抬高机械臂去寻找物块时预设的三个位置，分别是向左看、向中间看、向右看
+    std::vector<double> look_left_position_{-0.8, 1.5, 2.45, 3.1};
+    std::vector<double> look_middle_position_{0.0, 1.5, 2.45, 3.1};
+    std::vector<double> look_right_position_{0.8, 1.5, 2.45, 3.1};
+    
+    std::vector<double> grasp_finish_position{0.0, 0.1, 0.0, -0.8};
+    
     // Parameter callback handle
     rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_callback_;
 
     // Remote node clients for parameter setting
     rclcpp::AsyncParametersClient::SharedPtr arm_calc_param_client_;
-
-
-
-
-    geometry_msgs::msg::PoseStamped latest_visual_pose_; // 新增
-    bool has_visual_pose_ = false;                       // 新增
-
-
-
-
 };
 
 } // namespace arm_task

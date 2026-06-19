@@ -23,6 +23,27 @@ bool wait_for_stage(Robot* context, int32_t expected_stage) {
 ArriveToTargetAction::ArriveToTargetAction()
     : BT::ActionNode("arrive_to_target_action") {}
 
+void ArriveToTargetAction::ensure_stop_timer(Robot* context) {
+    if (stop_timer_) {
+        return;
+    }
+
+    stop_timer_ = context->node_->create_wall_timer(500ms, [this, context]() {
+        context->pilot->enable_stop_when_finished_if_generation_matches(stop_timer_generation_);
+        stop_timer_->cancel();
+    });
+    stop_timer_->cancel();
+}
+
+void ArriveToTargetAction::arm_stop_timer(Robot* context) {
+    ensure_stop_timer(context);
+    stop_timer_generation_ = context->pilot->generation();
+    if (!stop_timer_->is_canceled()) {
+        stop_timer_->cancel();
+    }
+    stop_timer_->reset();
+}
+
 BT::Status ArriveToTargetAction::execute(BT& tree) {
     auto* context = tree.get_context<Robot>();
     if (!context) {
@@ -34,9 +55,6 @@ BT::Status ArriveToTargetAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    if (context->auto_pilot_enabled.load()) {
-        context->cmd.mode = 2;
-    }
 
     std::vector<MoveBoxPlan> move_plan;
     int plan_index = 0;
@@ -71,19 +89,15 @@ BT::Status ArriveToTargetAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    RCLCPP_INFO(
-        context->node_->get_logger(),
-        "ArriveToTargetAction: 开始执行第 %d 个到达计划, 目标放置位置=(%.2f, %.2f), 轨迹点数量=%zu, second_floor=%s",
-        plan_index,
-        current_plan.dst_box_pos[0],
-        current_plan.dst_box_pos[1],
-        current_plan.place_trajectory.size(),
-        current_plan.place_at_second_floor ? "true" : "false");
+    if (current_plan.place_trajectory.empty()) {
+        RCLCPP_ERROR(context->node_->get_logger(), "ArriveToTargetAction: place_trajectory 为空");
+        return BT::FAILED;
+    }
 
+    std::vector<Pilot::TargetPoint> pilot_targets;
+    pilot_targets.reserve(current_plan.place_trajectory.size());
     for (size_t point_index = 0; point_index < current_plan.place_trajectory.size(); ++point_index) {
-        const auto& point = current_plan.place_trajectory[point_index];
         const size_t target_point_index = current_plan.catch_trajectory.size() + point_index;
-
         if (target_point_index >= current_plan.target_point.size()) {
             RCLCPP_ERROR(
                 context->node_->get_logger(),
@@ -93,14 +107,11 @@ BT::Status ArriveToTargetAction::execute(BT& tree) {
             return BT::FAILED;
         }
 
-        // const bool is_last = (point_index + 1 == current_plan.place_trajectory.size());
-
-
-
+        const auto& point = current_plan.place_trajectory[point_index];
         const auto& plan_target_point = current_plan.target_point[target_point_index];
+
         Pilot::TargetPoint target_point;
         target_point.target_pos = Eigen::Vector2d(point[0], point[1]);
-
         target_point.target_vel = plan_target_point.target_vel;
         target_point.target_yaw = point[2];
         target_point.constraint_target_yaw = plan_target_point.constraint_target_yaw;
@@ -114,74 +125,68 @@ BT::Status ArriveToTargetAction::execute(BT& tree) {
         target_point.adjust_min_vel = plan_target_point.adjust_min_vel;
         target_point.adjust_min_omega = plan_target_point.adjust_min_omega;
         target_point.allow_y_vel = plan_target_point.allow_y_vel;
+        target_point.trajectory_connection_radius = plan_target_point.trajectory_connection_radius;
+        pilot_targets.push_back(target_point);
+    }
 
-        //target_point.target_vel = is_last ? 0.0f : 0.25f;
+    RCLCPP_INFO(
+        context->node_->get_logger(),
+        "ArriveToTargetAction: 开始执行第 %d 个到达计划, 目标放置位置=(%.2f, %.2f), 连续轨迹点数量=%zu, second_floor=%s",
+        plan_index,
+        current_plan.dst_box_pos[0],
+        current_plan.dst_box_pos[1],
+        pilot_targets.size(),
+        current_plan.place_at_second_floor ? "true" : "false");
 
-        // 最后一个轨迹点要求机器人面向放置区，方便后续放箱动作衔接。
-        // if (is_last) {
-        //     target_point.target_yaw = 0.0f;
-        //     target_point.constraint_target_yaw = true;
-        // }
+    if (!context->pilot->set_target(pilot_targets)) {
+        RCLCPP_ERROR(context->node_->get_logger(), "ArriveToTargetAction: 设置连续轨迹失败");
+        context->pilot->stop();
+        return BT::FAILED;
+    }
 
-        if (!context->pilot->set_target(target_point)) {
-            RCLCPP_ERROR(
-                context->node_->get_logger(),
-                "ArriveToTargetAction: 设置第 %zu 个轨迹点失败",
-                point_index);
-            context->pilot->stop();
-            //return BT::FAILED;
-        }
+    bool finished = false;
+    bool success = false;
+    if (!context->pilot->start([&finished, &success](int result) {
+            success = (result != 0);
+            finished = true;
+        }, false)) {
+        RCLCPP_ERROR(context->node_->get_logger(), "ArriveToTargetAction: 启动连续轨迹失败");
+        context->pilot->stop();
+        return BT::FAILED;
+    }
 
-        bool finished = false;
-        bool success = false;
-        if (!context->pilot->start([&finished, &success](int result) {
-                success = (result != 0);
-                finished = true;
-            })) {
-            RCLCPP_ERROR(
-                context->node_->get_logger(),
-                "ArriveToTargetAction: 启动第 %zu 个轨迹点失败",
-                point_index);
-            context->pilot->stop();
-            //return BT::FAILED;
-        }
-
+    for (size_t point_index = 0; point_index < current_plan.place_trajectory.size(); ++point_index) {
+        const auto& point = current_plan.place_trajectory[point_index];
         RCLCPP_INFO(
             context->node_->get_logger(),
-            "ArriveToTargetAction: 前往轨迹点 %zu -> (%.2f, %.2f, %.2f)",
+            "ArriveToTargetAction: 连续轨迹点 %zu -> (%.2f, %.2f, %.2f)",
             point_index,
             point[0],
             point[1],
             point[2]);
-
-        // 等待 Pilot 执行完当前目标点；控制指令由 Robot 的定时器持续调用 get_command 输出。
-        while (rclcpp::ok() && context->auto_pilot_enabled.load() && !finished) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        }
-
-        if (!rclcpp::ok() || !context->auto_pilot_enabled.load()) {
-            context->pilot->stop();
-            //return BT::FAILED;
-        }
-
-        if (!success) {
-            RCLCPP_ERROR(
-                context->node_->get_logger(),
-                "ArriveToTargetAction: 第 %zu 个轨迹点执行失败",
-                point_index);
-            context->pilot->stop();
-            //return BT::FAILED;
-        }
     }
 
-    context->pilot->stop();
+    while (rclcpp::ok() && context->auto_pilot_enabled.load() && !finished) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+
+    if (!rclcpp::ok() || !context->auto_pilot_enabled.load()) {
+        context->pilot->stop();
+        return BT::FAILED;
+    }
+
+    if (!success) {
+        RCLCPP_ERROR(context->node_->get_logger(), "ArriveToTargetAction: 连续轨迹执行失败");
+        context->pilot->stop();
+        return BT::FAILED;
+    }
+
+    //arm_stop_timer(context);
 
     if (!context->is_tree_debug_mode()) {
         context->advance_tree_stage();
     }
 
-    // 到达放置位后，交给后续放箱动作继续处理。
-    // 注意：这里不推进 plan_index，索引应由完整完成一次“抓取+放置”后再更新。
     RCLCPP_INFO(
         context->node_->get_logger(),
         "ArriveToTargetAction: 第 %d 个到达计划执行完成，等待后续放置动作",

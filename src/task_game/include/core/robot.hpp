@@ -3,14 +3,17 @@
 #include <atomic>
 #include <memory>
 #include <thread>
+#include <array>
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <robot_msgs/msg/cmd.hpp>
 #include <robot_msgs/msg/remote.hpp>
 #include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
 #include "core/pilot.hpp"
 #include "core/behavior_tree.hpp"
+#include "nodes/msg.hpp"
 
 class Robot{
 public:
@@ -34,24 +37,33 @@ public:
     robot_msgs::msg::Cmd cmd;
     rclcpp::Node::SharedPtr node_;
     BT bt;
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::atomic_bool auto_pilot_enabled{false};
     std::atomic_int32_t tree_start_key{kTreeIdle};
     std::atomic_bool tree_debug_mode{true};
 private:
-    
+    bool is_position_out_of_bounds(const geometry_msgs::msg::TransformStamped& transfer) const;
+    void stop_rl_real_nodes();
+    void publish_active_box_target_tf();
+
     rclcpp::TimerBase::SharedPtr control_timer;
+    std::shared_ptr<tf2_ros::TransformBroadcaster> target_box_tf_broadcaster_;
     rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_server_;
     rclcpp::Subscription<robot_msgs::msg::Remote>::SharedPtr remote_sub_;
     rclcpp::Publisher<robot_msgs::msg::Cmd>::SharedPtr cmd_pub_;
     //TODO:操作机械臂的话题，相机数据采集的话题等等
 
     //TF  获取机器人位置
-    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
     geometry_msgs::msg::TransformStamped robot_pos_transfer;
+    std::array<double, 2> transfer_x_limits_{{-0.5, 6.5}};
+    std::array<double, 2> transfer_y_limits_{{-4.2, 0.2}};
+    std::array<double, 2> transfer_z_limits_{{-1.0, 1.0}};
+    std::atomic_bool rl_real_stop_requested_{false};
 
-    
-    
+
+
     std::shared_ptr<std::thread> action_thread;
 
     uint32_t last_key{0};
