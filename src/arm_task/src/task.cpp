@@ -1,5 +1,6 @@
 #include "arm_task/task.hpp"
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <geometry_msgs/msg/detail/pose_stamped__struct.hpp>
@@ -262,7 +263,6 @@ void ArmTaskNode::execute_grasp_flow() {
     std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
     int i=0;
     int count=100;      //等10s
-     geometry_msgs::msg::TransformStamped transfer;
      do{
     try{
         transfer_array[i]=tf_buffer_->lookupTransform("arm_base_link","object_frame",tf2::TimePointZero, tf2::durationFromSec(0.02));
@@ -273,7 +273,7 @@ void ArmTaskNode::execute_grasp_flow() {
             std::this_thread::sleep_for(100ms);
             count--;
     }
-    }while(count!=0&&i==8);
+    }while(count!=0&&i<8);
 
     if(count==0)
     {
@@ -286,6 +286,8 @@ void ArmTaskNode::execute_grasp_flow() {
         x+=transfer_array[i].transform.translation.x;
         y+=transfer_array[i].transform.translation.y;
     }
+    x/=8.0;
+    y/=8.0;
 
     // 强制规定姿态
     geometry_msgs::msg::PoseStamped object_pose;
@@ -336,19 +338,20 @@ void ArmTaskNode::execute_place_flow_1() {
     execute_joint_space_trajectory(place_position, 2.0);
     std::this_thread::sleep_for(2100ms);
 
+    std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
+    int i=0;
     int count=100;      //等10s
-    bool exit_lookup=false;
-     geometry_msgs::msg::TransformStamped transfer;
      do{
     try{
-        transfer=tf_buffer_->lookupTransform("arm_base_link","object_frame",tf2::TimePointZero, tf2::durationFromSec(0.08));
-        exit_lookup=true;
+        transfer_array[i]=tf_buffer_->lookupTransform("arm_base_link","object_frame",tf2::TimePointZero, tf2::durationFromSec(0.08));
+        i++;
+        std::this_thread::sleep_for(20ms);
     } catch (const tf2::TransformException& ex) {
             RCLCPP_WARN(get_logger(), "当前找不到目标物体的TF: %s", ex.what());
             std::this_thread::sleep_for(100ms);
             count--;
     }
-    }while(count!=0&&exit_lookup==false);
+    }while(count!=0&&i<8);
 
     if(count==0)
     {
@@ -356,10 +359,19 @@ void ArmTaskNode::execute_place_flow_1() {
         return ;
     }
 
+    double x=0,y=0;
+    for(int i=0;i<8;i++)
+    {
+        x+=transfer_array[i].transform.translation.x;
+        y+=transfer_array[i].transform.translation.y;
+    }
+    x/=8.0;
+    y/=8.0;
+
     // 强制规定姿态
     geometry_msgs::msg::PoseStamped object_pose;
-    object_pose.pose.position.x=transfer.transform.translation.x;
-    object_pose.pose.position.y=transfer.transform.translation.y;
+    object_pose.pose.position.x=x;
+    object_pose.pose.position.y=y;
     object_pose.pose.position.z=-0.10;
     tf2::Quaternion quat;
     quat.setRPY(0, M_PI / 2.0-0.25, 0);
@@ -404,19 +416,20 @@ void ArmTaskNode::execute_place_flow_2() {
     execute_joint_space_trajectory(place_position_2, 2.0);
     std::this_thread::sleep_for(2100ms);
 
+    std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
+    int i=0;
     int count=100;      //等10s
-    bool exit_lookup=false;
-     geometry_msgs::msg::TransformStamped transfer;
      do{
     try{
-        transfer=tf_buffer_->lookupTransform("arm_base_link","object_frame",tf2::TimePointZero, tf2::durationFromSec(0.08));
-        exit_lookup=true;
+        transfer_array[i]=tf_buffer_->lookupTransform("arm_base_link","object_frame",tf2::TimePointZero, tf2::durationFromSec(0.08));
+        i++;
+        std::this_thread::sleep_for(20ms);
     } catch (const tf2::TransformException& ex) {
             RCLCPP_WARN(get_logger(), "当前找不到目标物体的TF: %s", ex.what());
             std::this_thread::sleep_for(100ms);
             count--;
     }
-    }while(count!=0&&exit_lookup==false);
+    }while(count!=0&&i<8);
 
     if(count==0)
     {
@@ -424,10 +437,19 @@ void ArmTaskNode::execute_place_flow_2() {
         return ;
     }
 
+    double x=0,y=0;
+    for(int i=0;i<8;i++)
+    {
+        x+=transfer_array[i].transform.translation.x;
+        y+=transfer_array[i].transform.translation.y;
+    }
+    x/=8.0;
+    y/=8.0;
+
     // 强制规定姿态
     geometry_msgs::msg::PoseStamped object_pose;
-    object_pose.pose.position.x=transfer.transform.translation.x;
-    object_pose.pose.position.y=transfer.transform.translation.y;
+    object_pose.pose.position.x=x;
+    object_pose.pose.position.y=y;
     object_pose.pose.position.z=0.15;
     tf2::Quaternion quat;
     quat.setRPY(0, M_PI / 2.0-0.25, 0);
