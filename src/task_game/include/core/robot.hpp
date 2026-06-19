@@ -59,7 +59,7 @@ private:
     geometry_msgs::msg::TransformStamped robot_pos_transfer;
     std::array<double, 2> transfer_x_limits_{{-0.5, 6.5}};
     std::array<double, 2> transfer_y_limits_{{-4.2, 0.2}};
-    std::array<double, 2> transfer_z_limits_{{-0.5, 0.5}};
+    std::array<double, 2> transfer_z_limits_{{-1.0, 1.0}};
     std::atomic_bool rl_real_stop_requested_{false};
 
 
