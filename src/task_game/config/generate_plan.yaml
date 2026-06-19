@@ -26,7 +26,7 @@ start_to_a1_target_point: &start_to_a1_target_point
   # 该段路线的最大角速度
   max_omega: 1.8
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [2.0, 1.8, 1.8]
+  kp: [2.0, 1.5, 1.5]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
@@ -54,7 +54,7 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 该段路线的最大角速度
   max_omega: 1.5
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [3.0, 3.0, 2.5]
+  kp: [2.0, 1.5, 1.5]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
@@ -82,7 +82,7 @@ a2_to_a3_target_point: &a2_to_a3_target_point
   # 该段路线的最大角速度
   max_omega: 1.8
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [2.5, 2.5, 2.5]
+  kp: [2.0, 1.5, 1.5]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
@@ -110,7 +110,7 @@ a3_to_src_target_point: &a3_to_src_target_point
   # 该段路线的最大角速度
   max_omega: 1.8
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [2.5, 2.5, 2.5]
+  kp: [2.0, 1.5, 1.5]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
@@ -138,7 +138,7 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 该段路线的最大角速度
   max_omega: 1.8
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [3.0, 2.5, 2.5]
+  kp: [2.0, 1.5, 1.5]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
@@ -166,7 +166,7 @@ dst_to_dst2_target_point: &dst_to_dst2_target_point
   # 该段路线的最大角速度
   max_omega: 1.8
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [3.0, 2.5, 2.5]
+  kp: [2.0, 1.5, 1.5]
   # 起步时允许较大的朝向误差，便于直接倒车离开放置区
   allow_start_dir_error: 3.2
   # 最终允许的朝向误差
@@ -194,7 +194,7 @@ dst2_to_src_target_point: &dst2_to_src_target_point
   # 该段路线的最大角速度
   max_omega: 1.8
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [3.0, 2.5, 2.5]
+  kp: [2.0, 1.5, 1.5]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差

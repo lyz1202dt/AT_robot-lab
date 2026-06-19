@@ -6,6 +6,8 @@
 #include <rclcpp/logger.hpp>
 #include <rclcpp/logging.hpp>
 
+#include <std_msgs/msg/int32.hpp>
+
 using namespace std::chrono_literals;
 namespace {
 
@@ -22,8 +24,8 @@ bool wait_for_stage(Robot* context, int32_t expected_stage) {
 CatchBoxAction::CatchBoxAction()
     : BT::ActionNode("catch_box_action") {}
 
-void CatchBoxAction::arm_cmd_callback(const robot_msgs::msg::Armmode::SharedPtr msg) { RCLCPP_INFO(rclcpp::get_logger("logger"),"接收到反馈");
-    arm_state_ = msg->mode; }
+void CatchBoxAction::arm_cmd_callback(const std_msgs::msg::Int32::SharedPtr msg) { RCLCPP_INFO(rclcpp::get_logger("logger"),"接收到反馈");
+    arm_state_ = msg->data; }
 
 BT::Status CatchBoxAction::execute(BT& tree) {
     auto* context = tree.get_context<Robot>();
@@ -34,9 +36,9 @@ BT::Status CatchBoxAction::execute(BT& tree) {
 
     if (!subscriptions_ready_) {
         
-        arm_cmd_pub_ = context->node_->create_publisher<robot_msgs::msg::Armmode>("arm_cmd", 10);
+        arm_cmd_pub_ = context->node_->create_publisher<std_msgs::msg::Int32>("arm_cmd", 10);
 
-        arm_state_sub_ = context->node_->create_subscription<robot_msgs::msg::Armmode>(
+        arm_state_sub_ = context->node_->create_subscription<std_msgs::msg::Int32>(
             "arm_cmd_state", 10, std::bind(&CatchBoxAction::arm_cmd_callback, this, std::placeholders::_1));
     
         subscriptions_ready_ = true;
@@ -80,55 +82,55 @@ BT::Status CatchBoxAction::execute(BT& tree) {
     // 8. 取出当前要执行的搬箱计划
     const auto& plan = move_plan[plan_index];
 
-    // // 发送抓取命令
-    // robot_msgs::msg::Armmode msg;
-    // msg.mode = 1;
+    // 发送抓取命令
+    std_msgs::msg::Int32 msg;
+    msg.data = 1;
 
-    // arm_cmd_pub_->publish(msg);
+    arm_cmd_pub_->publish(msg);
 
 
-    // RCLCPP_INFO(context->node_->get_logger(), "等待机械臂抓取完成");
+    RCLCPP_INFO(context->node_->get_logger(), "等待机械臂抓取完成");
 
-    // auto start = std::chrono::steady_clock::now();
+    auto start = std::chrono::steady_clock::now();
 
-    // while (rclcpp::ok()) {
+    while (rclcpp::ok()) {
         
 
-    //     // 成功
-    //     if (arm_state_ == 1) {
+        // 成功
+        if (arm_state_ == 1) {
 
-    //         RCLCPP_INFO(context->node_->get_logger(), "抓取成功");
+            RCLCPP_INFO(context->node_->get_logger(), "抓取成功");
 
-    //         arm_state_ = 0;
-    // if (!context->is_tree_debug_mode()) {
-    //         context->advance_tree_stage();
-    //     }
-    //         return BT::SUCCESS;
-    //     }
+            arm_state_ = 0;
+    if (!context->is_tree_debug_mode()) {
+            context->advance_tree_stage();
+        }
+            return BT::SUCCESS;
+        }
 
-    //     // 失败
-    //     if (arm_state_ == -1) {
+        // 失败
+        if (arm_state_ == -1) {
 
-    //         RCLCPP_ERROR(context->node_->get_logger(), "抓取失败");
+            RCLCPP_ERROR(context->node_->get_logger(), "抓取失败");
 
-    //         arm_state_ = 0;
-    // if (!context->is_tree_debug_mode()) {
-    //         context->advance_tree_stage();
-    //     }
-    //         return BT::SUCCESS;
-    //     }
+            arm_state_ = 0;
+    if (!context->is_tree_debug_mode()) {
+            context->advance_tree_stage();
+        }
+            return BT::SUCCESS;
+        }
 
-    //     // 超时
-    //     if (std::chrono::steady_clock::now() - start > 20s) {
-    //         RCLCPP_ERROR(context->node_->get_logger(), "机械臂任务超时");
-    //         if (!context->is_tree_debug_mode()) {
-    //         context->advance_tree_stage();
-    //     }
-    //         return BT::SUCCESS;
-    //     }
+        // 超时
+        if (std::chrono::steady_clock::now() - start > 20s) {
+            RCLCPP_ERROR(context->node_->get_logger(), "机械臂任务超时");
+            if (!context->is_tree_debug_mode()) {
+            context->advance_tree_stage();
+        }
+            return BT::SUCCESS;
+        }
 
-    //     std::this_thread::sleep_for(5ms);
-    // }
+        std::this_thread::sleep_for(5ms);
+    }
 
 
     if (!context->is_tree_debug_mode()) {
