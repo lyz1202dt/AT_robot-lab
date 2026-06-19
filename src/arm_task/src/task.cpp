@@ -207,7 +207,7 @@ void ArmTaskNode::execute_task_state_machine() {
             execute_place_flow_1();
         } 
         else if (current_mode == 3) {
-            // 执行第一层放置流程
+            // 执行第二层放置流程
             RCLCPP_INFO(this->get_logger(), "开始第二层放置任务");
             execute_place_flow_2();
         } 
