@@ -280,6 +280,20 @@ bool Pilot::stop_if_generation_matches(std::uint64_t generation) {
     return true;
 }
 
+bool Pilot::enable_stop_when_finished_if_generation_matches(std::uint64_t generation) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (generation != generation_) {
+        return false;
+    }
+
+    if (state_ != PilotState::Finished) {
+        return false;
+    }
+
+    stop_when_finished_ = true;
+    return true;
+}
+
 std::uint64_t Pilot::generation() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return generation_;

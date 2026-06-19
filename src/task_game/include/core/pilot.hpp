@@ -44,6 +44,10 @@ public:
     // 仅当执行代次匹配时才停止，避免旧异步回调打断新轨迹。
     bool stop_if_generation_matches(std::uint64_t generation);
 
+    // 仅当执行代次匹配时，把完成后的输出切换为位控站立，
+    // 不改写当前运行/暂停状态，避免异步定时器打断后续新轨迹。
+    bool enable_stop_when_finished_if_generation_matches(std::uint64_t generation);
+
     // 返回当前轨迹执行代次；set_target/start/reset_execution 会推进代次。
     std::uint64_t generation() const;
 

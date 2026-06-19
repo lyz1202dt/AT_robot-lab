@@ -29,7 +29,7 @@ void ArriveToTargetAction::ensure_stop_timer(Robot* context) {
     }
 
     stop_timer_ = context->node_->create_wall_timer(500ms, [this, context]() {
-        context->pilot->stop_if_generation_matches(stop_timer_generation_);
+        context->pilot->enable_stop_when_finished_if_generation_matches(stop_timer_generation_);
         stop_timer_->cancel();
     });
     stop_timer_->cancel();
