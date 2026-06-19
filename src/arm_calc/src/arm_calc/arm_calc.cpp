@@ -277,7 +277,7 @@ JointVector ArmCalc::joint_pos_as(const CartesianPose& pose) {
         }
         candidate[2] = NormalizeAngleAtMost(candidate[2], kPi);
 
-        if (!std::isfinite(candidate[2]) || candidate[2] > kPi + 1e-9) {
+        if (!std::isfinite(candidate[1]) || candidate[1] <= 0.0 || !std::isfinite(candidate[2]) || candidate[2] > kPi + 1e-9) {
             continue;
         }
 
