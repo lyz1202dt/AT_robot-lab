@@ -2,6 +2,7 @@
 
 #include <Eigen/Dense>
 
+#include <rclcpp/rclcpp.hpp>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -52,6 +53,16 @@ double NormalizeAngleNear(double angle, double reference) {
         angle -= kTwoPi;
     }
     while (angle - reference < -kPi) {
+        angle += kTwoPi;
+    }
+    return angle;
+}
+
+double NormalizeAngleAtMost(double angle, double upper_limit) {
+    while (angle > upper_limit) {
+        angle -= kTwoPi;
+    }
+    while (angle <= upper_limit - kTwoPi) {
         angle += kTwoPi;
     }
     return angle;
@@ -264,6 +275,11 @@ JointVector ArmCalc::joint_pos_as(const CartesianPose& pose) {
             candidate[static_cast<int>(i)] =
                 NormalizeAngleNear(candidate[static_cast<int>(i)], last_solution[static_cast<int>(i)]);
         }
+        candidate[2] = NormalizeAngleAtMost(candidate[2], kPi);
+
+        if (!std::isfinite(candidate[2]) || candidate[2] > kPi + 1e-9) {
+            continue;
+        }
 
         const double distance = (candidate - last_solution).squaredNorm();
         if (distance < best_distance) {
@@ -273,6 +289,8 @@ JointVector ArmCalc::joint_pos_as(const CartesianPose& pose) {
     }
 
     last_joint_solution_ = to_kdl_joints(best_solution);
+
+    RCLCPP_INFO(rclcpp::get_logger("logger"),"解析解逆解器被调用");
     return best_solution;
 }
 

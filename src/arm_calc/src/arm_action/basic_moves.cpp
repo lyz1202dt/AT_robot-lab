@@ -58,7 +58,7 @@ JointTrajectoryPoint BuildJointPoint(const std::shared_ptr<ArmCalc>& arm_calc,
     JointTrajectoryPoint point;
     if (arm_calc) {
         int result     = -1;
-        point.position = arm_calc->joint_pos(cartesian_target.pose, &result);
+        point.position = arm_calc->joint_pos_as(cartesian_target.pose);
     }
     return point;
 }
