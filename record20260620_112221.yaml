@@ -364,7 +364,7 @@ paths:
     target_pos:
       x: -2.52651
       y: -2.31049
-    target_yaw: -3.05674
+    target_yaw: -3.08674
     constraint_target_yaw: false
     target_vel: 0.01
     max_velocity: 1
@@ -379,12 +379,12 @@ paths:
     allow_final_pos_allow: 0.03
     adjust_min_vel: 0.3
     adjust_min_omega: 0.4
-    allow_y_vel: false
+    allow_y_vel: true
     trajectory_connection_radius: 0
   - policy_id: 2
     target_pos:
       x: -4.9976
-      y: -2.28056
+      y: -2.29056
     target_yaw: -3.08692
     constraint_target_yaw: true
     target_vel: 0.01
@@ -407,7 +407,7 @@ paths:
       x: -5.02251
       y: 0.925132
     target_yaw: 0.0556308
-    constraint_target_yaw: true
+    constraint_target_yaw: false
     target_vel: 0.01
     max_velocity: 1
     max_accelation: 0.3
