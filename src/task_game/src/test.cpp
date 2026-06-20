@@ -30,6 +30,13 @@ private:
         auto grid_msg = std_msgs::msg::Int32MultiArray();
         // 示例：两排各4个箱子, data[0~3] 第一排, data[4~7] 第二排
         // 同一个 ID 可出现多次（如两个箱子属于同一 ID 的放置列）
+        /*
+        ID 含义
+        -0  食品
+        -1  工具
+        -2  仪器
+        -3  药品
+        */
         grid_msg.data = {
             3, 2, 1, 0,   // 第一排: box_id = 0,1,3,2
             0, 1, 2, 3    // 第二排: box_id = 2,0,1,3
