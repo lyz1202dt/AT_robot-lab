@@ -36,7 +36,7 @@ start_to_a1_target_point: &start_to_a1_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.5
+  adjust_min_omega: 0.35
   # 是否允许较大的 y 向速度
   allow_y_vel: true
   # 轨迹衔接半径，0 表示不用曲线连接
@@ -64,7 +64,7 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.3
+  adjust_min_omega: 0.35
   # 是否允许较大的 y 向速度
   allow_y_vel: false
   # 轨迹衔接半径，0 表示不用曲线连接
@@ -92,7 +92,7 @@ a2_to_a3_target_point: &a2_to_a3_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.5
+  adjust_min_omega: 0.35
   # 是否允许较大的 y 向速度
   allow_y_vel: true
   # 轨迹衔接半径，0 表示不用曲线连接
@@ -120,7 +120,7 @@ a3_to_src_target_point: &a3_to_src_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.5
+  adjust_min_omega: 0.35
   # 是否允许较大的 y 向速度
   allow_y_vel: true
   # 轨迹衔接半径，0 表示不用曲线连接
@@ -134,11 +134,11 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 该段路线的最大平移速度
   max_velocity: 2.2
   # 该段路线的最大平移加速度
-  max_accelation: 1.0
+  max_accelation: 0.6
   # 该段路线的最大角速度
   max_omega: 1.8
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [2.0, 1.5, 1.5]
+  kp: [2.5, 1.5, 1.5]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
@@ -148,7 +148,7 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.5
+  adjust_min_omega: 0.35
   # 是否允许较大的 y 向速度
   allow_y_vel: false
   # 轨迹衔接半径，0 表示不用曲线连接
@@ -176,7 +176,7 @@ dst_to_dst2_target_point: &dst_to_dst2_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.5
+  adjust_min_omega: 0.35
   # 是否允许较大的 y 向速度
   allow_y_vel: true
   # 轨迹衔接半径，0 表示不用曲线连接
@@ -190,7 +190,7 @@ dst2_to_src_target_point: &dst2_to_src_target_point
   # 该段路线的最大平移速度
   max_velocity: 2.2
   # 该段路线的最大平移加速度
-  max_accelation: 1.0
+  max_accelation: 0.6
   # 该段路线的最大角速度
   max_omega: 1.8
   # 闭环控制比例参数 [x, y, yaw]
@@ -204,7 +204,7 @@ dst2_to_src_target_point: &dst2_to_src_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.5
+  adjust_min_omega: 0.35
   # 是否允许较大的 y 向速度
   allow_y_vel: false
   # 轨迹衔接半径，0 表示不用曲线连接
