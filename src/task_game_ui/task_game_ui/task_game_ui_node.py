@@ -1,0 +1,314 @@
+#!/usr/bin/env python3
+
+import queue
+import sys
+import threading
+from typing import Iterable, List, Optional, Sequence
+
+try:
+    import tkinter as tk
+except ImportError as exc:
+    print("task_game_ui requires python3-tk / tkinter.", file=sys.stderr)
+    raise exc
+
+import rclpy
+from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
+from rcl_interfaces.srv import SetParameters
+from rclpy.executors import SingleThreadedExecutor
+from rclpy.node import Node
+from std_msgs.msg import Int32MultiArray, MultiArrayDimension
+
+
+ROWS = 2
+COLS = 4
+GRID_SIZE = ROWS * COLS
+REMOTE_PARAM_NODE = "robot_calc_node"
+START_GAME_PARAM = "start_game"
+
+COLOR_SEQUENCE = (255, 0, 1, 2, 3)
+COLOR_STYLES = {
+    255: {"bg": "#ffffff", "fg": "#111827", "active_bg": "#f3f4f6"},
+    0: {"bg": "#22c55e", "fg": "#052e16", "active_bg": "#16a34a"},
+    1: {"bg": "#9ca3af", "fg": "#111827", "active_bg": "#6b7280"},
+    2: {"bg": "#2563eb", "fg": "#ffffff", "active_bg": "#1d4ed8"},
+    3: {"bg": "#dc2626", "fg": "#ffffff", "active_bg": "#b91c1c"},
+}
+
+
+Grid = List[List[int]]
+
+
+def default_grid() -> Grid:
+    return [[255 for _ in range(COLS)] for _ in range(ROWS)]
+
+
+def flatten_grid(grid: Sequence[Sequence[int]]) -> List[int]:
+    return [int(grid[row][col]) for row in range(ROWS) for col in range(COLS)]
+
+
+def normalize_value(value: int) -> int:
+    value = int(value)
+    return value if value in COLOR_STYLES else 255
+
+
+def normalize_grid(values: Iterable[int]) -> Grid:
+    flat = [normalize_value(value) for value in list(values)[:GRID_SIZE]]
+    if len(flat) < GRID_SIZE:
+        flat.extend([255] * (GRID_SIZE - len(flat)))
+    return [flat[row * COLS : (row + 1) * COLS] for row in range(ROWS)]
+
+
+def next_color_value(value: int) -> int:
+    value = normalize_value(value)
+    index = COLOR_SEQUENCE.index(value)
+    return COLOR_SEQUENCE[(index + 1) % len(COLOR_SEQUENCE)]
+
+
+def make_grid_message(grid: Sequence[Sequence[int]]) -> Int32MultiArray:
+    msg = Int32MultiArray()
+
+    row_dim = MultiArrayDimension()
+    row_dim.label = "rows"
+    row_dim.size = ROWS
+    row_dim.stride = GRID_SIZE
+
+    col_dim = MultiArrayDimension()
+    col_dim.label = "cols"
+    col_dim.size = COLS
+    col_dim.stride = COLS
+
+    msg.layout.dim = [row_dim, col_dim]
+    msg.layout.data_offset = 0
+    msg.data = flatten_grid(grid)
+    return msg
+
+
+class BoxIdGridNode(Node):
+    def __init__(self, ui_updates: "queue.Queue[Grid]") -> None:
+        super().__init__("task_game_ui")
+        self._ui_updates = ui_updates
+        self._publisher = self.create_publisher(Int32MultiArray, "box_id_grid", 10)
+        self._start_game_client = self.create_client(
+            SetParameters,
+            f"/{REMOTE_PARAM_NODE}/set_parameters",
+        )
+        self._subscription = self.create_subscription(
+            Int32MultiArray,
+            "box_id_grid",
+            self._on_box_id_grid,
+            10,
+        )
+
+    def publish_grid(self, grid: Sequence[Sequence[int]]) -> None:
+        msg = make_grid_message(grid)
+        self._publisher.publish(msg)
+        self.get_logger().info(f"Published box_id_grid: {list(msg.data)}")
+
+    def set_start_game(self) -> None:
+        if not self._start_game_client.wait_for_service(timeout_sec=0.0):
+            self.get_logger().error(
+                f"Parameter service /{REMOTE_PARAM_NODE}/set_parameters is not available"
+            )
+            return
+
+        parameter = Parameter()
+        parameter.name = START_GAME_PARAM
+        parameter.value = ParameterValue(
+            type=ParameterType.PARAMETER_BOOL,
+            bool_value=True,
+        )
+
+        request = SetParameters.Request()
+        request.parameters = [parameter]
+        future = self._start_game_client.call_async(request)
+        future.add_done_callback(self._on_start_game_set)
+
+    def _on_start_game_set(self, future) -> None:
+        try:
+            response = future.result()
+        except Exception as exc:
+            self.get_logger().error(f"Failed to set {REMOTE_PARAM_NODE}.{START_GAME_PARAM}: {exc}")
+            return
+
+        if not response.results:
+            self.get_logger().error(f"Failed to set {REMOTE_PARAM_NODE}.{START_GAME_PARAM}: empty result")
+            return
+
+        result = response.results[0]
+        if result.successful:
+            self.get_logger().info(f"Set {REMOTE_PARAM_NODE}.{START_GAME_PARAM}=true")
+        else:
+            reason = result.reason or "no reason provided"
+            self.get_logger().error(
+                f"Failed to set {REMOTE_PARAM_NODE}.{START_GAME_PARAM}: {reason}"
+            )
+
+    def _on_box_id_grid(self, msg: Int32MultiArray) -> None:
+        if len(msg.data) < GRID_SIZE:
+            self.get_logger().error(
+                f"box_id_grid needs at least {GRID_SIZE} values, got {len(msg.data)}"
+            )
+            return
+        self._ui_updates.put(normalize_grid(msg.data))
+
+
+class TaskGameUi:
+    def __init__(self, root: tk.Tk, ros_node: BoxIdGridNode, ui_updates: "queue.Queue[Grid]") -> None:
+        self._root = root
+        self._ros_node = ros_node
+        self._ui_updates = ui_updates
+        self._grid = default_grid()
+        self._buttons: List[List[tk.Button]] = []
+        self._after_id = None
+
+        self._build_window()
+        self._refresh_all_buttons()
+        self._after_id = self._root.after(50, self._poll_ros_updates)
+
+    def _build_window(self) -> None:
+        self._root.title("Task Game UI")
+        self._root.minsize(560, 360)
+        self._root.configure(bg="#f5f7fb")
+        self._root.grid_columnconfigure(0, weight=1)
+        self._root.grid_rowconfigure(0, weight=1)
+
+        shell = tk.Frame(self._root, bg="#f5f7fb", padx=22, pady=22)
+        shell.grid(row=0, column=0, sticky="nsew")
+        shell.grid_columnconfigure(0, weight=1)
+        shell.grid_rowconfigure(2, weight=1)
+
+        start_button = self._create_primary_button(
+            shell,
+            "比赛开始",
+            self._start_game,
+        )
+        start_button.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+
+        confirm_button = self._create_primary_button(shell, "确定", self._publish_grid)
+        confirm_button.grid(row=1, column=0, sticky="ew", pady=(0, 18))
+
+        grid_frame = tk.Frame(shell, bg="#f5f7fb")
+        grid_frame.grid(row=2, column=0, sticky="nsew")
+        for row in range(ROWS):
+            grid_frame.grid_rowconfigure(row, weight=1, uniform="grid_rows")
+        for col in range(COLS):
+            grid_frame.grid_columnconfigure(col, weight=1, uniform="grid_cols")
+
+        for row in range(ROWS):
+            button_row: List[tk.Button] = []
+            for col in range(COLS):
+                button = tk.Button(
+                    grid_frame,
+                    command=lambda r=row, c=col: self._advance_button(r, c),
+                    font=("Sans", 18, "bold"),
+                    relief=tk.FLAT,
+                    borderwidth=0,
+                    cursor="hand2",
+                )
+                button.grid(row=row, column=col, sticky="nsew", padx=7, pady=7)
+                button_row.append(button)
+            self._buttons.append(button_row)
+
+    def _create_primary_button(self, parent: tk.Widget, text: str, command) -> tk.Button:
+        return tk.Button(
+            parent,
+            text=text,
+            command=command,
+            bg="#111827",
+            fg="#ffffff",
+            activebackground="#374151",
+            activeforeground="#ffffff",
+            font=("Sans", 22, "bold"),
+            relief=tk.FLAT,
+            borderwidth=0,
+            height=2,
+            cursor="hand2",
+        )
+
+    def _advance_button(self, row: int, col: int) -> None:
+        self._grid[row][col] = next_color_value(self._grid[row][col])
+        self._refresh_button(row, col)
+
+    def _start_game(self) -> None:
+        self._ros_node.set_start_game()
+
+    def _publish_grid(self) -> None:
+        snapshot = [row[:] for row in self._grid]
+        self._ros_node.publish_grid(snapshot)
+
+    def _poll_ros_updates(self) -> None:
+        updated = False
+        while True:
+            try:
+                self._grid = self._ui_updates.get_nowait()
+                updated = True
+            except queue.Empty:
+                break
+
+        if updated:
+            self._refresh_all_buttons()
+
+        self._after_id = self._root.after(50, self._poll_ros_updates)
+
+    def _refresh_all_buttons(self) -> None:
+        for row in range(ROWS):
+            for col in range(COLS):
+                self._refresh_button(row, col)
+
+    def _refresh_button(self, row: int, col: int) -> None:
+        value = normalize_value(self._grid[row][col])
+        self._grid[row][col] = value
+        style = COLOR_STYLES[value]
+        self._buttons[row][col].configure(
+            text=str(value),
+            bg=style["bg"],
+            fg=style["fg"],
+            activebackground=style["active_bg"],
+            activeforeground=style["fg"],
+        )
+
+    def close(self) -> None:
+        if self._after_id is not None:
+            try:
+                self._root.after_cancel(self._after_id)
+            except tk.TclError:
+                pass
+            self._after_id = None
+
+
+def main(args: Optional[Sequence[str]] = None) -> None:
+    rclpy.init(args=args)
+    ui_updates: "queue.Queue[Grid]" = queue.Queue()
+    ros_node = BoxIdGridNode(ui_updates)
+    executor = SingleThreadedExecutor()
+    executor.add_node(ros_node)
+
+    ros_thread = threading.Thread(target=executor.spin, daemon=True)
+    ros_thread.start()
+
+    app = None
+    try:
+        root = tk.Tk()
+        app = TaskGameUi(root, ros_node, ui_updates)
+
+        def on_close() -> None:
+            if app is not None:
+                app.close()
+            root.destroy()
+
+        root.protocol("WM_DELETE_WINDOW", on_close)
+        root.mainloop()
+    except tk.TclError as exc:
+        ros_node.get_logger().error(f"Failed to start tkinter UI: {exc}")
+        raise SystemExit(1) from exc
+    finally:
+        if app is not None:
+            app.close()
+        executor.shutdown()
+        ros_node.destroy_node()
+        rclpy.shutdown()
+        ros_thread.join(timeout=1.0)
+
+
+if __name__ == "__main__":
+    main()
