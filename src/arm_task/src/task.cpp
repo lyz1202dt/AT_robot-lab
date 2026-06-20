@@ -294,7 +294,7 @@ void ArmTaskNode::execute_grasp_flow() {
     geometry_msgs::msg::PoseStamped object_pose;
     object_pose.pose.position.x=x;
     object_pose.pose.position.y=y;
-    object_pose.pose.position.z=-0.16;
+    object_pose.pose.position.z=-0.18;
     tf2::Quaternion quat;
     quat.setRPY(0, M_PI / 2.0-0.25, 0);
     object_pose.pose.orientation.w = quat.getW();
