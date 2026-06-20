@@ -320,9 +320,9 @@ paths:
     trajectory_connection_radius: 0
   - policy_id: 2
     target_pos:
-      x: -2.64107
-      y: -0.333538
-    target_yaw: -1.47976
+      x: -0.347786
+      y: -3.95141
+    target_yaw: -3.03116
     constraint_target_yaw: false
     target_vel: 0.01
     max_velocity: 1
@@ -331,28 +331,7 @@ paths:
     kp:
       x: 2
       y: 2
-      yaw: 2.0
-    allow_start_dir_error: 0.1
-    allow_final_dir_error: 0.2
-    allow_final_pos_allow: 0.05
-    adjust_min_vel: 0.3
-    adjust_min_omega: 0.4
-    allow_y_vel: false
-    trajectory_connection_radius: 0
-  - policy_id: 5
-    target_pos:
-      x: -2.51331
-      y: -2.66834
-    target_yaw: -1.44424
-    constraint_target_yaw: false
-    target_vel: 0.01
-    max_velocity: 1
-    max_accelation: 0.3
-    max_omega: 1
-    kp:
-      x: 2
-      y: 2
-      yaw: 2.0
+      yaw: 1.5
     allow_start_dir_error: 0.1
     allow_final_dir_error: 0.2
     allow_final_pos_allow: 0.05
@@ -362,31 +341,10 @@ paths:
     trajectory_connection_radius: 0
   - policy_id: 2
     target_pos:
-      x: -2.62804
-      y: -2.38473
-    target_yaw: -3.10789
-    constraint_target_yaw: true
-    target_vel: 0.01
-    max_velocity: 0.8
-    max_accelation: 0.2
-    max_omega: 1
-    kp:
-      x: 2
-      y: 2
-      yaw: 2.0
-    allow_start_dir_error: 0.05
-    allow_final_dir_error: 0.05
-    allow_final_pos_allow: 0.03
-    adjust_min_vel: 0.3
-    adjust_min_omega: 0.4
-    allow_y_vel: false
-    trajectory_connection_radius: 0
-  - policy_id: 2
-    target_pos:
-      x: -4.93454
-      y: -2.29427
-    target_yaw: -3.08269
-    constraint_target_yaw: true
+      x: -2.51503
+      y: -0.138918
+    target_yaw: -1.49983
+    constraint_target_yaw: false
     target_vel: 0.01
     max_velocity: 1
     max_accelation: 0.3
@@ -394,7 +352,49 @@ paths:
     kp:
       x: 2
       y: 2
-      yaw: 2.0
+      yaw: 1.5
+    allow_start_dir_error: 0.1
+    allow_final_dir_error: 0.2
+    allow_final_pos_allow: 0.05
+    adjust_min_vel: 0.3
+    adjust_min_omega: 0.4
+    allow_y_vel: false
+    trajectory_connection_radius: 0
+  - policy_id: 2
+    target_pos:
+      x: -2.52651
+      y: -2.31049
+    target_yaw: -3.05674
+    constraint_target_yaw: false
+    target_vel: 0.01
+    max_velocity: 1
+    max_accelation: 0.3
+    max_omega: 1
+    kp:
+      x: 2
+      y: 2
+      yaw: 1.5
+    allow_start_dir_error: 0.1
+    allow_final_dir_error: 0.2
+    allow_final_pos_allow: 0.05
+    adjust_min_vel: 0.3
+    adjust_min_omega: 0.4
+    allow_y_vel: false
+    trajectory_connection_radius: 0
+  - policy_id: 2
+    target_pos:
+      x: -4.9976
+      y: -2.28056
+    target_yaw: -3.07692
+    constraint_target_yaw: false
+    target_vel: 0.01
+    max_velocity: 1
+    max_accelation: 0.3
+    max_omega: 1
+    kp:
+      x: 2
+      y: 2
+      yaw: 1.5
     allow_start_dir_error: 0.1
     allow_final_dir_error: 0.2
     allow_final_pos_allow: 0.05
@@ -404,9 +404,9 @@ paths:
     trajectory_connection_radius: 0
   - policy_id: 5
     target_pos:
-      x: -4.98396
-      y: 1.1114
-    target_yaw: 0.0998886
+      x: -5.02251
+      y: 0.925132
+    target_yaw: 0.0556308
     constraint_target_yaw: false
     target_vel: 0.01
     max_velocity: 1
@@ -415,7 +415,7 @@ paths:
     kp:
       x: 2
       y: 2
-      yaw: 2.0
+      yaw: 1.5
     allow_start_dir_error: 0.1
     allow_final_dir_error: 0.2
     allow_final_pos_allow: 0.05
@@ -425,9 +425,9 @@ paths:
     trajectory_connection_radius: 0
   - policy_id: 4
     target_pos:
-      x: -1.15031
-      y: 1.07314
-    target_yaw: 0.304088
+      x: -1.22494
+      y: 0.969398
+    target_yaw: 0.0841167
     constraint_target_yaw: false
     target_vel: 0.01
     max_velocity: 1
@@ -435,8 +435,8 @@ paths:
     max_omega: 1
     kp:
       x: 2
-      y: 2.5
-      yaw: 2.0
+      y: 2
+      yaw: 1.5
     allow_start_dir_error: 0.1
     allow_final_dir_error: 0.2
     allow_final_pos_allow: 0.05
@@ -444,3 +444,4 @@ paths:
     adjust_min_omega: 0.4
     allow_y_vel: false
     trajectory_connection_radius: 0
+
