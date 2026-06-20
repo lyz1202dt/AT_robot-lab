@@ -48,13 +48,13 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 到达目标点后的期望速度
   target_vel: 0.6
   # 该段路线的最大平移速度
-  max_velocity: 1.5
+  max_velocity: 1.2
   # 该段路线的最大平移加速度
   max_accelation: 0.5
   # 该段路线的最大角速度
-  max_omega: 1.5
+  max_omega: 1.2
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [2.0, 1.5, 1.5]
+  kp: [2.0, 1.0, 1.5]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
@@ -114,7 +114,7 @@ a3_to_src_target_point: &a3_to_src_target_point
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
-  allow_final_dir_error: 0.2
+  allow_final_dir_error: 0.15
   # 最终允许的位置误差
   allow_final_pos_allow: 0.05
   # 微调时的最小平移速度
@@ -142,7 +142,7 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
-  allow_final_dir_error: 0.1
+  allow_final_dir_error: 0.15
   # 最终允许的位置误差
   allow_final_pos_allow: 0.05
   # 微调时的最小平移速度
@@ -198,7 +198,7 @@ dst2_to_src_target_point: &dst2_to_src_target_point
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
-  allow_final_dir_error: 0.2
+  allow_final_dir_error: 0.15
   # 最终允许的位置误差
   allow_final_pos_allow: 0.05
   # 微调时的最小平移速度
@@ -253,13 +253,13 @@ routes:
   # - E：仅左边有 VIP 时走上方路线
   # 每条路线包含两个固定过渡点：a1、a2，格式为 [x, y, yaw]
   A:
-    a1: [0.795, -0.25, 0.0]
+    a1: [0.895, -0.25, 0.0]
     a2: [3.20, -0.25, 3.1415926]
   C:
-    a1: [0.795, -2.0, 0.0]
+    a1: [0.895, -2.0, 0.0]
     a2: [3.20, -2.0, 3.1415926]
   E:
-    a1: [0.795, -3.7, 0.0]
+    a1: [0.895, -3.7, 0.0]
     a2: [3.20, -3.7, 3.1415926]
 
 
