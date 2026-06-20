@@ -213,7 +213,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 target.allow_final_pos_allow=0.05;
                 target.allow_y_vel=false;
                 target.trajectory_connection_radius=0.0;
-                target.kp={2.0,2.0,1,5};
+                target.kp={2.0,2.0,1.5};
                 target.policy_id=current_record_policy_id;
 
                 record->record_pos(target);
