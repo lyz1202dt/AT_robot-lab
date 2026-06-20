@@ -61,7 +61,7 @@ private:
     std::array<double, 2> transfer_y_limits_{{-4.2, 0.2}};
     std::array<double, 2> transfer_z_limits_{{-1.0, 1.0}};
     int out_of_bounds_frames_{0};
-    static constexpr int kOutOfBoundsStopFrames = 10;
+    static constexpr int kOutOfBoundsStopFrames = 5;
     std::atomic_bool rl_real_stop_requested_{false};
 
 
