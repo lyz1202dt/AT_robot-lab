@@ -132,9 +132,9 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 到达目标点后的期望速度
   target_vel: 0.0
   # 该段路线的最大平移速度
-  max_velocity: 2.2
+  max_velocity: 1.8
   # 该段路线的最大平移加速度
-  max_accelation: 1.0
+  max_accelation: 0.5
   # 该段路线的最大角速度
   max_omega: 1.8
   # 闭环控制比例参数 [x, y, yaw]
@@ -188,9 +188,9 @@ dst2_to_src_target_point: &dst2_to_src_target_point
   # 到达目标点后的期望速度
   target_vel: 0.0
   # 该段路线的最大平移速度
-  max_velocity: 2.2
+  max_velocity: 1.8
   # 该段路线的最大平移加速度
-  max_accelation: 1.0
+  max_accelation: 0.5
   # 该段路线的最大角速度
   max_omega: 1.8
   # 闭环控制比例参数 [x, y, yaw]
