@@ -115,7 +115,7 @@ private:
     double trajectory_duration_{3.0};  // seconds
     double visual_servo_kp_{0.1};
     double visual_servo_max_linear_acc_{0.1};
-    int air_pump_pin_{0};              // Parameter service index for air pump control
+    bool air_pump_{false};              // Parameter service index for air pump control
     int start_scan{0};
     std::atomic<int> scan_finished_{0}; // 0: not started, 1: finished
 

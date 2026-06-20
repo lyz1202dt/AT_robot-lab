@@ -32,7 +32,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     this->declare_parameter<double>("approach_distance", 0.1);
     this->declare_parameter<double>("visual_servo_kp", 1.6);
     this->declare_parameter<double>("visual_servo_max_linear_acc", 0.5);
-    this->declare_parameter<int>("air_pump_pin", 0);
+    this->declare_parameter<bool>("air_pump", false);
     this->declare_parameter<std::string>("base_frame", "arm_base_link");
     this->declare_parameter<std::string>("camera_frame", "camera_link");
     this->declare_parameter<std::string>("object_frame", "target_object");
@@ -44,7 +44,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     this->get_parameter("approach_distance", approach_distance_);
     // this->get_parameter("visual_servo_kp", visual_servo_kp_);
     this->get_parameter("visual_servo_max_linear_acc", visual_servo_max_linear_acc_);
-    this->get_parameter("air_pump_pin", air_pump_pin_);
+    this->get_parameter("air_pump_pin", air_pump_);
     this->get_parameter("base_frame", base_frame_);
     this->get_parameter("camera_frame", camera_frame_);
     this->get_parameter("object_frame", object_frame_);
@@ -155,6 +155,12 @@ rcl_interfaces::msg::SetParametersResult ArmTaskNode::on_parameters_changed(cons
                 // Reset parameter back to false
                 this->set_parameter(rclcpp::Parameter("stop_visual_servo", false));
             }
+        }
+        else if (param.get_name() == "air_pump") {
+            bool pump = param.as_bool();
+            std_msgs::msg::Int32 msg;
+            msg.data=pump?1:0;
+            air_pub_->publish(msg);
         }
     }
 
