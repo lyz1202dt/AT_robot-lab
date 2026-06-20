@@ -166,6 +166,8 @@ bool Pilot::start()
         state_ = resume_state_ == PilotState::Finished ? PilotState::Running : resume_state_;
         if (state_ == PilotState::Running) {
             begin_current_segment(now, 0.0);
+        } else if (state_ == PilotState::Standing) {
+            stand_start_time_ = now;
         }
         return true;
     }
@@ -182,7 +184,7 @@ bool Pilot::start()
 bool Pilot::stop()
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (state_ == PilotState::Running || state_ == PilotState::Adjusting) {
+    if (state_ == PilotState::Running || state_ == PilotState::Standing || state_ == PilotState::Adjusting) {
         resume_state_ = state_;
         state_ = PilotState::Paused;
     } else if (state_ != PilotState::Finished) {
@@ -249,6 +251,17 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
 
     PathPoint& path = paths_[current_path_index_];
     cmd.mode = policy_id_to_cmd_mode(path.policy_id);
+
+    if (state_ == PilotState::Standing) {
+        const double elapsed = std::chrono::duration<double>(time - stand_start_time_).count();
+        if (elapsed < std::max(0.0, path.stand_duration)) {
+            return stand_command();
+        }
+        advance_after_stand(time);
+        if (current_path_index_ >= paths_.size() || state_ == PilotState::Running) {
+            return stand_command();
+        }
+    }
 
     if (state_ == PilotState::Adjusting) {
         const Eigen::Vector2d pos_error_world = path.target_pos - current_pos_;
@@ -451,7 +464,8 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
             }
         }
 
-        if (elapsed >= profile.duration && !transition_.active) {
+        const bool reached_target = (path.target_pos - current_pos_).norm() <= path.allow_final_pos_allow;
+        if (reached_target && !transition_.active) {
             finish_current_target(time);
             return cmd;
         }
@@ -523,6 +537,8 @@ bool Pilot::load_paths(const std::string& yaml_path)
             point.target_yaw = read_optional_double(path_node, "target_yaw", point.target_yaw);
             point.allow_y_vel = read_optional_bool(path_node, "allow_y_vel", point.allow_y_vel);
             point.trajectory_connection_radius = read_optional_double(path_node, "trajectory_connection_radius", point.trajectory_connection_radius);
+            point.stand_at_target = read_optional_bool(path_node, "stand_at_target", point.stand_at_target);
+            point.stand_duration = read_optional_double(path_node, "stand_duration", point.stand_duration);
             loaded_paths.push_back(point);
         }
 
@@ -550,6 +566,8 @@ void Pilot::reset_execution()
     segment_start_yaw_ = current_yaw_;
     segment_start_speed_ = 0.0;
     aiming_done_ = false;
+    segment_start_time_ = {};
+    stand_start_time_ = {};
     transition_ = CubicTransition{};
 }
 
@@ -570,41 +588,61 @@ void Pilot::begin_current_segment(std::chrono::time_point<std::chrono::high_reso
 
 void Pilot::finish_current_target(std::chrono::time_point<std::chrono::high_resolution_clock> time)
 {
+    if (current_path_index_ >= paths_.size()) {
+        state_ = PilotState::Finished;
+        return;
+    }
+
+    const auto& current_path = paths_[current_path_index_];
+    RCLCPP_INFO(
+        node_->get_logger(),
+        "目标点%zu/%zu执行完成: target=(%.3f, %.3f), policy_id=%d",
+        current_path_index_ + 1,
+        paths_.size(),
+        current_path.target_pos.x(),
+        current_path.target_pos.y(),
+        current_path.policy_id);
+
+    if (should_stand_at_current_target()) {
+        state_ = PilotState::Standing;
+        stand_start_time_ = time;
+        transition_ = CubicTransition{};
+        return;
+    }
+
+    advance_after_stand(time);
+}
+
+void Pilot::advance_after_stand(std::chrono::time_point<std::chrono::high_resolution_clock> time)
+{
     if (current_path_index_ + 1 < paths_.size()) {
         const auto previous_path = paths_[current_path_index_];
-        RCLCPP_INFO(
-            node_->get_logger(),
-            "目标点%zu/%zu执行完成: target=(%.3f, %.3f), policy_id=%d",
-            current_path_index_ + 1,
-            paths_.size(),
-            previous_path.target_pos.x(),
-            previous_path.target_pos.y(),
-            previous_path.policy_id);
         ++current_path_index_;
         segment_start_pos_ = previous_path.target_pos;
         segment_start_yaw_ = current_yaw_;
         segment_start_speed_ = std::max(0.0, previous_path.target_vel);
         segment_start_time_ = time;
+        stand_start_time_ = {};
         transition_ = CubicTransition{};
         aiming_done_ = paths_[current_path_index_].allow_y_vel;
         state_ = PilotState::Running;
         return;
     }
 
-    if (current_path_index_ < paths_.size()) {
-        const auto& final_path = paths_[current_path_index_];
-        RCLCPP_INFO(
-            node_->get_logger(),
-            "目标点%zu/%zu执行完成: target=(%.3f, %.3f), policy_id=%d",
-            current_path_index_ + 1,
-            paths_.size(),
-            final_path.target_pos.x(),
-            final_path.target_pos.y(),
-            final_path.policy_id);
-    }
+    stand_start_time_ = {};
     state_ = PilotState::Adjusting;
     adjust_phase_ = AdjustPhase::Position;
     transition_ = CubicTransition{};
+}
+
+bool Pilot::should_stand_at_current_target() const
+{
+    if (current_path_index_ >= paths_.size()) {
+        return false;
+    }
+
+    const auto& path = paths_[current_path_index_];
+    return path.stand_at_target && path.stand_duration > 0.0 && path.trajectory_connection_radius <= 0.0;
 }
 
 robot_msgs::msg::Cmd Pilot::stand_command() const

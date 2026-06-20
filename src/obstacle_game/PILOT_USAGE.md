@@ -16,6 +16,7 @@
 - 可选最终朝向约束
 - 可选横移控制
 - 可选三次多项式轨迹衔接
+- 可选到点位控站立等待
 - 旧版 YAML 路径文件兼容
 - 新版 Record 录制字段兼容
 
@@ -215,8 +216,9 @@ ros2 topic echo /robot_move_cmd
 1. 将 `bit 1` 置为 1，进入自动模式。
 2. 触发 `bit 5`，调用 `pilot->start()`。
 3. `Pilot` 按 YAML 中 `paths` 顺序依次执行路径点。
-4. 中间路径点完成后自动切换到下一个路径点。
-5. 最后一个路径点完成后进入最终微调，然后停止。
+4. 中间路径点只有在当前位置进入 `allow_final_pos_allow` 容差后，才会切换到下一个路径点，不再按规划时间超时自动切点。
+5. 如果当前点配置了 `stand_at_target: true` 且 `stand_duration > 0`，到点后先进入位控站立等待。
+6. 最后一个路径点完成后进入最终微调，然后停止。
 
 ---
 
@@ -243,6 +245,7 @@ ros2 topic echo /robot_move_cmd
 - 最终位置 / 朝向误差阈值
 - 是否允许横移
 - 轨迹衔接半径
+- 到点后是否位控站立和站立时间
 
 默认记录参数在 `src/obstacle_game/src/core/robot.cpp` 的记录点逻辑中设置。
 
@@ -275,6 +278,8 @@ paths:
     adjust_min_omega: 0.3
     allow_y_vel: false
     trajectory_connection_radius: 0.0
+    stand_at_target: false
+    stand_duration: 0.0
 ```
 
 ### 7.2 旧版兼容格式
@@ -357,6 +362,10 @@ paths:
 |---|---|
 | `allow_y_vel` | 是否允许边横移边旋转 |
 | `trajectory_connection_radius` | 多段路径衔接半径，>0 时启用三次曲线衔接 |
+| `stand_at_target` | 到达该点后是否进入位控站立等待 |
+| `stand_duration` | 位控站立等待时间，单位秒；为 0 时不等待 |
+
+当 `trajectory_connection_radius > 0` 时，该点会走三次曲线衔接逻辑，即使 `stand_at_target: true` 也不会在该点末端位控站立。
 
 ---
 
@@ -418,7 +427,17 @@ adjust_min_vel: 0.25
 adjust_min_omega: 0.35
 ```
 
-### 10.5 路径跟踪晃动
+### 10.5 需要到点后位控站立
+
+```yaml
+stand_at_target: true
+stand_duration: 1.0
+trajectory_connection_radius: 0.0
+```
+
+只有实际到达该点并进入 `allow_final_pos_allow` 容差后才会站立等待；如果 `trajectory_connection_radius > 0`，该点不会站立等待。
+
+### 10.6 路径跟踪晃动
 
 可适当降低反馈增益：
 

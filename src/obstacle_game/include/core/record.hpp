@@ -32,6 +32,8 @@ public:
         double adjust_min_omega{0.15};
         bool allow_y_vel{false};
         double trajectory_connection_radius{0.0};
+        bool stand_at_target{false};
+        double stand_duration{0.0};
     };
 
     Record(rclcpp::Node::SharedPtr node);

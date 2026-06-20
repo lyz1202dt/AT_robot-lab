@@ -82,7 +82,7 @@ void Record::write_yaml_header()
 {
     yaml_out_ << "#policy_id表示机器人执行这段路径时使用的策略，0表示上电策略，不用；1表示位控站立，一般也不用；\n";
     yaml_out_ << "#2表示walk策略，3表示sand策略，4表示stair策略，5表示slope策略，6表示bar策略\n";
-    yaml_out_ << "#可选轨迹字段支持target_yaw、constraint_target_yaw、allow_y_vel、trajectory_connection_radius、max_omega等，用于新Pilot更自由地规划\n";
+    yaml_out_ << "#可选轨迹字段支持target_yaw、constraint_target_yaw、allow_y_vel、trajectory_connection_radius、max_omega、stand_at_target、stand_duration等，用于新Pilot更自由地规划\n";
     yaml_out_ << "\n";
     yaml_out_ << "paths:\n";
 }
@@ -110,4 +110,6 @@ void Record::write_path_point(const PathPoint &target_info)
     yaml_out_ << "    adjust_min_omega: " << target_info.adjust_min_omega << "\n";
     yaml_out_ << "    allow_y_vel: " << (target_info.allow_y_vel ? "true" : "false") << "\n";
     yaml_out_ << "    trajectory_connection_radius: " << target_info.trajectory_connection_radius << "\n";
+    yaml_out_ << "    stand_at_target: " << (target_info.stand_at_target ? "true" : "false") << "\n";
+    yaml_out_ << "    stand_duration: " << target_info.stand_duration << "\n";
 }

@@ -52,11 +52,14 @@ private:
         double adjust_min_omega{0.15};
         bool allow_y_vel{false};   // 是否允许较大的y向速度（如果为true，则机器人以边平移边旋转的方式运动到目标点，否则就是先瞄准在运动到目标点）
         double trajectory_connection_radius{0.0};   //三次多项式轨迹衔接半径
+        bool stand_at_target{false};   // 到达该点后是否进入位控站立
+        double stand_duration{0.0};   // 到达该点后的位控站立时间，单位秒
     };
 
     enum class PilotState {
         Idle,
         Running,
+        Standing,
         Adjusting,
         Paused,
         Finished
@@ -84,6 +87,8 @@ private:
     void reset_execution();
     void begin_current_segment(std::chrono::time_point<std::chrono::high_resolution_clock> time, double start_speed);
     void finish_current_target(std::chrono::time_point<std::chrono::high_resolution_clock> time);
+    void advance_after_stand(std::chrono::time_point<std::chrono::high_resolution_clock> time);
+    bool should_stand_at_current_target() const;
     robot_msgs::msg::Cmd stand_command() const;
     robot_msgs::msg::Cmd walk_zero_command() const;
     static int32_t policy_id_to_cmd_mode(int32_t policy_id);
@@ -109,6 +114,7 @@ private:
     double segment_start_speed_{0.0};
     bool aiming_done_{false};
     std::chrono::time_point<std::chrono::high_resolution_clock> segment_start_time_{};
+    std::chrono::time_point<std::chrono::high_resolution_clock> stand_start_time_{};
 
     CubicTransition transition_;
 };
