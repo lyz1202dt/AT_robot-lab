@@ -257,8 +257,9 @@ void ArmTaskNode::execute_grasp_flow() {
 
     // 机械臂先预摆到一个合适的位置，方便相机观察和后续运动
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(ready_position, 0.3);
-    std::this_thread::sleep_for(350ms);
+    std::this_thread::sleep_for(300ms);
+    execute_joint_space_trajectory(ready_position, 0.6);
+    std::this_thread::sleep_for(700ms);
 
     std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
     int i=0;
