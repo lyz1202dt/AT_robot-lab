@@ -52,9 +52,9 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 该段路线的最大平移加速度
   max_accelation: 0.5
   # 该段路线的最大角速度
-  max_omega: 1.2
+  max_omega: 0.8
   # 闭环控制比例参数 [x, y, yaw]
-  kp: [2.0, 1.0, 1.5]
+  kp: [2.0, 2.0, 2.0]
   # 起步时允许的朝向误差
   allow_start_dir_error: 0.1
   # 最终允许的朝向误差
@@ -64,7 +64,7 @@ a1_to_a2_target_point: &a1_to_a2_target_point
   # 微调时的最小平移速度
   adjust_min_vel: 0.35
   # 微调时的最小角速度
-  adjust_min_omega: 0.5
+  adjust_min_omega: 0.3
   # 是否允许较大的 y 向速度
   allow_y_vel: false
   # 轨迹衔接半径，0 表示不用曲线连接
@@ -132,9 +132,9 @@ src_to_dst_target_point: &src_to_dst_target_point
   # 到达目标点后的期望速度
   target_vel: 0.0
   # 该段路线的最大平移速度
-  max_velocity: 1.8
+  max_velocity: 2.2
   # 该段路线的最大平移加速度
-  max_accelation: 0.5
+  max_accelation: 1.0
   # 该段路线的最大角速度
   max_omega: 1.8
   # 闭环控制比例参数 [x, y, yaw]
@@ -188,9 +188,9 @@ dst2_to_src_target_point: &dst2_to_src_target_point
   # 到达目标点后的期望速度
   target_vel: 0.0
   # 该段路线的最大平移速度
-  max_velocity: 1.8
+  max_velocity: 2.2
   # 该段路线的最大平移加速度
-  max_accelation: 0.5
+  max_accelation: 1.0
   # 该段路线的最大角速度
   max_omega: 1.8
   # 闭环控制比例参数 [x, y, yaw]
@@ -238,7 +238,7 @@ box_positions:
     - [2.9818785086763492, -0.77108024954701837, 3.1152633788511941]
     - [2.9812381778653731, -1.6116394874108346, 3.1284906482644561]
     - [2.9861148222899482, -2.4372288330604324, -3.112081493277739]
-    - [2.9877117988662979, -3.3032856257276642, -3.1271719800303472]
+    - [3.0077117988662979, -3.3032856257276642, -3.1271719800303472]
   pick_line_1:
     - [2.1749143571185388, -0.72065752371487535, -3.1157348390073882]
     - [2.1754874380278018, -1.5741184319666135, -3.1233058745481661]
