@@ -119,6 +119,10 @@ bool LegDriver::get_imu_state(std::array<float,4> &q,std::array<float,3> &w) {
 LegDriver::~LegDriver() {
     exit_thread = true;
 
+    if (cdc_trans) {
+        cdc_trans->stop_events();
+    }
+
     if (usb_event_handle_thread && usb_event_handle_thread->joinable()) {
         usb_event_handle_thread->join();
     }

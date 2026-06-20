@@ -31,6 +31,11 @@ public:
 
     void start()
     {
+        if (_running)
+        {
+            return;
+        }
+
         _running = true;
         std::cout << LOGGER::INFO << "[Loop] Loop start - name: " << _name << ", period: " << formatPeriod() << "ms"
                   << (_bindCPU != -1 ? ", cpu: " + std::to_string(_bindCPU) : ", cpu: unspecified") << std::endl;
@@ -43,13 +48,16 @@ public:
         {
             _thread = std::thread(&LoopFunc::loop, this);
         }
-        _thread.detach();
     }
 
     void shutdown()
     {
         {
             std::unique_lock<std::mutex> lock(_mutex);
+            if (!_running)
+            {
+                return;
+            }
             _running = false;
             _cv.notify_one();
         }

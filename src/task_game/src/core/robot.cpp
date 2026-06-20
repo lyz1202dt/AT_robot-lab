@@ -178,19 +178,24 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 transfer = tf_buffer_->lookupTransform("map","base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));
                 robot_pos_transfer=transfer;
                 if (is_position_out_of_bounds(transfer)) {
+                    ++out_of_bounds_frames_;
                     RCLCPP_ERROR(
                         node_->get_logger(),
-                        "检测到机器人位置越界: x=%.3f y=%.3f z=%.3f, 允许范围 x[%.3f, %.3f] y[%.3f, %.3f] z[%.3f, %.3f]",
+                        "检测到机器人位置越界: x=%.3f y=%.3f z=%.3f, 连续越界帧数 %d/%d, 允许范围 x[%.3f, %.3f] y[%.3f, %.3f] z[%.3f, %.3f]",
                         transfer.transform.translation.x,
                         transfer.transform.translation.y,
                         transfer.transform.translation.z,
+                        out_of_bounds_frames_,
+                        kOutOfBoundsStopFrames,
                         transfer_x_limits_[0],
                         transfer_x_limits_[1],
                         transfer_y_limits_[0],
                         transfer_y_limits_[1],
                         transfer_z_limits_[0],
                         transfer_z_limits_[1]);
-                    stop_rl_real_nodes();
+                    if (out_of_bounds_frames_ >= kOutOfBoundsStopFrames) {
+                        stop_rl_real_nodes();
+                    }
                     if (current_control_mode == 1) {
                         set_manual_mode(this);
                         current_control_mode = 0;
@@ -198,6 +203,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                     cmd_pub_->publish(cmd);
                     return;
                 }
+                out_of_bounds_frames_ = 0;
                 // RCLCPP_INFO_THROTTLE(
                 //     node_->get_logger(),
                 //     *node_->get_clock(),

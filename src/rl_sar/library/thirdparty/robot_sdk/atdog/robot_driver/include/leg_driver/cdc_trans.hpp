@@ -18,6 +18,8 @@ public:
 
     void close();
 
+    void stop_events();
+
     int send(const uint8_t* data, int size, unsigned int time_out=5); // 异步发送数据包
 
     void regeiser_recv_cb(
@@ -39,7 +41,9 @@ private:
     void on_hotplug(libusb_hotplug_event event);                    // 热插拔中
 
     uint16_t last_vid, last_pid;
-    int interfaces_num;
+    int interface_num;
+    bool hotplug_registered;
+    bool transfer_active;
     std::function<void(const uint8_t* data, int size)> cdc_recv_cb;
     std::atomic_bool _disconnected;
     std::atomic_bool _need_reconnected;

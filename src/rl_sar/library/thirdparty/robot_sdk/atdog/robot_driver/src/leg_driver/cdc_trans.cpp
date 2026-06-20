@@ -8,7 +8,9 @@ CDCTrans::CDCTrans() {
     _disconnected     = true;
     _handling_events  = true;
     _need_reconnected = false;
-    interfaces_num    = 0;
+    interface_num     = 1;
+    hotplug_registered = false;
+    transfer_active   = false;
     recv_transfer     = nullptr;
     ctx               = nullptr;
     handle            = nullptr;
@@ -16,15 +18,18 @@ CDCTrans::CDCTrans() {
 }
 
 CDCTrans::~CDCTrans() {
-    _handling_events = false;
+    stop_events();
     close();
-    libusb_exit(ctx);
+    if (ctx) {
+        libusb_exit(ctx);
+        ctx = nullptr;
+    }
 }
 
 bool CDCTrans::open(uint16_t vid, uint16_t pid ){
     last_vid             = vid;
     last_pid             = pid;
-    this->interfaces_num = 1;
+    interface_num        = 1;
     handle = libusb_open_device_with_vid_pid(ctx, vid, pid);
     std::cout << "[CDCTrans] Opening USB CDC device" << std::endl;
     if (!handle)
@@ -33,15 +38,15 @@ bool CDCTrans::open(uint16_t vid, uint16_t pid ){
         return false;
     }
     
-    if (libusb_kernel_driver_active(handle, 1))
+    if (libusb_kernel_driver_active(handle, interface_num))
     {
-        int ret=libusb_detach_kernel_driver(handle, 1);
-        std::cout << "[CDCTrans] Detached kernel driver from interface 1, ret=" << ret
+        int ret=libusb_detach_kernel_driver(handle, interface_num);
+        std::cout << "[CDCTrans] Detached kernel driver from interface " << interface_num << ", ret=" << ret
                   << std::endl;
     }
-    
-    int ret=libusb_claim_interface(handle, 1); // 获取通道1
-    std::cout << "[CDCTrans] Claimed interface 1, ret=" << ret << std::endl;
+
+    int ret=libusb_claim_interface(handle, interface_num); // 获取通道
+    std::cout << "[CDCTrans] Claimed interface " << interface_num << ", ret=" << ret << std::endl;
 
 
     // 分配异步传输结构体
@@ -57,11 +62,12 @@ bool CDCTrans::open(uint16_t vid, uint16_t pid ){
             auto self = static_cast<CDCTrans*>(transfer->user_data);
             //RCLCPP_INFO(rclcpp::get_logger("cdc_device"),"USB传输事件完成，状态%d",transfer->status);
             if (!self->_handling_events) {
-                libusb_cancel_transfer(transfer);
+                self->transfer_active = false;
                 return;
             }
             if (transfer->status != LIBUSB_TRANSFER_COMPLETED) {
                 self->_disconnected = true;
+                self->transfer_active = false;
                 return;
             }
 
@@ -69,8 +75,10 @@ bool CDCTrans::open(uint16_t vid, uint16_t pid ){
                 self->cdc_recv_cb(transfer->buffer, transfer->actual_length);
 
             int rc = libusb_submit_transfer(transfer);
-            if (rc != 0)
+            if (rc != 0) {
                 self->_disconnected = true;
+                self->transfer_active = false;
+            }
         },
         this, 0);
 
@@ -89,11 +97,16 @@ bool CDCTrans::open(uint16_t vid, uint16_t pid ){
             this, &hotplug_handle);
 
         if (rc != LIBUSB_SUCCESS) {}
+        else {
+            hotplug_registered = true;
+        }
     }
 
     // 提交异步接收请求
     if (libusb_submit_transfer(recv_transfer) != 0) {
         std::cerr << "[CDCTrans] Failed to submit receive transfer" << std::endl;
+    } else {
+        transfer_active = true;
     }
 
     _disconnected     = false;
@@ -103,16 +116,38 @@ bool CDCTrans::open(uint16_t vid, uint16_t pid ){
 }
 
 void CDCTrans::close() {
+    _disconnected = true;
+    _need_reconnected = false;
+
+    if (ctx && hotplug_registered) {
+        libusb_hotplug_deregister_callback(ctx, hotplug_handle);
+        hotplug_registered = false;
+    }
+
     if (recv_transfer) {
-        libusb_cancel_transfer(recv_transfer);
+        if (transfer_active) {
+            libusb_cancel_transfer(recv_transfer);
+            while (transfer_active) {
+                timeval tv{};
+                tv.tv_sec = 0;
+                tv.tv_usec = 50000;
+                libusb_handle_events_timeout_completed(ctx, &tv, nullptr);
+            }
+        }
         libusb_free_transfer(recv_transfer);
         recv_transfer = nullptr;
     }
+
     if (handle) {
-        libusb_release_interface(handle, interfaces_num);
+        libusb_release_interface(handle, interface_num);
         libusb_close(handle);
         handle = nullptr;
     }
+}
+
+void CDCTrans::stop_events() {
+    _handling_events = false;
+    _need_reconnected = false;
 }
 
 int CDCTrans::send(const uint8_t* data, int size, unsigned int time_out) {
@@ -131,6 +166,10 @@ int CDCTrans::send(const uint8_t* data, int size, unsigned int time_out) {
 }
 
 void CDCTrans::process_once() {
+    if (!_handling_events || !ctx) {
+        return;
+    }
+
     timeval tv{};
     tv.tv_sec = 0;
     tv.tv_usec = 50000;   // 50ms
@@ -139,7 +178,7 @@ void CDCTrans::process_once() {
     if (_disconnected) {
         close();
     }
-    if (_need_reconnected) {
+    if (_need_reconnected && _handling_events) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         open(last_vid, last_pid);
     }
