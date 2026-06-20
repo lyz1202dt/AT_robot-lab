@@ -33,6 +33,7 @@ public:
     void set_tree_debug_mode(bool enabled);
     bool is_tree_debug_mode() const;
 
+    bool start_game{false};
     std::shared_ptr<Pilot> pilot;
     robot_msgs::msg::Cmd cmd;
     rclcpp::Node::SharedPtr node_;

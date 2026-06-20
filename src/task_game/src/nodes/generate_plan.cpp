@@ -9,6 +9,7 @@
 #include <thread>
 #include <functional>
 #include <limits>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <tuple>
@@ -27,6 +28,14 @@ constexpr const char* kGeneratePlanConfigParam = "generate_plan_config";
 
 bool wait_for_stage(Robot* context, int32_t expected_stage) {
     while (rclcpp::ok() && context->auto_pilot_enabled.load() && context->tree_start_key.load() != expected_stage) {
+        std::this_thread::sleep_for(50ms);
+    }
+
+    return rclcpp::ok() && context->auto_pilot_enabled.load();
+}
+
+bool wait_for_start(Robot* context) {
+    while (rclcpp::ok() && context->auto_pilot_enabled.load() && (!context->start_game)) {
         std::this_thread::sleep_for(50ms);
     }
 
@@ -63,6 +72,15 @@ bool wait_semaphore_with_timeout(sem_t* sem, const std::chrono::seconds timeout)
     }
 
     return true;
+}
+
+void drain_semaphore(sem_t* sem) {
+    while (sem_trywait(sem) == 0) {
+    }
+
+    if (errno != EAGAIN) {
+        errno = 0;
+    }
 }
 
 // 三行四列的位置表：第 0 行为放置区，第 1/2 行为两条抓取线。
@@ -313,6 +331,12 @@ GeneratePlaneAction::~GeneratePlaneAction() {
 
 void GeneratePlaneAction::reset_generated() {
     generated = false;
+    first_run_ = true;
+    {
+        std::lock_guard<std::mutex> lock(box_id_grid_mutex_);
+        lock_box_id_grid_ = false;
+    }
+    drain_semaphore(&box_id_grid_sem_);
 }
 
 // 初始化 ROS 订阅，只创建一次订阅者，等待后续消息填充规划输入。
@@ -335,6 +359,11 @@ void GeneratePlaneAction::init_subscriptions(const rclcpp::Node::SharedPtr& node
         [this](std_msgs::msg::Int32MultiArray::ConstSharedPtr msg) {
             if (msg->data.size() < 8) {
                 RCLCPP_ERROR(node_->get_logger(), "box_id_grid 至少需要 8 个元素，当前只有 %zu 个", msg->data.size());
+                return;
+            }
+
+            std::lock_guard<std::mutex> lock(box_id_grid_mutex_);
+            if (lock_box_id_grid_) {
                 return;
             }
 
@@ -382,31 +411,42 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     // if (!wait_with_interrupt(context, 3s)) {
     //     return BT::FAILED;
     // }
-    if(first_run_)
-    {
+    if (first_run_) {
         if (context->auto_pilot_enabled.load()) {
             context->cmd.mode = 1;
         }
         if (!wait_with_interrupt(context, 3s)) {
             return BT::FAILED;
         }
-    }
 
         std_msgs::msg::Int32 msg;
         msg.data = 5;
 
         arm_cmd_pub_->publish(msg);
 
+        if (!wait_semaphore_with_timeout(&box_id_grid_sem_, kSemaphoreTimeout)) {
+            RCLCPP_ERROR(context->node_->get_logger(), "等待 box_id_grid 超时");
+            return BT::FAILED;
+        }
+
+        if (!wait_for_start(context)) {
+            return BT::FAILED;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(box_id_grid_mutex_);
+            lock_box_id_grid_ = true;
+        }
+        drain_semaphore(&box_id_grid_sem_);
+        first_run_ = false;
+    }
 
 
-    //此处有个话题用来发布摄像头功能，暂定，无需改动
+
+    //此处有个话题用来触发工业相机识别VIP_ID功能，暂定，无需改动
 
     if (!wait_semaphore_with_timeout(&vip_box_id_sem_, kSemaphoreTimeout)) {
         RCLCPP_ERROR(context->node_->get_logger(), "等待 vip_box_id 超时");
-        return BT::FAILED;
-    }
-    if (!wait_semaphore_with_timeout(&box_id_grid_sem_, kSemaphoreTimeout)) {
-        RCLCPP_ERROR(context->node_->get_logger(), "等待 box_id_grid 超时");
         return BT::FAILED;
     }
 
@@ -430,7 +470,10 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     box_info.positions = plan_config.positions;
 
     //箱子ID数据
-    box_info.box_ids = box_id_grid_;
+    {
+        std::lock_guard<std::mutex> lock(box_id_grid_mutex_);
+        box_info.box_ids = box_id_grid_;
+    }
     //VIP箱子ID
     box_info.vip_box_id = vip_box_id_;
 

@@ -7,6 +7,7 @@
 
 #include <array>
 #include <memory>
+#include <mutex>
 #include <semaphore.h>
 
 #include <rclcpp/rclcpp.hpp>
@@ -47,6 +48,8 @@ private:
         std_msgs::msg::Int32>::SharedPtr arm_cmd_pub_;
     int vip_box_id_{-1};
     BoxIdGrid box_id_grid_{};
+    std::mutex box_id_grid_mutex_;
+    bool lock_box_id_grid_{false};
     sem_t vip_box_id_sem_;
     sem_t box_id_grid_sem_;
 };

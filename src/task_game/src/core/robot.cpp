@@ -51,7 +51,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
     target_box_tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
 
-
+    node_->declare_parameter<bool>("start_game", false);
     node_->declare_parameter<bool>("tree_debug_mode", true);
     set_tree_debug_mode(node_->get_parameter("tree_debug_mode").as_bool());
     node_->declare_parameter<std::vector<double>>("transfer_x_limits", {transfer_x_limits_[0], transfer_x_limits_[1]});
@@ -168,6 +168,11 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 continue;
             }
             update_limit("transfer_z_limits", transfer_z_limits_);
+
+            if(param.get_name() == "start_game")
+            {
+                start_game = param.as_bool();
+            }
         }
         return result;
     });
