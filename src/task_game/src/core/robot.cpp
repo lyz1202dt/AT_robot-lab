@@ -52,7 +52,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     target_box_tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
 
     node_->declare_parameter<bool>("start_game", false);
-    node_->declare_parameter<bool>("tree_debug_mode", true);
+    node_->declare_parameter<bool>("tree_debug_mode", false);
     set_tree_debug_mode(node_->get_parameter("tree_debug_mode").as_bool());
     node_->declare_parameter<std::vector<double>>("transfer_x_limits", {transfer_x_limits_[0], transfer_x_limits_[1]});
     node_->declare_parameter<std::vector<double>>("transfer_y_limits", {transfer_y_limits_[0], transfer_y_limits_[1]});

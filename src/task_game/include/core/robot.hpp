@@ -41,7 +41,7 @@ public:
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::atomic_bool auto_pilot_enabled{false};
     std::atomic_int32_t tree_start_key{kTreeIdle};
-    std::atomic_bool tree_debug_mode{true};
+    std::atomic_bool tree_debug_mode{false};
 private:
     bool is_position_out_of_bounds(const geometry_msgs::msg::TransformStamped& transfer) const;
     void stop_rl_real_nodes();
