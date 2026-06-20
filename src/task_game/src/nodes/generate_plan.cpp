@@ -387,7 +387,7 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         if (context->auto_pilot_enabled.load()) {
             context->cmd.mode = 1;
         }
-        if (!wait_with_interrupt(context, 5s)) {
+        if (!wait_with_interrupt(context, 3s)) {
             return BT::FAILED;
         }
     }
