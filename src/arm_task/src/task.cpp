@@ -328,13 +328,13 @@ void ArmTaskNode::execute_grasp_flow() {
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     execute_joint_space_trajectory(grasp_finish_position, 1.5);
 
-    std::this_thread::sleep_for(500ms);
+    std::this_thread::sleep_for(1000ms);
 
     std_msgs::msg::Int32 ret;
     ret.data=1;
     arm_finished_pub->publish(ret);
 
-    std::this_thread::sleep_for(1000ms);
+    std::this_thread::sleep_for(500ms);
 
     RCLCPP_INFO(this->get_logger(), "抓取流程完成");
 }
