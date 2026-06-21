@@ -96,7 +96,7 @@ void ArmNode::publishredState(const state_pack_t *arm_state){
 
     robot_msgs::msg::Int msg;
     msg.data = arm_state->red_distance;
-    red_pub->publish(msg);
+    hand_distance_pub->publish(msg);
     RCLCPP_INFO(this->get_logger(), "\033[35m发布了红外距离 %d\033[0m", arm_state->red_distance);
        
 }
