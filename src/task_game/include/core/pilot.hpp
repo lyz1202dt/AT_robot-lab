@@ -50,6 +50,8 @@ public:
 
     // 返回当前轨迹执行代次；set_target/start/reset_execution 会推进代次。
     std::uint64_t generation() const;
+    bool is_paused() const;
+    bool has_target() const;
 
     // 设置机器人系列轨迹点
     bool set_target(const std::vector<TargetPoint> &target);

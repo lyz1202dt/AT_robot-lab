@@ -229,7 +229,9 @@ bool Pilot::start(std::function<void(int success)> finished_cb, bool stop_when_f
     }
 
     ++generation_;
-    finished_cb_ = std::move(finished_cb);
+    if (finished_cb) {
+        finished_cb_ = std::move(finished_cb);
+    }
     stop_when_finished_ = stop_when_finished;
     const auto now = std::chrono::high_resolution_clock::now();
 
@@ -297,6 +299,16 @@ bool Pilot::enable_stop_when_finished_if_generation_matches(std::uint64_t genera
 std::uint64_t Pilot::generation() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return generation_;
+}
+
+bool Pilot::is_paused() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return state_ == PilotState::Paused;
+}
+
+bool Pilot::has_target() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return !targets_.empty() && current_index_ < targets_.size();
 }
 
 bool Pilot::set_target(const std::vector<TargetPoint>& target) {

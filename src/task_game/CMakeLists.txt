@@ -42,6 +42,7 @@ add_executable(robot_control
   src/core/robot.cpp
   src/core/pilot.cpp
   src/core/behavior_tree.cpp
+  src/core/auto_task_pause_controller.cpp
   src/nodes/generate_plan.cpp
   src/nodes/arrive_to_box.cpp
   src/nodes/catch_box.cpp

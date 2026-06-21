@@ -42,9 +42,16 @@ def generate_launch_description():
         output="screen",
     )
 
+    task_game_ui = Node(
+        package="task_game_ui",
+        executable="task_game_ui_node",
+        name="task_game_ui",
+        output="screen",
+    )
     return LaunchDescription([
         test_node,
         robot_control_node,
-        static_tf_arm
+        static_tf_arm,
+        task_game_ui
         #remote_node,
     ])

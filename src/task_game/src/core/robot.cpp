@@ -77,11 +77,11 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     update_limits("transfer_z_limits", transfer_z_limits_);
 
     pilot = std::make_shared<Pilot>(node_);
+    auto_task_pause_controller_ = std::make_unique<AutoTaskPauseController>(pilot);
+    auto_task_pause_controller_->set_manual_zero_command(&cmd);
 
-    // 机器人运动控制指令发布
     cmd_pub_ = node_->create_publisher<robot_msgs::msg::Cmd>("robot_move_cmd", 10);
 
-    // 机器人遥控器指令订阅
     remote_sub_ = node_->create_subscription<robot_msgs::msg::Remote>("remote", 10, [this](const robot_msgs::msg::Remote& msg) {
         if (msg.just_reconnected) {
             reconnect_ignore_frames_ = kReconnectIgnoreFrames;
@@ -93,24 +93,22 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             --reconnect_ignore_frames_;
         }
 
-        // RCLCPP_INFO_THROTTLE(
-        //     node_->get_logger(),
-        //     *node_->get_clock(),
-        //     100,
-        //     "接收遥控器输入: key=0x%X",
-        //     msg.key);
         if (!ignore_mode_switch) {
             if (!check_key_pressed(msg.key, 1)) {
                 if (current_control_mode == 1) {
-                    set_manual_mode(this);
+                    pause_auto_task_for_remote();
                     current_control_mode = 0;
-                    RCLCPP_INFO(node_->get_logger(), "请求切入手动控制");
+                    RCLCPP_INFO(node_->get_logger(), "请求暂停自动任务，切入手动控制");
                 }
             } else {
                 if (current_control_mode == 0) {
                     current_control_mode = 1;
-                    auto_pilot_enabled = true;
-                    tree_start_key = kTreeGeneratePlan;
+                    if (has_active_task_plan() || is_auto_task_paused()) {
+                        resume_auto_task_for_remote();
+                    } else {
+                        set_auto_mode_enabled(true);
+                        tree_start_key = kTreeGeneratePlan;
+                    }
                     RCLCPP_INFO(node_->get_logger(), "请求切入自动控制");
                 }
             }
@@ -179,53 +177,57 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
     control_timer = node_->create_wall_timer(10ms, [this]() {
         geometry_msgs::msg::TransformStamped transfer;
+        bool tf_valid = false;
+        bool position_out_of_bounds = false;
         try {
-                transfer = tf_buffer_->lookupTransform("map","base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));
-                robot_pos_transfer=transfer;
-                if (is_position_out_of_bounds(transfer)) {
-                    ++out_of_bounds_frames_;
-                    RCLCPP_ERROR(
-                        node_->get_logger(),
-                        "检测到机器人位置越界: x=%.3f y=%.3f z=%.3f, 连续越界帧数 %d/%d, 允许范围 x[%.3f, %.3f] y[%.3f, %.3f] z[%.3f, %.3f]",
-                        transfer.transform.translation.x,
-                        transfer.transform.translation.y,
-                        transfer.transform.translation.z,
-                        out_of_bounds_frames_,
-                        kOutOfBoundsStopFrames,
-                        transfer_x_limits_[0],
-                        transfer_x_limits_[1],
-                        transfer_y_limits_[0],
-                        transfer_y_limits_[1],
-                        transfer_z_limits_[0],
-                        transfer_z_limits_[1]);
-                    if (out_of_bounds_frames_ >= kOutOfBoundsStopFrames) {
-                        stop_rl_real_nodes();
-                    }
-                    if (current_control_mode == 1) {
-                        set_manual_mode(this);
-                        current_control_mode = 0;
-                    }
-                    cmd_pub_->publish(cmd);
-                    return;
+            transfer = tf_buffer_->lookupTransform("map","base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));
+            robot_pos_transfer = transfer;
+            tf_valid = true;
+            position_out_of_bounds = is_position_out_of_bounds(transfer);
+        } catch (const tf2::TransformException& ex) {
+            ++tf_invalid_frames_;
+            tf_recovered_frames_ = 0;
+            RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 500, "获取目标 TF 失败，暂停自动任务: %s", ex.what());
+            if (tf_invalid_frames_ >= kTfInvalidStopFrames) {
+                pause_auto_task_for_tf_fault();
+            }
+        }
+
+        if (tf_valid) {
+            if (position_out_of_bounds) {
+                ++out_of_bounds_frames_;
+                tf_invalid_frames_ = 0;
+                tf_recovered_frames_ = 0;
+                RCLCPP_ERROR_THROTTLE(
+                    node_->get_logger(),
+                    *node_->get_clock(),
+                    500,
+                    "检测到机器人位置越界: x=%.3f y=%.3f z=%.3f, 连续越界帧数 %d/%d, 允许范围 x[%.3f, %.3f] y[%.3f, %.3f] z[%.3f, %.3f]",
+                    transfer.transform.translation.x,
+                    transfer.transform.translation.y,
+                    transfer.transform.translation.z,
+                    out_of_bounds_frames_,
+                    kOutOfBoundsStopFrames,
+                    transfer_x_limits_[0],
+                    transfer_x_limits_[1],
+                    transfer_y_limits_[0],
+                    transfer_y_limits_[1],
+                    transfer_z_limits_[0],
+                    transfer_z_limits_[1]);
+                if (out_of_bounds_frames_ >= kOutOfBoundsStopFrames) {
+                    pause_auto_task_for_tf_fault();
                 }
+            } else {
                 out_of_bounds_frames_ = 0;
-                // RCLCPP_INFO_THROTTLE(
-                //     node_->get_logger(),
-                //     *node_->get_clock(),
-                //     1000,
-                //     "pos=(%lf,%lf)",
-                //     transfer.transform.translation.x,
-                //     transfer.transform.translation.y);
-            } catch (const tf2::TransformException& ex) {
-                RCLCPP_WARN(node_->get_logger(), "获取目标 TF 失败，自动驾驶仪停止运行: %s", ex.what());
-                if (current_control_mode == 1) {
-                    set_manual_mode(this);
-                    current_control_mode = 0;
+                tf_invalid_frames_ = 0;
+                ++tf_recovered_frames_;
+                if (tf_recovered_frames_ >= kTfRecoverResumeFrames) {
+                    resume_auto_task_for_tf_fault();
                 }
             }
+        }
 
-        if (current_control_mode == 1) {
-
+        if (current_control_mode == 1 && tf_valid) {
             tf2::Quaternion q;
             q.setW(transfer.transform.rotation.w);
             q.setX(transfer.transform.rotation.x);
@@ -236,13 +238,27 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
             pilot->set_state(Eigen::Vector2d(transfer.transform.translation.x, transfer.transform.translation.y), cur_yaw);
 
+            if (auto_task_pause_controller_->should_request_pilot_resume()) {
+                try_resume_paused_pilot();
+            }
+
             cmd = pilot->get_command(std::chrono::high_resolution_clock::now());
-            publish_active_box_target_tf();
+            if (!is_auto_task_paused()) {
+                publish_active_box_target_tf();
+            }
         }
+
+        if (is_auto_task_paused()) {
+            cmd.mode = 1;
+            cmd.vx = 0.0f;
+            cmd.vy = 0.0f;
+            cmd.vz = 0.0f;
+            cmd.wheel_vel = 0.0f;
+        }
+
         cmd_pub_->publish(cmd);
     });
 
-    //行为树注册
     bt.set_context(this);
     bt.rgister(std::make_shared<BT::SequenceNode>("root"));
     bt.rgister(std::make_shared<GeneratePlaneAction>(), "root");
@@ -254,7 +270,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
     action_thread = std::make_shared<std::thread>([this]() {
         while (rclcpp::ok()) {
-            if (auto_pilot_enabled.load()) {
+            if (should_run_auto_task()) {
                 bt.run();
             }
             std::this_thread::sleep_for(50ms);
@@ -263,7 +279,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 }
 
 Robot::~Robot(){
-    if (action_thread && action_thread->joinable())  //子线程退出
+    if (action_thread && action_thread->joinable())
         action_thread->join();
 }
 
@@ -340,6 +356,63 @@ void Robot::enter_manual_mode() {
     current_control_mode = 0;
 }
 
+void Robot::pause_auto_task_for_remote() {
+    auto_task_pause_controller_->pause_for_remote();
+    set_auto_mode_enabled(false);
+}
+
+void Robot::resume_auto_task_for_remote() {
+    const bool allow_resume = current_control_mode == 1 && !auto_task_pause_controller_->has_tf_fault();
+    auto_task_pause_controller_->resume_for_remote(allow_resume);
+    set_auto_mode_enabled(!auto_task_pause_controller_->is_paused());
+}
+
+void Robot::pause_auto_task_for_tf_fault() {
+    auto_task_pause_controller_->pause_for_tf_fault();
+    set_auto_mode_enabled(false);
+}
+
+void Robot::resume_auto_task_for_tf_fault() {
+    const bool allow_resume = current_control_mode == 1;
+    auto_task_pause_controller_->clear_tf_fault(allow_resume);
+    set_auto_mode_enabled(!auto_task_pause_controller_->is_paused());
+}
+
+bool Robot::should_run_auto_task() const {
+    return auto_pilot_enabled.load() && auto_task_pause_controller_ && auto_task_pause_controller_->should_run_bt();
+}
+
+bool Robot::try_resume_paused_pilot() {
+    if (!auto_task_pause_controller_ || !auto_task_pause_controller_->should_request_pilot_resume()) {
+        return false;
+    }
+    if (!pilot->is_paused() || !pilot->has_target()) {
+        return false;
+    }
+    const bool resumed = pilot->start(nullptr, false);
+    if (resumed) {
+        auto_task_pause_controller_->mark_pilot_resume_requested_done();
+    }
+    return resumed;
+}
+
+bool Robot::is_auto_task_paused() const {
+    return auto_task_pause_controller_ && auto_task_pause_controller_->is_paused();
+}
+
+bool Robot::has_active_task_plan() const {
+    std::vector<MoveBoxPlan> move_plan;
+    int plan_index = 0;
+    if (!bt.read_msg("move_plan", move_plan) || !bt.read_msg("plan_index", plan_index)) {
+        return false;
+    }
+    return !move_plan.empty() && plan_index >= 0 && plan_index < static_cast<int>(move_plan.size());
+}
+
+void Robot::set_auto_mode_enabled(bool enabled) {
+    auto_pilot_enabled = enabled;
+}
+
 void Robot::advance_tree_stage() {
     const int32_t stage = tree_start_key.load();
     if (stage < kTreeGeneratePlan || stage > kTreePlaceBox) {
@@ -369,7 +442,7 @@ bool Robot::is_tree_debug_mode() const {
     return tree_debug_mode.load();
 }
 
-bool Robot::check_key_trigger(uint32_t current_key,int index)
+bool Robot::check_key_trigger(uint32_t current_key,int index) const
 {
     bool current_is_true=((current_key>>index)&0x0001);
     bool last_is_false=!((last_key>>index)&0x0001);
