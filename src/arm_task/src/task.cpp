@@ -1,15 +1,11 @@
 #include "arm_task/task.hpp"
-#include <ament_index_cpp/get_package_share_directory.hpp>
 #include <array>
 #include <chrono>
 #include <cmath>
-#include <geometry_msgs/msg/detail/pose_stamped__struct.hpp>
-#include <rclcpp/logging.hpp>
-#include <robot_msgs/msg/vis.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <thread>
-#include <yaml-cpp/yaml.h>
 
 using namespace std::chrono_literals;
 
@@ -23,36 +19,21 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     // Initialize TF2
     tf_buffer_      = std::make_shared<tf2_ros::Buffer>(this->get_clock());
     tf_listener_    = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
-    tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
     // Declare parameters
     this->declare_parameter<int32_t>("arm_task", 0);
-    this->declare_parameter<bool>("stop_visual_servo", false);
-    this->declare_parameter<double>("trajectory_duration", 3.0);
-    this->declare_parameter<double>("approach_distance", 0.1);
-    this->declare_parameter<double>("visual_servo_kp", 1.6);
-    this->declare_parameter<double>("visual_servo_max_linear_acc", 0.5);
     this->declare_parameter<bool>("air_pump", false);
     this->declare_parameter<std::string>("base_frame", "arm_base_link");
-    this->declare_parameter<std::string>("camera_frame", "camera_link");
     this->declare_parameter<std::string>("object_frame", "target_object");
-    this->declare_parameter<std::string>("tip_frame", "link5");
     this->declare_parameter<std::string>("arm_calc_node_name", "arm_calc_node");
+    declare_config_parameters();
 
     // Get parameters
-    this->get_parameter("trajectory_duration", trajectory_duration_);
-    this->get_parameter("approach_distance", approach_distance_);
-    // this->get_parameter("visual_servo_kp", visual_servo_kp_);
-    this->get_parameter("visual_servo_max_linear_acc", visual_servo_max_linear_acc_);
-    this->get_parameter("air_pump_pin", air_pump_);
+    this->get_parameter("air_pump", air_pump_);
     this->get_parameter("base_frame", base_frame_);
-    this->get_parameter("camera_frame", camera_frame_);
     this->get_parameter("object_frame", object_frame_);
-    this->get_parameter("tip_frame", tip_frame_);
     this->get_parameter("arm_calc_node_name", arm_calc_node_name_);
-
-    // Load arm positions from YAML
-    //load_arm_positions_from_yaml();
+    load_config_parameters();
 
     // Create publishers
     visual_target_pub_      = this->create_publisher<geometry_msgs::msg::PoseStamped>("visual_target_pose", 10);
@@ -67,9 +48,6 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
 
     // // 跟上层控制反馈当前机械臂状态，是否抓到物块了
     arm_finished_pub = this->create_publisher<std_msgs::msg::Int32>("arm_cmd_state", 10);
-
-    // // 跟上层控制反馈当前机械臂搜索状态，是否找到物块了
-    // arm_state_pub_2 = this->create_publisher<robot_msgs::msg::Armmode>("arm_search_state", 10);
 
     // 上层控制命令订阅，告诉机械臂执行哪个任务
     arm_cmd_sub_ = this->create_subscription<std_msgs::msg::Int32>(
@@ -93,48 +71,62 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
 ArmTaskNode::~ArmTaskNode() {
     RCLCPP_INFO(this->get_logger(), "Shutting down ArmTaskNode...");
     shutdown_requested_  = true;
-    visual_servo_active_ = false;
 
     if (task_thread_.joinable()) {
         task_thread_.join();
     }
-
-    if (visual_servo_thread_.joinable()) {
-        visual_servo_thread_.join();
-    }
 }
 
-void ArmTaskNode::load_arm_positions_from_yaml() {
-    try {
-        std::string package_share = ament_index_cpp::get_package_share_directory("arm_task");
-        std::string yaml_path     = package_share + "/config/arm_position.yaml";
+void ArmTaskNode::declare_config_parameters() {
+    this->declare_parameter<std::vector<double>>("positions.ready", ready_position);
+    this->declare_parameter<std::vector<double>>("positions.home", home_position_);
+    this->declare_parameter<std::vector<double>>("positions.place_level_1", place_position);
+    this->declare_parameter<std::vector<double>>("positions.place_level_2", place_position_2);
+    this->declare_parameter<std::vector<double>>("positions.look_for", look_for_position_);
+    this->declare_parameter<std::vector<double>>("positions.grasp_finish", grasp_finish_position);
 
-        YAML::Node config = YAML::LoadFile(yaml_path);
+    this->declare_parameter<double>("poses.grasp_z", grasp_z_);
+    this->declare_parameter<double>("poses.place_level_1_z", place_level_1_z_);
+    this->declare_parameter<double>("poses.place_level_2_z", place_level_2_z_);
+    this->declare_parameter<double>("poses.pitch_offset", pitch_offset_);
 
-        if (config["arm_positions"]) {
-            for (const auto& pos : config["arm_positions"]) {
-                int index                  = pos["index"].as<int>();
-                std::vector<double> joints = pos["joints"].as<std::vector<double>>();
-                arm_positions_[index]      = joints;
-                RCLCPP_INFO(this->get_logger(), "Loaded position %d with %zu joints", index, joints.size());
-            }
-        }
+    this->declare_parameter<double>("timing.grasp_prepare_duration", grasp_prepare_duration_);
+    this->declare_parameter<double>("timing.grasp_cartesian_duration", grasp_cartesian_duration_);
+    this->declare_parameter<int>("timing.pump_on_wait_ms", pump_on_wait_ms_);
+    this->declare_parameter<double>("timing.place_prepare_duration", place_prepare_duration_);
+    this->declare_parameter<double>("timing.place_cartesian_duration", place_cartesian_duration_);
+    this->declare_parameter<double>("timing.home_duration", home_duration_);
 
+    this->declare_parameter<double>("scan.start_joint_0", scan_start_joint_0_);
+    this->declare_parameter<double>("scan.stop_joint_0", scan_stop_joint_0_);
+    this->declare_parameter<double>("scan.initial_wait_sec", scan_initial_wait_sec_);
+    this->declare_parameter<double>("scan.sweep_duration", scan_sweep_duration_);
+}
 
-        if (config["place_position"]) {
-            place_position_2 = config["place_position"].as<std::vector<double>>();
-            RCLCPP_INFO(this->get_logger(), "Loaded place position with %zu joints", place_position_2.size());
-        }
+void ArmTaskNode::load_config_parameters() {
+    ready_position = this->get_parameter("positions.ready").as_double_array();
+    home_position_ = this->get_parameter("positions.home").as_double_array();
+    place_position = this->get_parameter("positions.place_level_1").as_double_array();
+    place_position_2 = this->get_parameter("positions.place_level_2").as_double_array();
+    look_for_position_ = this->get_parameter("positions.look_for").as_double_array();
+    grasp_finish_position = this->get_parameter("positions.grasp_finish").as_double_array();
 
-        if (config["home_position"]) {
-            home_position_ = config["home_position"].as<std::vector<double>>();
-            RCLCPP_INFO(this->get_logger(), "Loaded place position with %zu joints", home_position_.size());
-        }
+    grasp_z_ = this->get_parameter("poses.grasp_z").as_double();
+    place_level_1_z_ = this->get_parameter("poses.place_level_1_z").as_double();
+    place_level_2_z_ = this->get_parameter("poses.place_level_2_z").as_double();
+    pitch_offset_ = this->get_parameter("poses.pitch_offset").as_double();
 
+    grasp_prepare_duration_ = this->get_parameter("timing.grasp_prepare_duration").as_double();
+    grasp_cartesian_duration_ = this->get_parameter("timing.grasp_cartesian_duration").as_double();
+    pump_on_wait_ms_ = this->get_parameter("timing.pump_on_wait_ms").as_int();
+    place_prepare_duration_ = this->get_parameter("timing.place_prepare_duration").as_double();
+    place_cartesian_duration_ = this->get_parameter("timing.place_cartesian_duration").as_double();
+    home_duration_ = this->get_parameter("timing.home_duration").as_double();
 
-    } catch (const std::exception& e) {
-        RCLCPP_ERROR(this->get_logger(), "Failed to load arm positions: %s", e.what());
-    }
+    scan_start_joint_0_ = this->get_parameter("scan.start_joint_0").as_double();
+    scan_stop_joint_0_ = this->get_parameter("scan.stop_joint_0").as_double();
+    scan_initial_wait_sec_ = this->get_parameter("scan.initial_wait_sec").as_double();
+    scan_sweep_duration_ = this->get_parameter("scan.sweep_duration").as_double();
 }
 
 rcl_interfaces::msg::SetParametersResult ArmTaskNode::on_parameters_changed(const std::vector<rclcpp::Parameter>& params) {
@@ -147,16 +139,7 @@ rcl_interfaces::msg::SetParametersResult ArmTaskNode::on_parameters_changed(cons
             int32_t new_mode = param.as_int();
             arm_task_mode_   = new_mode;
             RCLCPP_INFO(this->get_logger(), "Task mode changed to: %d", new_mode);
-        } else if (param.get_name() == "stop_visual_servo") {
-            bool stop = param.as_bool();
-            if (stop) {
-                visual_servo_active_ = false;
-                RCLCPP_INFO(this->get_logger(), "Visual servo stopped via parameter");
-                // Reset parameter back to false
-                this->set_parameter(rclcpp::Parameter("stop_visual_servo", false));
-            }
-        }
-        else if (param.get_name() == "air_pump") {
+        } else if (param.get_name() == "air_pump") {
             bool pump = param.as_bool();
             std_msgs::msg::Int32 msg;
             msg.data=pump?1:0;
@@ -231,13 +214,6 @@ void ArmTaskNode::execute_task_state_machine() {
             RCLCPP_INFO(this->get_logger(), "调试录点模式");
             execut_pos_record();
         }
-        else if (current_mode >= 10 && current_mode < 20) {
-            // Move to position x
-            int position_index = current_mode - 10;
-            RCLCPP_INFO(this->get_logger(), "Moving to position %d", position_index);
-            execute_move_to_position(position_index);
-        }
-
         if(current_mode)
         {
             current_mode   = 0;
@@ -264,7 +240,7 @@ void ArmTaskNode::execute_grasp_flow() {
     // 机械臂先预摆到一个合适的位置，方便相机观察和后续运动
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     std::this_thread::sleep_for(300ms);
-    execute_joint_space_trajectory(ready_position, 0.6);
+    execute_joint_space_trajectory(ready_position, grasp_prepare_duration_);
     std::this_thread::sleep_for(700ms);
 
     std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
@@ -272,7 +248,7 @@ void ArmTaskNode::execute_grasp_flow() {
     int count=100;      //等10s
      do{
     try{
-        transfer_array[i]=tf_buffer_->lookupTransform("arm_base_link","object_frame",tf2::TimePointZero, tf2::durationFromSec(0.02));
+        transfer_array[i]=tf_buffer_->lookupTransform(base_frame_, object_frame_, tf2::TimePointZero, tf2::durationFromSec(0.02));
         i++;
         std::this_thread::sleep_for(20ms);
     } catch (const tf2::TransformException& ex) {
@@ -300,9 +276,9 @@ void ArmTaskNode::execute_grasp_flow() {
     geometry_msgs::msg::PoseStamped object_pose;
     object_pose.pose.position.x=x;
     object_pose.pose.position.y=y;
-    object_pose.pose.position.z=-0.16;
+    object_pose.pose.position.z=grasp_z_;
     tf2::Quaternion quat;
-    quat.setRPY(0, M_PI / 2.0-0.25, 0);
+    quat.setRPY(0, M_PI / 2.0 + pitch_offset_, 0);
     object_pose.pose.orientation.w = quat.getW();
     object_pose.pose.orientation.x = quat.getX();
     object_pose.pose.orientation.y = quat.getY();
@@ -311,7 +287,7 @@ void ArmTaskNode::execute_grasp_flow() {
 
     // 3.笛卡尔轨迹规划使机械臂运动到物块的位置
     RCLCPP_INFO(this->get_logger(), "移动到块的位置");
-    execute_cartesian_space_trajectory(object_pose, 0.5);
+    execute_cartesian_space_trajectory(object_pose, grasp_cartesian_duration_);
     std::this_thread::sleep_for(300ms);
 
 
@@ -321,7 +297,7 @@ void ArmTaskNode::execute_grasp_flow() {
     msg.data = 1;
     air_pub_->publish(msg);
 
-    std::this_thread::sleep_for(600ms);
+    std::this_thread::sleep_for(std::chrono::milliseconds(pump_on_wait_ms_));
 
 
     // 6.回到初始位置
@@ -342,7 +318,7 @@ void ArmTaskNode::execute_grasp_flow() {
 void ArmTaskNode::execute_place_flow_1() {
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(place_position, 2.0);
+    execute_joint_space_trajectory(place_position, place_prepare_duration_);
     std::this_thread::sleep_for(2100ms);
 
     std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
@@ -350,7 +326,7 @@ void ArmTaskNode::execute_place_flow_1() {
     int count=100;      //等10s
      do{
     try{
-        transfer_array[i]=tf_buffer_->lookupTransform("arm_base_link","object_frame",tf2::TimePointZero, tf2::durationFromSec(0.08));
+        transfer_array[i]=tf_buffer_->lookupTransform(base_frame_, object_frame_, tf2::TimePointZero, tf2::durationFromSec(0.08));
         i++;
         std::this_thread::sleep_for(20ms);
     } catch (const tf2::TransformException& ex) {
@@ -379,9 +355,9 @@ void ArmTaskNode::execute_place_flow_1() {
     geometry_msgs::msg::PoseStamped object_pose;
     object_pose.pose.position.x=x;
     object_pose.pose.position.y=y;
-    object_pose.pose.position.z=-0.10;
+    object_pose.pose.position.z=place_level_1_z_;
     tf2::Quaternion quat;
-    quat.setRPY(0, M_PI / 2.0-0.25, 0);
+    quat.setRPY(0, M_PI / 2.0 + pitch_offset_, 0);
     object_pose.pose.orientation.w = quat.getW();
     object_pose.pose.orientation.x = quat.getX();
     object_pose.pose.orientation.y = quat.getY();
@@ -390,7 +366,7 @@ void ArmTaskNode::execute_place_flow_1() {
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
         object_pose.pose.position.z);
 
-    execute_cartesian_space_trajectory(object_pose, 1.0);
+    execute_cartesian_space_trajectory(object_pose, place_cartesian_duration_);
 
     std::this_thread::sleep_for(1000ms);
 
@@ -404,7 +380,7 @@ void ArmTaskNode::execute_place_flow_1() {
 
     RCLCPP_INFO(this->get_logger(), "返回初始位置");
 
-    execute_joint_space_trajectory(home_position_, 0.5);
+    execute_joint_space_trajectory(home_position_, home_duration_);
 
     std::this_thread::sleep_for(200ms);
 
@@ -420,7 +396,7 @@ void ArmTaskNode::execute_place_flow_1() {
 void ArmTaskNode::execute_place_flow_2() {
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(place_position_2, 2.0);
+    execute_joint_space_trajectory(place_position_2, place_prepare_duration_);
     std::this_thread::sleep_for(2100ms);
 
     std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
@@ -428,7 +404,7 @@ void ArmTaskNode::execute_place_flow_2() {
     int count=100;      //等10s
      do{
     try{
-        transfer_array[i]=tf_buffer_->lookupTransform("arm_base_link","object_frame",tf2::TimePointZero, tf2::durationFromSec(0.08));
+        transfer_array[i]=tf_buffer_->lookupTransform(base_frame_, object_frame_, tf2::TimePointZero, tf2::durationFromSec(0.08));
         i++;
         std::this_thread::sleep_for(20ms);
     } catch (const tf2::TransformException& ex) {
@@ -457,9 +433,9 @@ void ArmTaskNode::execute_place_flow_2() {
     geometry_msgs::msg::PoseStamped object_pose;
     object_pose.pose.position.x=x;
     object_pose.pose.position.y=y;
-    object_pose.pose.position.z=0.15;
+    object_pose.pose.position.z=place_level_2_z_;
     tf2::Quaternion quat;
-    quat.setRPY(0, M_PI / 2.0-0.25, 0);
+    quat.setRPY(0, M_PI / 2.0 + pitch_offset_, 0);
     object_pose.pose.orientation.w = quat.getW();
     object_pose.pose.orientation.x = quat.getX();
     object_pose.pose.orientation.y = quat.getY();
@@ -468,7 +444,7 @@ void ArmTaskNode::execute_place_flow_2() {
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
         object_pose.pose.position.z);
 
-    execute_cartesian_space_trajectory(object_pose, 1.0);
+    execute_cartesian_space_trajectory(object_pose, place_cartesian_duration_);
 
     std::this_thread::sleep_for(1000ms);
 
@@ -492,7 +468,7 @@ void ArmTaskNode::execute_place_flow_2() {
 
     std::this_thread::sleep_for(500ms);     //等待狗子离开
 
-    execute_joint_space_trajectory(home_position_, 0.5);
+    execute_joint_space_trajectory(home_position_, home_duration_);
 
     std::this_thread::sleep_for(500ms);
 
@@ -515,16 +491,16 @@ void ArmTaskNode::execute_look_for() {
 
     auto start_joint_pos=look_for_position_;
     auto stop_joint_pos=look_for_position_;
-    start_joint_pos[0]=-0.4;
-    stop_joint_pos[0]=0.4;
+    start_joint_pos[0]=scan_start_joint_0_;
+    stop_joint_pos[0]=scan_stop_joint_0_;
 
     // 在这里会阻塞等待视觉发布会扫描完成的消息（scan_finished_被置1），告诉机械臂可以结束等待了
     while (scan_finished_ == 0) {
-        if (std::chrono::steady_clock::now() - start_time > 5s) {
+        if (std::chrono::steady_clock::now() - start_time > std::chrono::duration<double>(scan_initial_wait_sec_)) {
            execute_joint_space_trajectory(start_joint_pos, 0.2);    //机械臂旋转，执行扫描
            std::this_thread::sleep_for(200ms);
-           execute_joint_space_trajectory(stop_joint_pos, 8.0);
-           std::this_thread::sleep_for(8s);
+           execute_joint_space_trajectory(stop_joint_pos, scan_sweep_duration_);
+           std::this_thread::sleep_for(std::chrono::duration<double>(scan_sweep_duration_));
            RCLCPP_INFO(get_logger(),"搜索箱子...");
         }
 
@@ -534,68 +510,18 @@ void ArmTaskNode::execute_look_for() {
     scan_finished_ = 0; // 清状态
 
     // 机械臂回到初始位置，准备接受后续的抓取指令
-    execute_joint_space_trajectory(home_position_, 0.5);
+    execute_joint_space_trajectory(home_position_, home_duration_);
     std::this_thread::sleep_for(500ms);
 }
 
 void ArmTaskNode::execute_lift_search() {
     RCLCPP_INFO(this->get_logger(), "开始搜索任务");
 
-    // geometry_msgs::msg::PoseStamped object_pose;
-
-    // robot_msgs::msg::Armmode state2_msg;
-
-
-    // if (search_for_object(object_pose)) {
-
-    //     RCLCPP_INFO(
-    //         this->get_logger(), "找到目标: [%.3f %.3f %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
-    //         object_pose.pose.position.z);
-
-    //     state2_msg.mode = 1;
-    //     state2_msg.x    = object_pose.pose.position.x;
-    //     state2_msg.y    = object_pose.pose.position.y;
-    //     state2_msg.z    = object_pose.pose.position.z;
-    //     arm_state_pub_2->publish(state2_msg);
-
-
-    // } else {
-
-    //     RCLCPP_WARN(this->get_logger(), "搜索失败");
-
-    //     state2_msg.mode = -1;
-    //     arm_state_pub_2->publish(state2_msg);
-    // }
     RCLCPP_INFO(this->get_logger(), "搜索任务结束");
-    //execute_joint_space_trajectory(home_position_, 1.5);
     std::this_thread::sleep_for(1500ms);
     current_mode = 0;
 }
 
-
-
-void ArmTaskNode::execute_move_to_position(int position_index) {
-    if (arm_positions_.find(position_index) == arm_positions_.end()) {
-        RCLCPP_ERROR(this->get_logger(), "Position %d not found in configuration", position_index);
-        return;
-    }
-
-    const auto& joint_angles = arm_positions_[position_index];
-    RCLCPP_INFO(this->get_logger(), "Moving to position %d", position_index);
-    execute_joint_space_trajectory(joint_angles, trajectory_duration_);
-    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(trajectory_duration_ * 1000) + 500));
-
-    RCLCPP_INFO(this->get_logger(), "Move to position %d completed", position_index);
-}
-
-void ArmTaskNode::stop_arm_motion() {
-    RCLCPP_INFO(this->get_logger(), "停止机械臂运动");
-    if (arm_calc_param_client_->wait_for_service(5s)) {
-        arm_calc_param_client_->set_parameters({rclcpp::Parameter("execute_trajectory", false)});
-    } else {
-        RCLCPP_ERROR(this->get_logger(), "Parameter service for %s not available", arm_calc_node_name_.c_str());
-    }
-}
 
 // 关节轨迹规划控制
 void ArmTaskNode::execute_joint_space_trajectory(const std::vector<double>& joint_angles, double duration) {
@@ -638,17 +564,6 @@ void ArmTaskNode::execute_cartesian_space_trajectory(const geometry_msgs::msg::P
         arm_calc_param_client_->set_parameters({rclcpp::Parameter("execute_trajectory", true)});
     } else {
         RCLCPP_ERROR(this->get_logger(), "Parameter service for %s not available", arm_calc_node_name_.c_str());
-    }
-}
-
-void ArmTaskNode::set_parameter_on_remote_node(
-    const std::string& node_name, const std::string& /* param_name */, const rclcpp::Parameter& param) {
-    auto param_client = std::make_shared<rclcpp::AsyncParametersClient>(this, node_name);
-
-    if (param_client->wait_for_service(1s)) {
-        param_client->set_parameters({param});
-    } else {
-        RCLCPP_WARN(this->get_logger(), "Parameter service for %s not available", node_name.c_str());
     }
 }
 

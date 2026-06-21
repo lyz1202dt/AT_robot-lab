@@ -1,7 +1,6 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, LogInfo, RegisterEventHandler
+from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
-from launch.event_handlers import OnProcessStart
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
@@ -10,10 +9,11 @@ import os
 
 def generate_launch_description():
     arm_share = get_package_share_directory("arm")
+    arm_task_share = get_package_share_directory("arm_task")
     launch_pack_share = get_package_share_directory("launch_pack")
 
     urdf_path = os.path.join(arm_share, "model", "arm4.urdf")
-    controller_yaml = os.path.join(launch_pack_share, "config", "ros2_controller.yaml")
+    task_config = os.path.join(arm_task_share, "config", "task_config.yaml")
     rviz_path = os.path.join(launch_pack_share, "rviz", "display_config.rviz")
 
     with open(urdf_path, "r", encoding="utf-8") as inf:
@@ -55,24 +55,13 @@ def generate_launch_description():
     arm_task = Node(
         package="arm_task",
         executable="arm_task",
+        parameters=[task_config],
         output="screen",
     )
 
     arm_driver = Node(
         package="robot_driver",
         executable="robot_driver",
-        output="screen",
-    )
-
-    static_tf_target = Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        arguments=[
-            "0.06", "-0.02", "0.29",  # x, y, z translation
-            "0.0", "0.0", "0.0", "1.0",  # quaternion (x, y, z, w) - identity (no rotation)
-            "camera_link",
-            "target_object"
-        ],
         output="screen",
     )
 
@@ -102,7 +91,4 @@ def generate_launch_description():
         arm_task,
         arm_driver,
         static_tf_camera,
-        #static_tf_target,
-       
-        
     ])

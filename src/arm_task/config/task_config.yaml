@@ -1,0 +1,29 @@
+arm_task:
+  ros__parameters:
+    positions:
+      ready: [0.0, 2.1, 2.0, 3.0]
+      home: [0.0, 0.1, 0.1, 0.0]
+      place_level_1: [0.0, 2.1, 2.0, 3.0]
+      place_level_2: [0.0, 1.7, 2.8, 3.3]
+      look_for: [0.0, 1.2, 2.3, 2.8]
+      grasp_finish: [0.0, 0.1, 0.1, -0.8]
+
+    poses:
+      grasp_z: -0.16
+      place_level_1_z: -0.10
+      place_level_2_z: 0.15
+      pitch_offset: -0.25
+
+    timing:
+      grasp_prepare_duration: 0.6
+      grasp_cartesian_duration: 0.5
+      pump_on_wait_ms: 600
+      place_prepare_duration: 2.0
+      place_cartesian_duration: 1.0
+      home_duration: 0.5
+
+    scan:
+      start_joint_0: -0.4
+      stop_joint_0: 0.4
+      initial_wait_sec: 5.0
+      sweep_duration: 8.0
