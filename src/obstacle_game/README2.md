@@ -123,6 +123,7 @@ ros2 topic echo /robot_move_cmd
   - `v`：上楼/楼梯模式（pulse bit 3）。
   - `b`：切换到 `robot_lab_bar` / 限高杆模式（pulse bit 12）。
   - `n`：切换到 `robot_lab_slope` / 斜坡模式（pulse bit 11）。
+  - `h`：切换到 `robot_lab_bridge` / 木桥模式（pulse bit 13）。
   - `m`：记录当前点（pulse bit 14，用于路径记录）。
 
 注释与行为说明：
@@ -155,6 +156,7 @@ ros2 topic echo /robot_move_cmd
 | 6 | `c` | **sand（沙地策略/暂停导航）** | 手动模式：切换到沙地策略 (mode=3)；自动模式：暂停自动导航 | 不支持 |
 | 11 | `n` | **robot_lab_slope（斜坡模式）** | 切换到斜坡策略 (mode=6) | 不支持 |
 | 12 | `b` | **robot_lab_bar（限高杆模式）** | 切换到限高杆策略 (mode=5) | 切换到限高杆策略 (mode=5) |
+| 13 | `h` | **robot_lab_bridge（木桥模式）** | 切换到木桥策略 (mode=7) | 不支持 |
 | 14 | `m` | **record_point（记录路径点）** | 记录一个当前路径点到 YAML | 不支持 |
 
 ### 摇杆轴映射（填充 Remote 的模拟量字段）
@@ -178,6 +180,7 @@ ros2 topic echo /robot_move_cmd
 | 4 | 台阶策略 | bit 3 | 适用于跨越台阶（仅 obstacle_game） |
 | 5 | 限高杆策略 | bit 12 | 低矮障碍物通过模式 |
 | 6 | 斜坡策略 | bit 11 | 适用于斜坡地形 |
+| 7 | 木桥策略 | bit 13 | 适用于木桥地形 |
 
 ### YAML 中的 policy_id 编码
 
@@ -188,6 +191,7 @@ ros2 topic echo /robot_move_cmd
 | 4 | 台阶 | 4 |
 | 5 | 斜坡 | 6 |
 | 6 | 限高杆 | 5 |
+| 7 | 木桥 | 7 |
 
 ### 两个检测函数说明
 
@@ -213,6 +217,7 @@ bool check_key_pressed(uint32_t current_key, int index) {
 | 6   | 沙地策略 / 暂停导航 | 不支持 |
 | 11  | robot_lab_slope（斜坡策略） | 不支持 |
 | 12  | robot_lab_bar（限高杆策略） | 支持 |
+| 13  | robot_lab_bridge（木桥策略） | 不支持 |
 | 14  | 记录路径点 | 不支持 |
 
 `task_game` 专注于搬运箱子的行为树流程，因此不需要沙地、台阶等地面策略和路径记录功能。

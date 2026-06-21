@@ -146,6 +146,10 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 cmd.mode = 6; // 斜坡策略
                 current_record_policy_id = 5;
                 RCLCPP_INFO(node_->get_logger(), "斜坡模式");
+            } else if (check_key_trigger(msg.key,13)) {
+                cmd.mode = 7; // 木桥策略
+                current_record_policy_id = 7;
+                RCLCPP_INFO(node_->get_logger(), "木桥模式");
             }
 
             //摇杆赋值

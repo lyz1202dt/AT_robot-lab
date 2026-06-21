@@ -140,6 +140,10 @@ public:
             {
                 return "RLFSMStateRLSlope";
             }
+            else if(rl.control.mode==7)     //切换到木桥状态
+            {
+                return "RLFSMStateRLBridge";
+            }
         }
         return state_name_;
     }
@@ -300,6 +304,10 @@ public:
         {
             return "RLFSMStateRLSlope";
         }
+        else if(rl.control.mode==7)     //切换到木桥状态
+        {
+            return "RLFSMStateRLBridge";
+        }
         return state_name_;
     }
 };
@@ -389,6 +397,10 @@ public:
         {
             return "RLFSMStateRLSlope";
         }
+        else if(rl.control.mode==7)     //切换到木桥状态
+        {
+            return "RLFSMStateRLBridge";
+        }
         return state_name_;
     }
 };
@@ -477,6 +489,10 @@ public:
         {
             return "RLFSMStateRLSlope";
         }
+        else if(rl.control.mode==7)     //切换到木桥状态
+        {
+            return "RLFSMStateRLBridge";
+        }
         return state_name_;
     }
 };
@@ -563,6 +579,10 @@ public:
         {
             return "RLFSMStateRLSlope";
         }
+        else if(rl.control.mode==7)     //切换到木桥状态
+        {
+            return "RLFSMStateRLBridge";
+        }
         return state_name_;
     }
 };
@@ -647,6 +667,98 @@ public:
         {
             return "RLFSMStateRLBar";
         }
+        else if(rl.control.mode==7)     //切换到木桥状态
+        {
+            return "RLFSMStateRLBridge";
+        }
+        return state_name_;
+    }
+};
+
+class RLFSMStateRLBridge : public RLFSMState
+{
+public:
+    RLFSMStateRLBridge(RL *rl) : RLFSMState(*rl, "RLFSMStateRLBridge") {}
+
+    float percent_transition = 0.0f;
+
+    void Enter() override
+    {
+        percent_transition = 0.0f;
+        rl.episode_length_buf = 0;
+
+        // read params from yaml
+        rl.config_name = "robot_lab_bridge";
+        std::string robot_config_path = rl.robot_name + "/" + rl.config_name;
+        try
+        {
+            rl.InitRL(robot_config_path);
+            rl.now_state = *fsm_state;
+        }
+        catch (const std::exception& e)
+        {
+            std::cout << LOGGER::ERROR << "InitRL() failed: " << e.what() << std::endl;
+            rl.rl_init_done = false;
+            rl.fsm.RequestStateChange("RLFSMStatePassive");
+        }
+    }
+
+    void Run() override
+    {
+        if (!rl.rl_init_done) rl.rl_init_done = true;
+
+        std::cout << "\r\033[K" << std::flush << LOGGER::INFO << "RL Controller [" << rl.config_name << "] x:" << rl.control.x << " y:" << rl.control.y << " yaw:" << rl.control.yaw << std::flush;
+        RLControl();
+    }
+
+    void Exit() override
+    {
+        rl.rl_init_done = false;
+    }
+
+    std::string CheckChange() override
+    {
+        if (rl.control.current_keyboard == Input::Keyboard::P || rl.control.current_gamepad == Input::Gamepad::LB_X)
+        {
+            return "RLFSMStatePassive";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num9 || rl.control.current_gamepad == Input::Gamepad::B)
+        {
+            return "RLFSMStateGetDown";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num0 || rl.control.current_gamepad == Input::Gamepad::A)
+        {
+            return "RLFSMStateGetUp";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num1 || rl.control.current_gamepad == Input::Gamepad::RB_DPadUp)
+        {
+            return "RLFSMStateRLLocomotion";
+        }
+
+        if(rl.control.mode==1)   //转到位控站立状态
+        {
+            return "RLFSMStateGetUp";
+        }
+        else if(rl.control.mode==2)     //切换到普通行走模式
+        {
+            return "RLFSMStateRLLocomotion";
+        }
+        else if(rl.control.mode==4)     //切换到爬台阶状态
+        {
+            return "RLFSMStateRLStairs";
+        }
+        else if(rl.control.mode==3)     //切换到沙石地行走状态
+        {
+            return "RLFSMStateRLSand";
+        }
+        else if(rl.control.mode==5)     //切换到限高杆状态
+        {
+            return "RLFSMStateRLBar";
+        }
+        else if(rl.control.mode==6)     //切换到斜坡状态
+        {
+            return "RLFSMStateRLSlope";
+        }
         return state_name_;
     }
 };
@@ -678,6 +790,8 @@ public:
             return std::make_shared<atdog2_fsm::RLFSMStateRLBar>(rl);
         else if (state_name == "RLFSMStateRLSlope")
             return std::make_shared<atdog2_fsm::RLFSMStateRLSlope>(rl);
+        else if (state_name == "RLFSMStateRLBridge")
+            return std::make_shared<atdog2_fsm::RLFSMStateRLBridge>(rl);
         return nullptr;
     }
     std::string GetType() const override { return "atdog2"; }
@@ -692,7 +806,8 @@ public:
             "RLFSMStateRLSand",
             "RLFSMStateCrosswall",
             "RLFSMStateRLBar",
-            "RLFSMStateRLSlope"
+            "RLFSMStateRLSlope",
+            "RLFSMStateRLBridge"
         };
     }
     std::string GetInitialState() const override { return initial_state_; }
