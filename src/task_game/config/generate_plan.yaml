@@ -18,7 +18,7 @@ start_to_a1_target_point: &start_to_a1_target_point
   # 是否要求机器人到点后朝向 target_yaw
   constraint_target_yaw: true
   # 到达目标点后的期望速度
-  target_vel: 0.4
+  target_vel: 0.6
   # 该段路线的最大平移速度
   max_velocity: 0.6
   # 该段路线的最大平移加速度
@@ -104,9 +104,9 @@ a3_to_src_target_point: &a3_to_src_target_point
   # 到达目标点后的期望速度
   target_vel: 0.0
   # 该段路线的最大平移速度
-  max_velocity: 0.6
+  max_velocity: 0.5
   # 该段路线的最大平移加速度
-  max_accelation: 0.4
+  max_accelation: 0.3
   # 该段路线的最大角速度
   max_omega: 1.8
   # 闭环控制比例参数 [x, y, yaw]
