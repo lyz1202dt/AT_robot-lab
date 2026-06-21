@@ -21,7 +21,14 @@
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>arm</exec_depend>
+  <exec_depend>arm_calc</exec_depend>
+  <exec_depend>arm_task</exec_depend>
+  <exec_depend>joint_state_publisher</exec_depend>
   <exec_depend>launch_pack</exec_depend>
+  <exec_depend>robot_driver</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>rviz2</exec_depend>
   <exec_depend>remote_node</exec_depend>
   <exec_depend>rl_sar</exec_depend>
 
