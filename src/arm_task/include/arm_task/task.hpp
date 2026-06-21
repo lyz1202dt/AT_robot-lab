@@ -130,7 +130,7 @@ private:
     std::vector<double> grasp_position{0.0, 3.14159, 2.45, 2.48};
     std::vector<double> grasp_position_two{0.0, 3.14159, 2.4, 2.55};
     std::vector<double> place_position{0.0, 2.1, 2.0, 3.0};
-    std::vector<double> place_position_2{0.0, 1.57, 2.0, 2.3};
+    std::vector<double> place_position_2{0.0, 1.7, 2.8, 3.3};
     std::vector<double> look_for_position_{0.0, 1.2, 2.3, 2.8};   //这是全场扫描时机械臂合适的位置    //0.0 1.0 2.45 3.1
     
     //下面三个位置是机械臂当抓取过程识别不到物块时，会抬高机械臂去寻找物块时预设的三个位置，分别是向左看、向中间看、向右看
