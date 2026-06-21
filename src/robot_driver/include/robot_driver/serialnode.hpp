@@ -26,7 +26,6 @@ private:
     bool exit_thread;
     bool first_update{true};
     int state_log_print_cnt{0};
-    int target_log_print_cnt{0};
     int state_log_update_cnt{50};
     int target_log_update_cnt{50};
     bool enable_control{false};
@@ -34,15 +33,14 @@ private:
     void airSubscribCb(const std_msgs::msg::Int32& msg);
     void publishredState(const state_pack_t *arm_state);
     
-    int air_pump;
     std::unique_ptr<CDCTrans> cdc_trans;
     std::unique_ptr<std::thread> usb_event_handle_thread;
     target_pack_t arm_target;
     state_pack_t arm_state;
-    rclcpp::Publisher<robot_msgs::msg::Int>::SharedPtr red_pub;
+    rclcpp::Publisher<robot_msgs::msg::Int>::SharedPtr hand_distance_pub;
     rclcpp::Subscription<robot_msgs::msg::Arm>::SharedPtr arm_sub;
     rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr air_sub;
-    
+    rclcpp::TimerBase::SharedPtr fresh_timer;
     OnSetParametersCallbackHandle::SharedPtr param_server_;
     
 
