@@ -30,6 +30,7 @@ public:
     bool check_key_pressed(uint32_t current_key,int index);
     void record_key(uint32_t current_key);
     void advance_tree_stage();
+    void enter_manual_mode();
     void set_tree_debug_mode(bool enabled);
     bool is_tree_debug_mode() const;
 

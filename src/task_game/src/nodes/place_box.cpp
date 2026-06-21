@@ -24,6 +24,72 @@ bool wait_for_stage(Robot* context, int32_t expected_stage) {
     return rclcpp::ok() && context->auto_pilot_enabled.load();
 }
 
+Pilot::TargetPoint make_retreat_target(const MoveBoxPlan& plan)
+{
+    Pilot::TargetPoint target;
+    target.target_pos = Eigen::Vector2d(plan.dst2_pos[0], plan.dst2_pos[1]);
+    target.target_yaw = plan.dst2_pos[2];
+    target.constraint_target_yaw = plan.dst_to_dst2.constraint_target_yaw;
+    target.target_vel = plan.dst_to_dst2.target_vel;
+    target.max_velocity = plan.dst_to_dst2.max_velocity;
+    target.max_accelation = plan.dst_to_dst2.max_accelation;
+    target.max_omega = plan.dst_to_dst2.max_omega;
+    target.kp = plan.dst_to_dst2.kp;
+    target.allow_start_dir_error = plan.dst_to_dst2.allow_start_dir_error;
+    target.allow_final_dir_error = plan.dst_to_dst2.allow_final_dir_error;
+    target.allow_final_pos_allow = plan.dst_to_dst2.allow_final_pos_allow;
+    target.adjust_min_vel = plan.dst_to_dst2.adjust_min_vel;
+    target.adjust_min_omega = plan.dst_to_dst2.adjust_min_omega;
+    target.allow_y_vel = plan.dst_to_dst2.allow_y_vel;
+    target.trajectory_connection_radius = 0.0f;
+    return target;
+}
+
+bool retreat_to_dst2(Robot* context, const MoveBoxPlan& plan)
+{
+    const auto target = make_retreat_target(plan);
+    if (!context->pilot->set_target(target)) {
+        RCLCPP_ERROR(context->node_->get_logger(), "PlaceBoxAction: 设置退让目标失败");
+        return false;
+    }
+
+    bool finished = false;
+    bool success = false;
+    if (!context->pilot->start([&finished, &success](int result) {
+            success = (result != 0);
+            finished = true;
+        }, true)) {
+        RCLCPP_ERROR(context->node_->get_logger(), "PlaceBoxAction: 启动退让到 dst2 失败");
+        return false;
+    }
+
+    RCLCPP_INFO(
+        context->node_->get_logger(),
+        "PlaceBoxAction: 全部搬箱完成，退让到 dst2=(%.2f, %.2f, %.2f)",
+        plan.dst2_pos[0],
+        plan.dst2_pos[1],
+        plan.dst2_pos[2]);
+
+    while (rclcpp::ok() && context->auto_pilot_enabled.load() && !finished) {
+        std::this_thread::sleep_for(50ms);
+    }
+
+    if (!rclcpp::ok() || !context->auto_pilot_enabled.load()) {
+        context->pilot->stop();
+        return false;
+    }
+
+    if (!success) {
+        RCLCPP_ERROR(context->node_->get_logger(), "PlaceBoxAction: 退让到 dst2 失败");
+        context->pilot->stop();
+        return false;
+    }
+
+    context->enter_manual_mode();
+    RCLCPP_INFO(context->node_->get_logger(), "PlaceBoxAction: 已退让到 dst2 并切入手动模式");
+    return true;
+}
+
 } // namespace
 
 
@@ -112,9 +178,12 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
                 tree.write_msg("plan_index", plan_index + 1);
             } else {
                 RCLCPP_INFO(context->node_->get_logger(), "PlaceBoxAction: 全部搬箱计划执行完成");
+                if (!retreat_to_dst2(context, plan)) {
+                    return BT::FAILED;
+                }
             }
 
-            if (!context->is_tree_debug_mode()) {
+            if (!context->is_tree_debug_mode() && context->auto_pilot_enabled.load()) {
                 context->advance_tree_stage();
             }
 
@@ -130,9 +199,12 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         tree.write_msg("plan_index", plan_index + 1);
     } else {
         RCLCPP_INFO(context->node_->get_logger(), "PlaceBoxAction: 全部搬箱计划执行完成");
+        if (!retreat_to_dst2(context, plan)) {
+            return BT::FAILED;
+        }
     }
 
-    if (!context->is_tree_debug_mode()) {
+    if (!context->is_tree_debug_mode() && context->auto_pilot_enabled.load()) {
         context->advance_tree_stage();
     }
 

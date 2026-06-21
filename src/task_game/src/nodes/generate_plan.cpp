@@ -567,6 +567,8 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         plan.target_point.push_back(plan_config.src_to_dst);
         plan.src_box_pos = src_box_pos;
         plan.dst_box_pos = dst_box_pos;
+        plan.dst2_pos = dst2;
+        plan.dst_to_dst2 = plan_config.dst_to_dst2;
         plan.place_at_second_floor = placed_count[box_id] > 0;
         move_plan.push_back(plan);
 

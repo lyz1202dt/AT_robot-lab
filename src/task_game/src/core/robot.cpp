@@ -335,6 +335,11 @@ void Robot::stop_rl_real_nodes() {
     }
 }
 
+void Robot::enter_manual_mode() {
+    set_manual_mode(this);
+    current_control_mode = 0;
+}
+
 void Robot::advance_tree_stage() {
     const int32_t stage = tree_start_key.load();
     if (stage < kTreeGeneratePlan || stage > kTreePlaceBox) {
