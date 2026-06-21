@@ -65,7 +65,7 @@ ArmNode::ArmNode()
     fresh_timer=this->create_wall_timer(
         std::chrono::duration<double>(0.02),   // 定时器间隔
         [this](){
-            if(first_update)
+            if(!first_update)
                 cdc_trans->send_struct(arm_target);
         });
 
