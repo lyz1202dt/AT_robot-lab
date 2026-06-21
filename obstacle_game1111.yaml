@@ -1,0 +1,91 @@
+#policy_id表示机器人执行这段路径时使用的策略，0表示上电策略，不用；1表示位控站立，一般也不用；
+#2表示walk策略，3表示sand策略，4表示stair策略，5表示slope策略，6表示bar策略
+#可选轨迹字段支持target_yaw、constraint_target_yaw、allow_y_vel、trajectory_connection_radius、max_omega等，用于新Pilot更自由地规划
+
+paths:
+  - policy_id: 5
+    target_pos:
+      x: -2.29372
+      y: -0.507415
+    target_yaw: -1.45529
+    constraint_target_yaw: false
+    target_vel: 0.01
+    max_velocity: 1
+    max_accelation: 0.3
+    max_omega: 1
+    kp:
+      x: 2
+      y: 2
+      yaw: 1.5
+    allow_start_dir_error: 0.1
+    allow_final_dir_error: 0.2
+    allow_final_pos_allow: 0.05
+    adjust_min_vel: 0.3
+    adjust_min_omega: 0.4
+    allow_y_vel: false
+    trajectory_connection_radius: 0
+  - policy_id: 5
+    target_pos:
+      x: -2.35073
+      y: -2.562184
+    target_yaw: -1.61464
+    constraint_target_yaw: false
+    target_vel: 0.01
+    max_velocity: 1
+    max_accelation: 0.3
+    max_omega: 1
+    kp:
+      x: 2
+      y: 2
+      yaw: 1.5
+    allow_start_dir_error: 0.1
+    allow_final_dir_error: 0.2
+    allow_final_pos_allow: 0.05
+    adjust_min_vel: 0.3
+    adjust_min_omega: 0.4
+    allow_y_vel: false
+    trajectory_connection_radius: 0
+  - policy_id: 2
+    target_pos:
+      x: -2.67848
+      y: -2.28079
+    target_yaw: -3.09621
+    constraint_target_yaw: true
+    target_vel: 0.01
+    max_velocity: 1
+    max_accelation: 0.3
+    max_omega: 1
+    kp:
+      x: 2
+      y: 2
+      yaw: 1.5
+    allow_start_dir_error: 0.1
+    allow_final_dir_error: 0.2
+    allow_final_pos_allow: 0.05
+    adjust_min_vel: 0.3
+    adjust_min_omega: 0.4
+    allow_y_vel: true
+    trajectory_connection_radius: 0
+    stand_at_target: true
+    stand_duration: 2
+  - policy_id: 2
+    target_pos:
+      x: -4.91686
+      y: -2.23474
+    target_yaw: -3.07288
+    constraint_target_yaw: false
+    target_vel: 0.01
+    max_velocity: 1
+    max_accelation: 0.3
+    max_omega: 1
+    kp:
+      x: 2
+      y: 2
+      yaw: 1.5
+    allow_start_dir_error: 0.1
+    allow_final_dir_error: 0.2
+    allow_final_pos_allow: 0.05
+    adjust_min_vel: 0.3
+    adjust_min_omega: 0.4
+    allow_y_vel: false
+    trajectory_connection_radius: 0
