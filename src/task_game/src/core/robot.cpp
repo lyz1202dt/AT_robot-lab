@@ -39,7 +39,7 @@ void set_manual_mode(Robot* robot) {
         }
     }
     robot->tree_start_key = Robot::kTreeIdle;
-    robot->auto_pilot_enabled = true;
+    robot->auto_pilot_enabled = false;
 }
 
 }  // namespace
@@ -125,9 +125,9 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 RCLCPP_INFO(node_->get_logger(), "普通行走模式");
             }
 
-            cmd.vy = -static_cast<float>(std::clamp(static_cast<double>(msg.lx) / 1200.0, -1.2, 1.2));
-            cmd.vx = static_cast<float>(std::clamp(static_cast<double>(msg.ly) / 1200.0, -1.2, 1.2));
-            cmd.vz = -static_cast<float>(std::clamp(static_cast<double>(msg.rx) / 1200.0, -1.0, 1.0));
+            cmd.vy = -static_cast<float>(std::clamp(static_cast<double>(msg.lx) / 1200.0, -0.8, 0.8));
+            cmd.vx = static_cast<float>(std::clamp(static_cast<double>(msg.ly) / 1200.0, -1.5, 2.5));
+            cmd.vz = -static_cast<float>(std::clamp(static_cast<double>(msg.rx) / 1200.0, -2.5, 2.5));
         } else if (current_control_mode == 1) {
             if (tree_debug_mode.load() && check_key_trigger(msg.key, 4)) {
                 advance_tree_stage();
