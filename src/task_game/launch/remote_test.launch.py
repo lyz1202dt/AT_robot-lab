@@ -43,7 +43,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        test_node,
+        #test_node,
         robot_control_node,
         static_tf_arm
         #remote_node,

@@ -23,7 +23,8 @@ using namespace std::chrono_literals;
 namespace {
 
 //constexpr auto kSemaphoreTimeout = 10s;
- const auto kSemaphoreTimeout = std::chrono::hours(24 * 365 * 100);
+ const auto box_id_kSemaphoreTimeout = std::chrono::hours(24 * 365 * 100);
+ const auto vip_id_kSemaphoreTimeout = 20s;
 constexpr const char* kGeneratePlanConfigParam = "generate_plan_config";
 
 bool wait_for_stage(Robot* context, int32_t expected_stage) {
@@ -351,6 +352,7 @@ void GeneratePlaneAction::init_subscriptions(const rclcpp::Node::SharedPtr& node
         "vip_box_id", 10,
         [this](const robot_msgs::msg::Int& msg) {
             vip_box_id_ = msg.data;
+            vip_box_id_ = std::abs(vip_box_id_) % 4;
             sem_post(&vip_box_id_sem_);
         });
 
@@ -424,7 +426,7 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
 
         arm_cmd_pub_->publish(msg);
 
-        if (!wait_semaphore_with_timeout(&box_id_grid_sem_, kSemaphoreTimeout)) {
+        if (!wait_semaphore_with_timeout(&box_id_grid_sem_, box_id_kSemaphoreTimeout)) {
             RCLCPP_ERROR(context->node_->get_logger(), "等待 box_id_grid 超时");
             return BT::FAILED;
         }
@@ -445,9 +447,10 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
 
     //此处有个话题用来触发工业相机识别VIP_ID功能，暂定，无需改动
 
-    if (!wait_semaphore_with_timeout(&vip_box_id_sem_, kSemaphoreTimeout)) {
+    if (!wait_semaphore_with_timeout(&vip_box_id_sem_, vip_id_kSemaphoreTimeout)) {
         RCLCPP_ERROR(context->node_->get_logger(), "等待 vip_box_id 超时");
-        return BT::FAILED;
+        vip_box_id_ = 2;
+        //return BT::FAILED;
     }
 
     const auto config_path = context->node_->get_parameter(kGeneratePlanConfigParam).as_string();

@@ -22,8 +22,10 @@ from std_msgs.msg import Int32MultiArray, MultiArrayDimension
 ROWS = 2
 COLS = 4
 GRID_SIZE = ROWS * COLS
-REMOTE_PARAM_NODE = "robot_calc_node"
+START_GAME_PARAM_NODE = "robot_calc_node"
 START_GAME_PARAM = "start_game"
+START_CALC_PARAM_NODE = "arithmetic_problem_node"
+START_CALC_PARAM = "start_calc"
 
 COLOR_SEQUENCE = (255, 0, 1, 2, 3)
 COLOR_STYLES = {
@@ -90,7 +92,11 @@ class BoxIdGridNode(Node):
         self._publisher = self.create_publisher(Int32MultiArray, "box_id_grid", 10)
         self._start_game_client = self.create_client(
             SetParameters,
-            f"/{REMOTE_PARAM_NODE}/set_parameters",
+            f"/{START_GAME_PARAM_NODE}/set_parameters",
+        )
+        self._start_calc_client = self.create_client(
+            SetParameters,
+            f"/{START_CALC_PARAM_NODE}/set_parameters",
         )
         self._subscription = self.create_subscription(
             Int32MultiArray,
@@ -105,42 +111,75 @@ class BoxIdGridNode(Node):
         self.get_logger().info(f"Published box_id_grid: {list(msg.data)}")
 
     def set_start_game(self) -> None:
-        if not self._start_game_client.wait_for_service(timeout_sec=0.0):
+        self._set_bool_parameter(
+            self._start_game_client,
+            START_GAME_PARAM_NODE,
+            START_GAME_PARAM,
+            True,
+        )
+        self._set_bool_parameter(
+            self._start_calc_client,
+            START_CALC_PARAM_NODE,
+            START_CALC_PARAM,
+            True,
+        )
+
+    def _set_bool_parameter(
+        self,
+        client,
+        node_name: str,
+        param_name: str,
+        value: bool,
+    ) -> None:
+        if not client.wait_for_service(timeout_sec=0.0):
             self.get_logger().error(
-                f"Parameter service /{REMOTE_PARAM_NODE}/set_parameters is not available"
+                f"Parameter service /{node_name}/set_parameters is not available"
             )
             return
 
         parameter = Parameter()
-        parameter.name = START_GAME_PARAM
+        parameter.name = param_name
         parameter.value = ParameterValue(
             type=ParameterType.PARAMETER_BOOL,
-            bool_value=True,
+            bool_value=value,
         )
 
         request = SetParameters.Request()
         request.parameters = [parameter]
-        future = self._start_game_client.call_async(request)
-        future.add_done_callback(self._on_start_game_set)
+        future = client.call_async(request)
+        future.add_done_callback(
+            lambda done_future: self._on_bool_parameter_set(
+                done_future,
+                node_name,
+                param_name,
+                value,
+            )
+        )
 
-    def _on_start_game_set(self, future) -> None:
+    def _on_bool_parameter_set(
+        self,
+        future,
+        node_name: str,
+        param_name: str,
+        value: bool,
+    ) -> None:
         try:
             response = future.result()
         except Exception as exc:
-            self.get_logger().error(f"Failed to set {REMOTE_PARAM_NODE}.{START_GAME_PARAM}: {exc}")
+            self.get_logger().error(f"Failed to set {node_name}.{param_name}: {exc}")
             return
 
         if not response.results:
-            self.get_logger().error(f"Failed to set {REMOTE_PARAM_NODE}.{START_GAME_PARAM}: empty result")
+            self.get_logger().error(f"Failed to set {node_name}.{param_name}: empty result")
             return
 
         result = response.results[0]
         if result.successful:
-            self.get_logger().info(f"Set {REMOTE_PARAM_NODE}.{START_GAME_PARAM}=true")
+            self.get_logger().info(f"Set {node_name}.{param_name}={str(value).lower()}")
         else:
             reason = result.reason or "no reason provided"
             self.get_logger().error(
-                f"Failed to set {REMOTE_PARAM_NODE}.{START_GAME_PARAM}: {reason}"
+                f"Failed to set {node_name}.{param_name}: {reason}"
             )
 
     def _on_box_id_grid(self, msg: Int32MultiArray) -> None:
