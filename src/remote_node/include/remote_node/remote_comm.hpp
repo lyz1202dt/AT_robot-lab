@@ -80,6 +80,9 @@ public:
     // 处理收到的数据字节（外部调用，逐字节供给）
     void process_recv_byte(uint8_t byte);
 
+    // 连接断开后清空接收状态，避免旧半包影响重连后的解析
+    void reset_receive_state();
+
     // 获取待发送的数据（用于实际发送）
     bool get_send_data(std::vector<uint8_t>& buffer);
 

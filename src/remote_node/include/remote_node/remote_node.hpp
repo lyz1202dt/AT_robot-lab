@@ -40,6 +40,7 @@ private:
     std::atomic<bool> thread_running_{true};  // 线程运行标志
     std::mutex watchdog_mutex_;
     std::atomic<bool> should_mark_reconnect_{false};
+    std::atomic<bool> disconnect_state_published_{false};
     bool has_connected_once_{false};
 
     // 串口接收线程函数
@@ -60,4 +61,6 @@ private:
     // 解析并打开串口，失败时仅记录日志
     bool init_serial();
     void close_serial();
+    void handle_remote_disconnect();
+    void publish_cleared_remote();
 };

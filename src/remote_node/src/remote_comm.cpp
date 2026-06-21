@@ -121,6 +121,13 @@ void RemoteComm::process_recv_byte(uint8_t byte)
     }
 }
 
+void RemoteComm::reset_receive_state()
+{
+    recv_state_ = RecvState::WAIT_HEADER;
+    recv_expected_len_ = 0;
+    recv_buffer_.clear();
+}
+
 bool RemoteComm::on_data_received()
 {
     if (recv_buffer_.size() < 3) {

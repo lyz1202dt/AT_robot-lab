@@ -108,6 +108,31 @@ void RemoteNode::close_serial()
     serial_.reset();
 }
 
+void RemoteNode::publish_cleared_remote()
+{
+    robot_msgs::msg::Remote remote;
+    remote.lx = 0.0F;
+    remote.ly = 0.0F;
+    remote.rx = 0.0F;
+    remote.ry = 0.0F;
+    remote.key = 0U;
+    remote.just_reconnected = false;
+    remote_pub->publish(remote);
+}
+
+void RemoteNode::handle_remote_disconnect()
+{
+    if (remote_comm_) {
+        remote_comm_->reset_receive_state();
+    }
+
+    should_mark_reconnect_.store(false);
+
+    if (!disconnect_state_published_.exchange(true)) {
+        publish_cleared_remote();
+    }
+}
+
 RemoteNode::~RemoteNode()
 {
     thread_running_ = false;
@@ -150,6 +175,7 @@ void RemoteNode::serial_recv_task()
         }
 
         if (!serial_ready) {
+            handle_remote_disconnect();
             if (!init_serial()) {
                 std::this_thread::sleep_for(RECONNECT_DELAY);
                 continue;
@@ -193,7 +219,8 @@ void RemoteNode::serial_recv_task()
             } else {
                 auto now = std::chrono::steady_clock::now();
                 if (now - last_data_time >= NO_DATA_RECONNECT_TIMEOUT) {
-                    RCLCPP_WARN(this->get_logger(), "超过6秒未收到遥控器数据，正在重新初始化串口");
+                    RCLCPP_WARN(this->get_logger(), "超过1秒未收到遥控器数据，正在重新初始化串口");
+                    handle_remote_disconnect();
                     close_serial();
                     error_count = 0;
                     std::this_thread::sleep_for(RECONNECT_DELAY);
@@ -204,6 +231,7 @@ void RemoteNode::serial_recv_task()
             }
         } catch (const std::exception& e) {
             error_count++;
+            handle_remote_disconnect();
             close_serial();
 
             if (error_count == 1 || error_count % MAX_ERRORS_BEFORE_RECONNECT == 0) {
@@ -238,6 +266,7 @@ void RemoteNode::on_remote_control_data(const uint8_t* data, uint16_t size, void
     memcpy(&remote.rx, data + 8, sizeof(float));
     memcpy(&remote.ry, data + 12, sizeof(float));
     memcpy(&remote.key, data + 16, sizeof(uint32_t));
+    node->disconnect_state_published_.store(false);
     remote.just_reconnected = node->should_mark_reconnect_.exchange(false);
 
     node->remote_pub->publish(remote);
