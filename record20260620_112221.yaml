@@ -362,9 +362,9 @@ paths:
     trajectory_connection_radius: 0
   - policy_id: 5
     target_pos:
-      x: -2.35073
-      y: -2.562184
-    target_yaw: -1.61464
+      x: -2.52651
+      y: -2.35049
+    target_yaw: -3.08674
     constraint_target_yaw: false
     target_vel: 0.01
     max_velocity: 1
@@ -383,9 +383,9 @@ paths:
     trajectory_connection_radius: 0
   - policy_id: 2
     target_pos:
-      x: -2.67848
-      y: -2.30079
-    target_yaw: -3.09621
+      x: -2.60848
+      y: -2.30056
+    target_yaw: -3.08692
     constraint_target_yaw: true
     target_vel: 0.01
     max_velocity: 1
