@@ -527,7 +527,7 @@ endif()
 
 # executable for rl sim
 if(NOT USE_CMAKE)
-    add_executable(rl_sim src/rl_sim.cpp)
+    add_executable(rl_sim src/rl_sim.cpp fsm_robot/cross_wall.cpp fsm_robot/cross_wall_atdog2.cpp)
     target_link_libraries(rl_sim
         rl_sdk
         observation_buffer
@@ -656,7 +656,7 @@ endif()
 # executable for rl real atdog2 (ROS2 dependent)
 if(SYSTEM_TYPE STREQUAL "Linux")
     if(NOT USE_CMAKE)
-        add_executable(rl_real_atdog2 src/rl_real_atdog2.cpp)
+        add_executable(rl_real_atdog2 src/rl_real_atdog2.cpp fsm_robot/cross_wall.cpp fsm_robot/cross_wall_atdog2.cpp)
         target_link_libraries(rl_real_atdog2
             atdog::imu_driver
             atdog::leg_driver
@@ -680,7 +680,7 @@ endif()
 # executable for rl real atdog3 (ROS2 dependent)
 if(SYSTEM_TYPE STREQUAL "Linux")
     if(NOT USE_CMAKE)
-        add_executable(rl_real_atdog3 src/rl_real_atdog3.cpp)
+        add_executable(rl_real_atdog3 src/rl_real_atdog3.cpp fsm_robot/cross_wall.cpp fsm_robot/cross_wall_atdog3.cpp)
         target_link_libraries(rl_real_atdog3
             atdog::imu_driver
             atdog::leg_driver
