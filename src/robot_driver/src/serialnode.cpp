@@ -18,7 +18,7 @@ using namespace std::chrono_literals;
 
 
 ArmNode::ArmNode()
-    : Node("arm_node") {   
+    : Node("arm_driver_node") {   
 
          exit_thread = false;
     
