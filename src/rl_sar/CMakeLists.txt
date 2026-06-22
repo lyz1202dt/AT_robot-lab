@@ -878,7 +878,15 @@ if(USE_MUJOCO)
     endif()
 
     # Build executable
-    add_executable(rl_sim_mujoco src/rl_sim_mujoco.cpp ${MUJOCO_SIMULATE_SRC} ${JOYSTICK_SRC})
+    add_executable(
+        rl_sim_mujoco
+        src/rl_sim_mujoco.cpp
+        fsm_robot/cross_wall.cpp
+        fsm_robot/cross_wall_atdog2.cpp
+        fsm_robot/cross_wall_atdog3.cpp
+        ${MUJOCO_SIMULATE_SRC}
+        ${JOYSTICK_SRC}
+    )
 
     # Suppress deprecation warnings for macOS 15.0 API changes in MuJoCo Simulate
     if(SYSTEM_TYPE STREQUAL "Darwin")
