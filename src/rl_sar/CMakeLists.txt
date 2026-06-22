@@ -259,7 +259,6 @@ else()
 endif()
 
 
-
 # Add Python library path to RPATH
 if(Python3_LIBRARIES)
     get_filename_component(PYTHON_LIB_DIR "${Python3_LIBRARIES}" DIRECTORY)
@@ -482,6 +481,13 @@ target_link_libraries(rl_sdk PUBLIC
     Eigen3::Eigen
 )
 
+if(osqp_FOUND AND OsqpEigen_FOUND)
+    target_link_libraries(rl_sdk PUBLIC
+        osqp::osqp
+        OsqpEigen::OsqpEigen
+    )
+endif()
+
 # Link KDL libraries if available
 if(NOT USE_CMAKE)
     if($ENV{ROS_DISTRO} MATCHES "foxy|humble")
@@ -526,7 +532,7 @@ endif()
 
 # executable for rl sim
 if(NOT USE_CMAKE)
-    add_executable(rl_sim src/rl_sim.cpp)
+    add_executable(rl_sim src/rl_sim.cpp fsm_robot/cross_wall.cpp fsm_robot/cross_wall_atdog2.cpp)
     target_link_libraries(rl_sim
         rl_sdk
         observation_buffer
@@ -654,9 +660,9 @@ if(SYSTEM_TYPE STREQUAL "Linux")
     endif()
 endif()
 
-# executable for rl real atdog2
+# executable for rl real atdog2 (ROS2 dependent)
 if(SYSTEM_TYPE STREQUAL "Linux")
-    add_executable(rl_real_atdog2 src/rl_real_atdog2.cpp)
+    add_executable(rl_real_atdog2 src/rl_real_atdog2.cpp fsm_robot/cross_wall.cpp fsm_robot/cross_wall_atdog2.cpp)
     target_link_libraries(rl_real_atdog2
         atdog::imu_driver
         atdog::leg_driver
@@ -678,9 +684,9 @@ if(SYSTEM_TYPE STREQUAL "Linux")
     endif()
 endif()
 
-# executable for rl real atdog3
+# executable for rl real atdog3 (ROS2 dependent)
 if(SYSTEM_TYPE STREQUAL "Linux")
-    add_executable(rl_real_atdog3 src/rl_real_atdog3.cpp)
+    add_executable(rl_real_atdog3 src/rl_real_atdog3.cpp fsm_robot/cross_wall.cpp fsm_robot/cross_wall_atdog3.cpp)
     target_link_libraries(rl_real_atdog3
         atdog::leg_driver
         rl_sdk
@@ -701,7 +707,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
     endif()
 endif()
 
-# executable for rl real atdog
+# executable for rl real atdog (ROS2 dependent)
 if(SYSTEM_TYPE STREQUAL "Linux")
     add_executable(rl_real_atdog src/rl_real_atdog.cpp)
     target_link_libraries(rl_real_atdog
