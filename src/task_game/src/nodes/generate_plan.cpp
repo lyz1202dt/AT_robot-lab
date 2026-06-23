@@ -24,7 +24,7 @@ namespace {
 
 //constexpr auto kSemaphoreTimeout = 10s;
  const auto box_id_kSemaphoreTimeout = std::chrono::hours(24 * 365 * 100);
- const auto vip_id_kSemaphoreTimeout = 20s;
+ const auto vip_id_kSemaphoreTimeout = 10s;
 constexpr const char* kGeneratePlanConfigParam = "generate_plan_config";
 
 bool wait_for_stage(Robot* context, int32_t expected_stage) {
@@ -449,7 +449,7 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
 
     if (!wait_semaphore_with_timeout(&vip_box_id_sem_, vip_id_kSemaphoreTimeout)) {
         RCLCPP_ERROR(context->node_->get_logger(), "等待 vip_box_id 超时");
-        vip_box_id_ = 2;
+        vip_box_id_ = box_id_grid_[0][0];
         //return BT::FAILED;
     }
 
