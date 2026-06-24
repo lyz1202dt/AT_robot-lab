@@ -99,7 +99,9 @@ private:
     std::vector<double> place_position_2{0.0, 1.7, 2.8, 3.3};
     std::vector<double> look_for_position_{0.0, 1.2, 2.3, 2.8};   //这是全场扫描时机械臂合适的位置    //0.0 1.0 2.45 3.1
     std::vector<double> grasp_finish_position{0.0, 0.1, 0.1, -0.8};
-    
+    std::vector<double> release_box_position{0.0, 1.8, 3.8, 0.6};   //将箱子放到狗背上的关节位置
+    std::vector<double> re_graspe_box_position{0.0, 0.7, 3.14, -1.0};
+
     double grasp_z_{-0.16};
     double rady_grasp_z_{0.07};
     double place_level_1_z_{-0.10};
