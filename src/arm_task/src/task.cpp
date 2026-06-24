@@ -29,6 +29,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     // Declare parameters
     this->declare_parameter<int32_t>("arm_task", 0);
     this->declare_parameter<bool>("air_pump", false);
+    this->declare_parameter<bool>("use_vision_grasp", true);
     this->declare_parameter<std::string>("base_frame", "arm_base_link");
     this->declare_parameter<std::string>("object_frame", "target_object");
     this->declare_parameter<std::string>("arm_calc_node_name", "arm_calc_node");
@@ -37,6 +38,9 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
 
     // Get parameters
     this->get_parameter("air_pump", air_pump_);
+    bool use_vision_grasp = true;
+    this->get_parameter("use_vision_grasp", use_vision_grasp);
+    use_vision_grasp_ = use_vision_grasp;
     this->get_parameter("base_frame", base_frame_);
     this->get_parameter("object_frame", object_frame_);
     this->get_parameter("arm_calc_node_name", arm_calc_node_name_);
@@ -164,10 +168,10 @@ rcl_interfaces::msg::SetParametersResult ArmTaskNode::on_parameters_changed(cons
             arm_task_mode_   = new_mode;
             RCLCPP_INFO(this->get_logger(), "Task mode changed to: %d", new_mode);
         } else if (param.get_name() == "air_pump") {
-            bool pump = param.as_bool();
-            std_msgs::msg::Int32 msg;
-            msg.data=pump?1:0;
-            air_pub_->publish(msg);
+            set_air_pump(param.as_bool());
+        } else if (param.get_name() == "use_vision_grasp") {
+            use_vision_grasp_ = param.as_bool();
+            RCLCPP_INFO(this->get_logger(), "Use vision grasp changed to: %s", use_vision_grasp_.load() ? "true" : "false");
         }
     }
 
@@ -279,46 +283,14 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
     execute_joint_space_trajectory(ready_position, grasp_prepare_duration_);
     std::this_thread::sleep_for(700ms);
 
-    std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
-    int i=0;
-    int count=100;      //最长等10s
-     do{
-    try{
-        transfer_array[i]=tf_buffer_->lookupTransform(base_frame_, object_frame_, tf2::TimePointZero, tf2::durationFromSec(0.02));
-        i++;
-        std::this_thread::sleep_for(20ms);
-    } catch (const tf2::TransformException& ex) {
-            RCLCPP_WARN(get_logger(), "当前找不到目标物体的TF: %s", ex.what());
-            std::this_thread::sleep_for(100ms);
-            count--;
-    }
-    }while(count!=0&&i<8);
-
-    if(count==0)
-    {
+    double x = 0.0;
+    double y = 0.0;
+    if (!sample_target_xy_from_tf(0.02, x, y)) {
         return ;
     }
 
-    double x=0,y=0;
-    for(int i=0;i<8;i++)
-    {
-        x+=transfer_array[i].transform.translation.x;
-        y+=transfer_array[i].transform.translation.y;
-    }
-    x/=8.0;
-    y/=8.0;
-
     //移动到预抓取位置，等待相机识别
-    geometry_msgs::msg::PoseStamped object_pose;    //这是目标位姿
-    object_pose.pose.position.x=x;
-    object_pose.pose.position.y=y;
-    object_pose.pose.position.z=rady_grasp_z_;
-    tf2::Quaternion quat;
-    quat.setRPY(0, M_PI / 2.0 + pitch_offset_, 0);
-    object_pose.pose.orientation.w = quat.getW();
-    object_pose.pose.orientation.x = quat.getX();
-    object_pose.pose.orientation.y = quat.getY();
-    object_pose.pose.orientation.z = quat.getZ();
+    geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
 
 
     // 3.笛卡尔轨迹规划使机械臂运动到开启视觉识别的位置
@@ -326,88 +298,55 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
     execute_cartesian_space_trajectory(object_pose, 1.0);
     std::this_thread::sleep_for(1100ms);
 
-    //4.触发视觉识别动作
-    RCLCPP_INFO(this->get_logger(), "启动视觉识别");
-    {
-        std::lock_guard<std::mutex> lock(vision_pose_mutex_);
-        has_vision_box_pos_ = false;
-    }
-
-    bool vision_ready = false;
-    double vision_variance = std::numeric_limits<double>::infinity();
-    geometry_msgs::msg::Point vision_box_pos;
-
-    if (vision_model_param_client_->wait_for_service(1s)) {
-        vision_model_param_client_->set_parameters({rclcpp::Parameter("start_pnp", true)});
-
-        const auto vision_start_time = std::chrono::steady_clock::now();
-        while (std::chrono::steady_clock::now() - vision_start_time < 5s) {
-            auto variance_future = vision_model_param_client_->get_parameters({"vision_variance"});
-            if (variance_future.wait_for(300ms) == std::future_status::ready) {
-                const auto params = variance_future.get();
-                if (!params.empty()) {
-                    vision_variance = params.front().as_double();
-                    RCLCPP_INFO(this->get_logger(), "当前视觉方差: %.6f", vision_variance);
-
-                    if (vision_variance < grasp_vision_threshold_variance_) {
-                        std::lock_guard<std::mutex> lock(vision_pose_mutex_);
-                        if (has_vision_box_pos_) {
-                            vision_box_pos = latest_vision_box_pos_;
-                            vision_ready = true;
-                            break;
-                        }
-                    }
-                }
-            } else {
-                RCLCPP_WARN(this->get_logger(), "读取视觉方差超时，继续等待");
-            }
-
-            std::this_thread::sleep_for(400ms);
-        }
-
-        vision_model_param_client_->set_parameters({rclcpp::Parameter("start_pnp", false)});
-    } else {
-        RCLCPP_ERROR(this->get_logger(), "Parameter service for %s not available", vision_model_node_name_.c_str());
-    }
-
     double vision_weight = 0.0;
-    if (vision_ready) {
-        geometry_msgs::msg::PointStamped vision_point_camera;
-        vision_point_camera.header.stamp.sec = 0;
-        vision_point_camera.header.stamp.nanosec = 0;
-        vision_point_camera.header.frame_id = camera_frame_;
-        vision_point_camera.point = vision_box_pos;
+    geometry_msgs::msg::Point vision_box_pos;
+    if (use_vision_grasp_.load()) {
+        //4.触发视觉识别动作
+        RCLCPP_INFO(this->get_logger(), "启动视觉识别");
+        double vision_variance = std::numeric_limits<double>::infinity();
+        bool vision_ready = wait_for_stable_vision_target(vision_box_pos, vision_variance);
 
-        try {
-            const auto vision_point_base =
-                tf_buffer_->transform(vision_point_camera, base_frame_, tf2::durationFromSec(0.1));
-            vision_box_pos = vision_point_base.point;
-            //vision_weight = grasp_vision_threshold_variance_ / (grasp_vision_threshold_variance_ + vision_variance);
-            //vision_weight = std::max(0.0, std::min(1.0, vision_weight));
-            vision_weight=0.5;  //先写死平均数加权
-            RCLCPP_INFO(this->get_logger(),
-                        "视觉坐标已从 %s 转到 %s: x=%.4f, y=%.4f, z=%.4f",
-                        camera_frame_.c_str(),
-                        base_frame_.c_str(),
-                        vision_box_pos.x,
-                        vision_box_pos.y,
-                        vision_box_pos.z);
-        } catch (const tf2::TransformException& ex) {
-            vision_ready = false;
-            RCLCPP_WARN(this->get_logger(),
-                        "视觉坐标从 %s 转到 %s 失败，使用雷达坐标抓取: %s",
-                        camera_frame_.c_str(),
-                        base_frame_.c_str(),
-                        ex.what());
+        if (vision_ready) {
+            geometry_msgs::msg::PointStamped vision_point_camera;
+            vision_point_camera.header.stamp.sec = 0;
+            vision_point_camera.header.stamp.nanosec = 0;
+            vision_point_camera.header.frame_id = camera_frame_;
+            vision_point_camera.point = vision_box_pos;
+
+            try {
+                const auto vision_point_base =
+                    tf_buffer_->transform(vision_point_camera, base_frame_, tf2::durationFromSec(0.1));
+                vision_box_pos = vision_point_base.point;
+                //vision_weight = grasp_vision_threshold_variance_ / (grasp_vision_threshold_variance_ + vision_variance);
+                //vision_weight = std::max(0.0, std::min(1.0, vision_weight));
+                vision_weight=0.5;  //先写死平均数加权
+                RCLCPP_INFO(this->get_logger(),
+                            "视觉坐标已从 %s 转到 %s: x=%.4f, y=%.4f, z=%.4f",
+                            camera_frame_.c_str(),
+                            base_frame_.c_str(),
+                            vision_box_pos.x,
+                            vision_box_pos.y,
+                            vision_box_pos.z);
+            } catch (const tf2::TransformException& ex) {
+                RCLCPP_WARN(this->get_logger(),
+                            "视觉坐标从 %s 转到 %s 失败，使用雷达坐标抓取: %s",
+                            camera_frame_.c_str(),
+                            base_frame_.c_str(),
+                            ex.what());
+            }
+        } else {
+            RCLCPP_WARN(this->get_logger(), "视觉识别未在超时时间内稳定，使用雷达坐标抓取");
         }
     } else {
-        RCLCPP_WARN(this->get_logger(), "视觉识别未在超时时间内稳定，使用雷达坐标抓取");
+        RCLCPP_INFO(this->get_logger(), "未启用视觉辅助抓取，使用雷达坐标抓取");
     }
 
-    object_pose.pose.position.x =
-        object_pose.pose.position.x * (1.0 - vision_weight) + vision_box_pos.x * vision_weight;
-    object_pose.pose.position.y =
-        object_pose.pose.position.y * (1.0 - vision_weight) + vision_box_pos.y * vision_weight;
+    if (vision_weight > 0.0) {
+        object_pose.pose.position.x =
+            object_pose.pose.position.x * (1.0 - vision_weight) + vision_box_pos.x * vision_weight;
+        object_pose.pose.position.y =
+            object_pose.pose.position.y * (1.0 - vision_weight) + vision_box_pos.y * vision_weight;
+    }
     object_pose.pose.position.z = grasp_z_;
 
     RCLCPP_INFO(this->get_logger(),
@@ -422,9 +361,7 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
 
     // 通知气泵开始吸了
     RCLCPP_INFO(this->get_logger(), "启动气泵");
-    std_msgs::msg::Int32 msg;
-    msg.data = 1;
-    air_pub_->publish(msg);
+    set_air_pump(true);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(pump_on_wait_ms_));
 
@@ -444,7 +381,6 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
 }
 
 void ArmTaskNode::execute_grasp_flow_on_box() {
-    std_msgs::msg::Int32 msg;
     // //移动到背上吸取箱子
     // RCLCPP_INFO(this->get_logger(), "移动到再吸块位置");
     // execute_joint_space_trajectory(re_graspe_box_position, 2.0);
@@ -460,46 +396,14 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
     execute_joint_space_trajectory(ready_position, 2.0);
     std::this_thread::sleep_for(2100ms);
 
-    std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
-    int i=0;
-    int count=100;      //最长等10s
-     do{
-    try{
-        transfer_array[i]=tf_buffer_->lookupTransform(base_frame_, object_frame_, tf2::TimePointZero, tf2::durationFromSec(0.02));
-        i++;
-        std::this_thread::sleep_for(20ms);
-    } catch (const tf2::TransformException& ex) {
-            RCLCPP_WARN(get_logger(), "当前找不到目标物体的TF: %s", ex.what());
-            std::this_thread::sleep_for(100ms);
-            count--;
-    }
-    }while(count!=0&&i<8);
-
-    if(count==0)
-    {
+    double x = 0.0;
+    double y = 0.0;
+    if (!sample_target_xy_from_tf(0.02, x, y)) {
         return ;
     }
 
-    double x=0,y=0;
-    for(int i=0;i<8;i++)
-    {
-        x+=transfer_array[i].transform.translation.x;
-        y+=transfer_array[i].transform.translation.y;
-    }
-    x/=8.0;
-    y/=8.0;
-
     //移动到预抓取位置，等待相机识别
-    geometry_msgs::msg::PoseStamped object_pose;    //这是目标位姿
-    object_pose.pose.position.x=x;
-    object_pose.pose.position.y=y;
-    object_pose.pose.position.z=rady_grasp_z_;
-    tf2::Quaternion quat;
-    quat.setRPY(0, M_PI / 2.0 + pitch_offset_, 0);
-    object_pose.pose.orientation.w = quat.getW();
-    object_pose.pose.orientation.x = quat.getX();
-    object_pose.pose.orientation.y = quat.getY();
-    object_pose.pose.orientation.z = quat.getZ();
+    geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
 
 
     // 3.笛卡尔轨迹规划使机械臂运动到开启视觉识别的位置
@@ -507,88 +411,55 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
     execute_cartesian_space_trajectory(object_pose, 1.0);
     std::this_thread::sleep_for(1100ms);
 
-    //4.触发视觉识别动作
-    RCLCPP_INFO(this->get_logger(), "启动视觉识别");
-    {
-        std::lock_guard<std::mutex> lock(vision_pose_mutex_);
-        has_vision_box_pos_ = false;
-    }
-
-    bool vision_ready = false;
-    double vision_variance = std::numeric_limits<double>::infinity();
-    geometry_msgs::msg::Point vision_box_pos;
-
-    if (vision_model_param_client_->wait_for_service(1s)) {
-        vision_model_param_client_->set_parameters({rclcpp::Parameter("start_pnp", true)});
-
-        const auto vision_start_time = std::chrono::steady_clock::now();
-        while (std::chrono::steady_clock::now() - vision_start_time < 5s) {
-            auto variance_future = vision_model_param_client_->get_parameters({"vision_variance"});
-            if (variance_future.wait_for(300ms) == std::future_status::ready) {
-                const auto params = variance_future.get();
-                if (!params.empty()) {
-                    vision_variance = params.front().as_double();
-                    RCLCPP_INFO(this->get_logger(), "当前视觉方差: %.6f", vision_variance);
-
-                    if (vision_variance < grasp_vision_threshold_variance_) {
-                        std::lock_guard<std::mutex> lock(vision_pose_mutex_);
-                        if (has_vision_box_pos_) {
-                            vision_box_pos = latest_vision_box_pos_;
-                            vision_ready = true;
-                            break;
-                        }
-                    }
-                }
-            } else {
-                RCLCPP_WARN(this->get_logger(), "读取视觉方差超时，继续等待");
-            }
-
-            std::this_thread::sleep_for(400ms);
-        }
-
-        vision_model_param_client_->set_parameters({rclcpp::Parameter("start_pnp", false)});
-    } else {
-        RCLCPP_ERROR(this->get_logger(), "Parameter service for %s not available", vision_model_node_name_.c_str());
-    }
-
     double vision_weight = 0.0;
-    if (vision_ready) {
-        geometry_msgs::msg::PointStamped vision_point_camera;
-        vision_point_camera.header.stamp.sec = 0;
-        vision_point_camera.header.stamp.nanosec = 0;
-        vision_point_camera.header.frame_id = camera_frame_;
-        vision_point_camera.point = vision_box_pos;
+    geometry_msgs::msg::Point vision_box_pos;
+    if (use_vision_grasp_.load()) {
+        //4.触发视觉识别动作
+        RCLCPP_INFO(this->get_logger(), "启动视觉识别");
+        double vision_variance = std::numeric_limits<double>::infinity();
+        bool vision_ready = wait_for_stable_vision_target(vision_box_pos, vision_variance);
 
-        try {
-            const auto vision_point_base =
-                tf_buffer_->transform(vision_point_camera, base_frame_, tf2::durationFromSec(0.1));
-            vision_box_pos = vision_point_base.point;
-            //vision_weight = grasp_vision_threshold_variance_ / (grasp_vision_threshold_variance_ + vision_variance);
-            //vision_weight = std::max(0.0, std::min(1.0, vision_weight));
-            vision_weight=0.5;  //先写死平均数加权
-            RCLCPP_INFO(this->get_logger(),
-                        "视觉坐标已从 %s 转到 %s: x=%.4f, y=%.4f, z=%.4f",
-                        camera_frame_.c_str(),
-                        base_frame_.c_str(),
-                        vision_box_pos.x,
-                        vision_box_pos.y,
-                        vision_box_pos.z);
-        } catch (const tf2::TransformException& ex) {
-            vision_ready = false;
-            RCLCPP_WARN(this->get_logger(),
-                        "视觉坐标从 %s 转到 %s 失败，使用雷达坐标抓取: %s",
-                        camera_frame_.c_str(),
-                        base_frame_.c_str(),
-                        ex.what());
+        if (vision_ready) {
+            geometry_msgs::msg::PointStamped vision_point_camera;
+            vision_point_camera.header.stamp.sec = 0;
+            vision_point_camera.header.stamp.nanosec = 0;
+            vision_point_camera.header.frame_id = camera_frame_;
+            vision_point_camera.point = vision_box_pos;
+
+            try {
+                const auto vision_point_base =
+                    tf_buffer_->transform(vision_point_camera, base_frame_, tf2::durationFromSec(0.1));
+                vision_box_pos = vision_point_base.point;
+                //vision_weight = grasp_vision_threshold_variance_ / (grasp_vision_threshold_variance_ + vision_variance);
+                //vision_weight = std::max(0.0, std::min(1.0, vision_weight));
+                vision_weight=0.5;  //先写死平均数加权
+                RCLCPP_INFO(this->get_logger(),
+                            "视觉坐标已从 %s 转到 %s: x=%.4f, y=%.4f, z=%.4f",
+                            camera_frame_.c_str(),
+                            base_frame_.c_str(),
+                            vision_box_pos.x,
+                            vision_box_pos.y,
+                            vision_box_pos.z);
+            } catch (const tf2::TransformException& ex) {
+                RCLCPP_WARN(this->get_logger(),
+                            "视觉坐标从 %s 转到 %s 失败，使用雷达坐标抓取: %s",
+                            camera_frame_.c_str(),
+                            base_frame_.c_str(),
+                            ex.what());
+            }
+        } else {
+            RCLCPP_WARN(this->get_logger(), "视觉识别未在超时时间内稳定，使用雷达坐标抓取");
         }
     } else {
-        RCLCPP_WARN(this->get_logger(), "视觉识别未在超时时间内稳定，使用雷达坐标抓取");
+        RCLCPP_INFO(this->get_logger(), "未启用视觉辅助抓取，使用雷达坐标抓取");
     }
 
-    object_pose.pose.position.x =
-        object_pose.pose.position.x * (1.0 - vision_weight) + vision_box_pos.x * vision_weight;
-    object_pose.pose.position.y =
-        object_pose.pose.position.y * (1.0 - vision_weight) + vision_box_pos.y * vision_weight;
+    if (vision_weight > 0.0) {
+        object_pose.pose.position.x =
+            object_pose.pose.position.x * (1.0 - vision_weight) + vision_box_pos.x * vision_weight;
+        object_pose.pose.position.y =
+            object_pose.pose.position.y * (1.0 - vision_weight) + vision_box_pos.y * vision_weight;
+    }
     object_pose.pose.position.z = grasp_z_;
 
     RCLCPP_INFO(this->get_logger(),
@@ -603,9 +474,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
 
     // 通知气泵开始吸了
     RCLCPP_INFO(this->get_logger(), "启动气泵");
-    
-    msg.data = 1;
-    air_pub_->publish(msg);
+    set_air_pump(true);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(pump_on_wait_ms_));
 
@@ -616,8 +485,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
     std::this_thread::sleep_for(3100ms);
 
     //设置气泵松开，
-    msg.data = 0;
-    air_pub_->publish(msg);
+    set_air_pump(false);
 
     std::this_thread::sleep_for(100ms);     //等待箱子落下
 
@@ -639,46 +507,15 @@ void ArmTaskNode::execute_place_flow_1_on_hand() {
     execute_joint_space_trajectory(place_position, place_prepare_duration_);
     std::this_thread::sleep_for(2100ms);
 
-    std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
-    int i=0;
-    int count=100;      //等10s
-     do{
-    try{
-        transfer_array[i]=tf_buffer_->lookupTransform(base_frame_, object_frame_, tf2::TimePointZero, tf2::durationFromSec(0.08));
-        i++;
-        std::this_thread::sleep_for(20ms);
-    } catch (const tf2::TransformException& ex) {
-            RCLCPP_WARN(get_logger(), "当前找不到目标物体的TF: %s", ex.what());
-            std::this_thread::sleep_for(100ms);
-            count--;
-    }
-    }while(count!=0&&i<8);
-
-    if(count==0)
-    {
+    double x = 0.0;
+    double y = 0.0;
+    if (!sample_target_xy_from_tf(0.08, x, y)) {
         RCLCPP_INFO(get_logger(),"找不到要放置的目标");
         return ;
     }
 
-    double x=0,y=0;
-    for(int i=0;i<8;i++)
-    {
-        x+=transfer_array[i].transform.translation.x;
-        y+=transfer_array[i].transform.translation.y;
-    }
-    x/=8.0;
-    y/=8.0;
-
     // 强制规定姿态
-    geometry_msgs::msg::PoseStamped object_pose;
-    object_pose.pose.position.x=x;
-    object_pose.pose.position.y=y;
-    object_pose.pose.position.z=place_level_1_z_;
-    tf2::Quaternion quat;
-    quat.setRPY(0, M_PI / 2.0 + pitch_offset_, 0);
-    object_pose.pose.orientation.w = quat.getW();
-    object_pose.pose.orientation.x = quat.getX();
-    object_pose.pose.orientation.y = quat.getY();
+    geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, place_level_1_z_, pitch_offset_);
 
     RCLCPP_INFO(
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
@@ -690,9 +527,7 @@ void ArmTaskNode::execute_place_flow_1_on_hand() {
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
-    std_msgs::msg::Int32 msg;
-    msg.data = 0;
-    air_pub_->publish(msg);
+    set_air_pump(false);
 
     std::this_thread::sleep_for(200ms);
 
@@ -717,46 +552,15 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
     execute_joint_space_trajectory(place_position_2, place_prepare_duration_);
     std::this_thread::sleep_for(2100ms);
 
-    std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
-    int i=0;
-    int count=100;      //等10s
-     do{
-    try{
-        transfer_array[i]=tf_buffer_->lookupTransform(base_frame_, object_frame_, tf2::TimePointZero, tf2::durationFromSec(0.08));
-        i++;
-        std::this_thread::sleep_for(20ms);
-    } catch (const tf2::TransformException& ex) {
-            RCLCPP_WARN(get_logger(), "当前找不到目标物体的TF: %s", ex.what());
-            std::this_thread::sleep_for(100ms);
-            count--;
-    }
-    }while(count!=0&&i<8);
-
-    if(count==0)
-    {
+    double x = 0.0;
+    double y = 0.0;
+    if (!sample_target_xy_from_tf(0.08, x, y)) {
         RCLCPP_INFO(get_logger(),"找不到要放置的目标");
         return ;
     }
 
-    double x=0,y=0;
-    for(int i=0;i<8;i++)
-    {
-        x+=transfer_array[i].transform.translation.x;
-        y+=transfer_array[i].transform.translation.y;
-    }
-    x/=8.0;
-    y/=8.0;
-
     // 强制规定姿态
-    geometry_msgs::msg::PoseStamped object_pose;
-    object_pose.pose.position.x=x;
-    object_pose.pose.position.y=y;
-    object_pose.pose.position.z=place_level_2_z_;
-    tf2::Quaternion quat;
-    quat.setRPY(0, M_PI / 2.0 + pitch_offset_, 0);
-    object_pose.pose.orientation.w = quat.getW();
-    object_pose.pose.orientation.x = quat.getX();
-    object_pose.pose.orientation.y = quat.getY();
+    geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, place_level_2_z_, pitch_offset_);
 
     RCLCPP_INFO(
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
@@ -768,9 +572,7 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
-    std_msgs::msg::Int32 msg;
-    msg.data = 0;
-    air_pub_->publish(msg);
+    set_air_pump(false);
 
     std::this_thread::sleep_for(200ms);
 
@@ -799,55 +601,22 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
     execute_joint_space_trajectory(re_graspe_box_position, 2.0);
     std::this_thread::sleep_for(2100ms);
 
-    std_msgs::msg::Int32 msg;
-    msg.data=1;
-    air_pub_->publish(msg);
+    set_air_pump(true);
 
     std::this_thread::sleep_for(500ms);
 
     execute_joint_space_trajectory(place_position, 3.0);
     std::this_thread::sleep_for(3100ms);
 
-    std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
-    int i=0;
-    int count=100;      //等10s
-     do{
-    try{
-        transfer_array[i]=tf_buffer_->lookupTransform(base_frame_, object_frame_, tf2::TimePointZero, tf2::durationFromSec(0.08));
-        i++;
-        std::this_thread::sleep_for(20ms);
-    } catch (const tf2::TransformException& ex) {
-            RCLCPP_WARN(get_logger(), "当前找不到目标物体的TF: %s", ex.what());
-            std::this_thread::sleep_for(100ms);
-            count--;
-    }
-    }while(count!=0&&i<8);
-
-    if(count==0)
-    {
+    double x = 0.0;
+    double y = 0.0;
+    if (!sample_target_xy_from_tf(0.08, x, y)) {
         RCLCPP_INFO(get_logger(),"找不到要放置的目标");
         return ;
     }
 
-    double x=0,y=0;
-    for(int i=0;i<8;i++)
-    {
-        x+=transfer_array[i].transform.translation.x;
-        y+=transfer_array[i].transform.translation.y;
-    }
-    x/=8.0;
-    y/=8.0;
-
     // 强制规定姿态
-    geometry_msgs::msg::PoseStamped object_pose;
-    object_pose.pose.position.x=x;
-    object_pose.pose.position.y=y;
-    object_pose.pose.position.z=place_level_1_z_;
-    tf2::Quaternion quat;
-    quat.setRPY(0, M_PI / 2.0 + pitch_offset_, 0);
-    object_pose.pose.orientation.w = quat.getW();
-    object_pose.pose.orientation.x = quat.getX();
-    object_pose.pose.orientation.y = quat.getY();
+    geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, place_level_1_z_, pitch_offset_);
 
     RCLCPP_INFO(
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
@@ -859,8 +628,7 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
-    msg.data = 0;
-    air_pub_->publish(msg);
+    set_air_pump(false);
 
     std::this_thread::sleep_for(200ms);
 
@@ -885,55 +653,22 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
     execute_joint_space_trajectory(re_graspe_box_position, 2.0);
     std::this_thread::sleep_for(2100ms);
 
-    std_msgs::msg::Int32 msg;
-    msg.data=1;
-    air_pub_->publish(msg);
+    set_air_pump(true);
 
     std::this_thread::sleep_for(500ms);
 
     execute_joint_space_trajectory(place_position_2, 3.0);
     std::this_thread::sleep_for(3100ms);
 
-    std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
-    int i=0;
-    int count=100;      //等10s
-     do{
-    try{
-        transfer_array[i]=tf_buffer_->lookupTransform(base_frame_, object_frame_, tf2::TimePointZero, tf2::durationFromSec(0.08));
-        i++;
-        std::this_thread::sleep_for(20ms);
-    } catch (const tf2::TransformException& ex) {
-            RCLCPP_WARN(get_logger(), "当前找不到目标物体的TF: %s", ex.what());
-            std::this_thread::sleep_for(100ms);
-            count--;
-    }
-    }while(count!=0&&i<8);
-
-    if(count==0)
-    {
+    double x = 0.0;
+    double y = 0.0;
+    if (!sample_target_xy_from_tf(0.08, x, y)) {
         RCLCPP_INFO(get_logger(),"找不到要放置的目标");
         return ;
     }
 
-    double x=0,y=0;
-    for(int i=0;i<8;i++)
-    {
-        x+=transfer_array[i].transform.translation.x;
-        y+=transfer_array[i].transform.translation.y;
-    }
-    x/=8.0;
-    y/=8.0;
-
     // 强制规定姿态
-    geometry_msgs::msg::PoseStamped object_pose;
-    object_pose.pose.position.x=x;
-    object_pose.pose.position.y=y;
-    object_pose.pose.position.z=place_level_2_z_;
-    tf2::Quaternion quat;
-    quat.setRPY(0, M_PI / 2.0 + pitch_offset_, 0);
-    object_pose.pose.orientation.w = quat.getW();
-    object_pose.pose.orientation.x = quat.getX();
-    object_pose.pose.orientation.y = quat.getY();
+    geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, place_level_2_z_, pitch_offset_);
 
     RCLCPP_INFO(
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
@@ -945,8 +680,7 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
-    msg.data = 0;
-    air_pub_->publish(msg);
+    set_air_pump(false);
 
     std::this_thread::sleep_for(200ms);
 
@@ -1014,6 +748,110 @@ void ArmTaskNode::execute_lift_search() {
     RCLCPP_INFO(this->get_logger(), "搜索任务结束");
     std::this_thread::sleep_for(1500ms);
     current_mode = 0;
+}
+
+bool ArmTaskNode::sample_target_xy_from_tf(double tf_timeout_sec, double& x, double& y) {
+    constexpr int sample_count = 8;
+    int successful_samples = 0;
+    int remaining_retries = 100;
+    std::array<geometry_msgs::msg::TransformStamped, sample_count> transfer_array;
+
+    while (remaining_retries != 0 && successful_samples < sample_count) {
+        try {
+            transfer_array[successful_samples] =
+                tf_buffer_->lookupTransform(base_frame_, object_frame_, tf2::TimePointZero, tf2::durationFromSec(tf_timeout_sec));
+            successful_samples++;
+            std::this_thread::sleep_for(20ms);
+        } catch (const tf2::TransformException& ex) {
+            RCLCPP_WARN(get_logger(), "当前找不到目标物体的TF: %s", ex.what());
+            std::this_thread::sleep_for(100ms);
+            remaining_retries--;
+        }
+    }
+
+    if (remaining_retries == 0) {
+        return false;
+    }
+
+    x = 0.0;
+    y = 0.0;
+    for (int i = 0; i < sample_count; i++) {
+        x += transfer_array[i].transform.translation.x;
+        y += transfer_array[i].transform.translation.y;
+    }
+
+    x /= static_cast<double>(sample_count);
+    y /= static_cast<double>(sample_count);
+    return true;
+}
+
+geometry_msgs::msg::PoseStamped ArmTaskNode::make_fixed_pitch_pose(
+    double x, double y, double z, double pitch_offset) const {
+    geometry_msgs::msg::PoseStamped object_pose;
+    object_pose.pose.position.x = x;
+    object_pose.pose.position.y = y;
+    object_pose.pose.position.z = z;
+
+    tf2::Quaternion quat;
+    quat.setRPY(0, M_PI / 2.0 + pitch_offset, 0);
+    object_pose.pose.orientation.w = quat.getW();
+    object_pose.pose.orientation.x = quat.getX();
+    object_pose.pose.orientation.y = quat.getY();
+    object_pose.pose.orientation.z = quat.getZ();
+
+    return object_pose;
+}
+
+bool ArmTaskNode::wait_for_stable_vision_target(
+    geometry_msgs::msg::Point& vision_box_pos, double& vision_variance) {
+    {
+        std::lock_guard<std::mutex> lock(vision_pose_mutex_);
+        has_vision_box_pos_ = false;
+    }
+
+    vision_variance = std::numeric_limits<double>::infinity();
+
+    if (!vision_model_param_client_->wait_for_service(1s)) {
+        RCLCPP_ERROR(this->get_logger(), "Parameter service for %s not available", vision_model_node_name_.c_str());
+        return false;
+    }
+
+    bool vision_ready = false;
+    vision_model_param_client_->set_parameters({rclcpp::Parameter("start_pnp", true)});
+
+    const auto vision_start_time = std::chrono::steady_clock::now();
+    while (std::chrono::steady_clock::now() - vision_start_time < 5s) {
+        auto variance_future = vision_model_param_client_->get_parameters({"vision_variance"});
+        if (variance_future.wait_for(300ms) == std::future_status::ready) {
+            const auto params = variance_future.get();
+            if (!params.empty()) {
+                vision_variance = params.front().as_double();
+                RCLCPP_INFO(this->get_logger(), "当前视觉方差: %.6f", vision_variance);
+
+                if (vision_variance < grasp_vision_threshold_variance_) {
+                    std::lock_guard<std::mutex> lock(vision_pose_mutex_);
+                    if (has_vision_box_pos_) {
+                        vision_box_pos = latest_vision_box_pos_;
+                        vision_ready = true;
+                        break;
+                    }
+                }
+            }
+        } else {
+            RCLCPP_WARN(this->get_logger(), "读取视觉方差超时，继续等待");
+        }
+
+        std::this_thread::sleep_for(400ms);
+    }
+
+    vision_model_param_client_->set_parameters({rclcpp::Parameter("start_pnp", false)});
+    return vision_ready;
+}
+
+void ArmTaskNode::set_air_pump(bool enabled) {
+    std_msgs::msg::Int32 msg;
+    msg.data = enabled ? 1 : 0;
+    air_pub_->publish(msg);
 }
 
 

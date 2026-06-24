@@ -48,6 +48,10 @@ private:
     // Arm control operations (private methods)
     void execute_joint_space_trajectory(const std::vector<double>& joint_angles, double duration);
     void execute_cartesian_space_trajectory(const geometry_msgs::msg::PoseStamped& target_pose, double duration);
+    bool sample_target_xy_from_tf(double tf_timeout_sec, double& x, double& y);
+    geometry_msgs::msg::PoseStamped make_fixed_pitch_pose(double x, double y, double z, double pitch_offset) const;
+    bool wait_for_stable_vision_target(geometry_msgs::msg::Point& vision_box_pos, double& vision_variance);
+    void set_air_pump(bool enabled);
     
 
     // Helper methods
@@ -90,6 +94,7 @@ private:
     std::string arm_calc_node_name_{"arm_calc_node"};
     std::string vision_model_node_name_{"arm_node"};
     bool air_pump_{false};              // Parameter service index for air pump control
+    std::atomic<bool> use_vision_grasp_{true};
     std::atomic<int> scan_finished_{0}; // 0: not started, 1: finished
 
     // Joint positions from task_config.yaml
