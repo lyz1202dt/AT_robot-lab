@@ -116,7 +116,7 @@ void ArmTaskNode::declare_config_parameters() {
     // this->declare_parameter<int>("timing.pump_on_wait_ms", pump_on_wait_ms_);
     // this->declare_parameter<double>("timing.place_prepare_duration", place_prepare_duration_);
     // this->declare_parameter<double>("timing.place_cartesian_duration", place_cartesian_duration_);
-    // this->declare_parameter<double>("timing.home_duration", home_duration_);
+    // this->declare_parameter<double>("timing.home_duration", 0.5);
 
     // this->declare_parameter<double>("scan.start_joint_0", scan_start_joint_0_);
     // this->declare_parameter<double>("scan.stop_joint_0", scan_stop_joint_0_);
@@ -145,7 +145,7 @@ void ArmTaskNode::load_config_parameters() {
     // pump_on_wait_ms_ = this->get_parameter("timing.pump_on_wait_ms").as_int();
     // place_prepare_duration_ = this->get_parameter("timing.place_prepare_duration").as_double();
     // place_cartesian_duration_ = this->get_parameter("timing.place_cartesian_duration").as_double();
-    // home_duration_ = this->get_parameter("timing.home_duration").as_double();
+    // 0.5 = this->get_parameter("timing.home_duration").as_double();
 
     // scan_start_joint_0_ = this->get_parameter("scan.start_joint_0").as_double();
     // scan_stop_joint_0_ = this->get_parameter("scan.stop_joint_0").as_double();
@@ -611,9 +611,9 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
 
 
     RCLCPP_INFO(this->get_logger(), "移动到放块位置");
-    execute_joint_space_trajectory(release_box_position, 2.0);
+    execute_joint_space_trajectory(release_box_position, 3.0);
 
-    std::this_thread::sleep_for(2100ms);
+    std::this_thread::sleep_for(3100ms);
 
     //设置气泵松开，
     msg.data = 0;
@@ -698,7 +698,7 @@ void ArmTaskNode::execute_place_flow_1_on_hand() {
 
     RCLCPP_INFO(this->get_logger(), "返回初始位置");
 
-    execute_joint_space_trajectory(home_position_, home_duration_);
+    execute_joint_space_trajectory(home_position_, 0.5);
 
     std::this_thread::sleep_for(200ms);
 
@@ -786,7 +786,7 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
 
     std::this_thread::sleep_for(500ms);     //等待狗子离开
 
-    execute_joint_space_trajectory(home_position_, home_duration_);
+    execute_joint_space_trajectory(home_position_, 0.5);
 
     std::this_thread::sleep_for(500ms);
 
@@ -796,7 +796,7 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
 void ArmTaskNode::execute_place_flow_1_on_box() {
 
     RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
-    execute_joint_space_trajectory(re_graspe_box_position, place_prepare_duration_);
+    execute_joint_space_trajectory(re_graspe_box_position, 2.0);
     std::this_thread::sleep_for(2100ms);
 
     std_msgs::msg::Int32 msg;
@@ -805,8 +805,8 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
 
     std::this_thread::sleep_for(500ms);
 
-    execute_joint_space_trajectory(place_position, place_prepare_duration_);
-    std::this_thread::sleep_for(2100ms);
+    execute_joint_space_trajectory(place_position, 3.0);
+    std::this_thread::sleep_for(3100ms);
 
     std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
     int i=0;
@@ -866,7 +866,7 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
 
     RCLCPP_INFO(this->get_logger(), "返回初始位置");
 
-    execute_joint_space_trajectory(home_position_, home_duration_);
+    execute_joint_space_trajectory(home_position_, 0.5);
 
     std::this_thread::sleep_for(200ms);
 
@@ -882,7 +882,7 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
 void ArmTaskNode::execute_place_flow_2_on_box() {
 
     RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
-    execute_joint_space_trajectory(re_graspe_box_position, place_prepare_duration_);
+    execute_joint_space_trajectory(re_graspe_box_position, 2.0);
     std::this_thread::sleep_for(2100ms);
 
     std_msgs::msg::Int32 msg;
@@ -891,8 +891,8 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
 
     std::this_thread::sleep_for(500ms);
 
-    execute_joint_space_trajectory(place_position_2, place_prepare_duration_);
-    std::this_thread::sleep_for(2100ms);
+    execute_joint_space_trajectory(place_position_2, 3.0);
+    std::this_thread::sleep_for(3100ms);
 
     std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
     int i=0;
@@ -962,7 +962,7 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
 
     std::this_thread::sleep_for(500ms);     //等待狗子离开
 
-    execute_joint_space_trajectory(home_position_, home_duration_);
+    execute_joint_space_trajectory(home_position_, 0.5);
 
     std::this_thread::sleep_for(500ms);
 
@@ -1004,7 +1004,7 @@ void ArmTaskNode::execute_look_for() {
     scan_finished_ = 0; // 清状态
 
     // 机械臂回到初始位置，准备接受后续的抓取指令
-    execute_joint_space_trajectory(home_position_, home_duration_);
+    execute_joint_space_trajectory(home_position_, 0.5);
     std::this_thread::sleep_for(500ms);
 }
 
