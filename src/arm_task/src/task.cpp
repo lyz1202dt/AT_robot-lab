@@ -29,7 +29,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     // Declare parameters
     this->declare_parameter<int32_t>("arm_task", 0);
     this->declare_parameter<bool>("air_pump", false);
-    this->declare_parameter<bool>("use_vision_grasp", true);
+    this->declare_parameter<bool>("use_vision_grasp", false);
     this->declare_parameter<std::string>("base_frame", "arm_base_link");
     this->declare_parameter<std::string>("object_frame", "target_object");
     this->declare_parameter<std::string>("arm_calc_node_name", "arm_calc_node");
