@@ -18,10 +18,22 @@ bool wait_for_stage(Robot* context, int32_t expected_stage) {
     return rclcpp::ok() && context->auto_pilot_enabled.load();
 }
 
+int32_t stage_for_slot(BoxSlot slot) {
+    return slot == BoxSlot::Box0 ? Robot::kTreeArriveToBox0 : Robot::kTreeArriveToBox1;
+}
+
+const BoxMoveTask& task_for_slot(const MoveBoxPlan& plan, BoxSlot slot) {
+    return slot == BoxSlot::Box0 ? plan.box0 : plan.box1;
+}
+
+const char* slot_name(BoxSlot slot) {
+    return slot == BoxSlot::Box0 ? "box0" : "box1";
+}
+
 }  // namespace
 
-ArriveToBoxAction::ArriveToBoxAction()
-    : BT::ActionNode("arrive_to_box_action") {}
+ArriveToBoxAction::ArriveToBoxAction(BoxSlot slot)
+    : BT::ActionNode(slot == BoxSlot::Box0 ? "arrive_to_box0_action" : "arrive_to_box1_action"), slot_(slot) {}
 
 void ArriveToBoxAction::ensure_stop_timer(Robot* context) {
     if (stop_timer_) {
@@ -50,20 +62,19 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    if (!wait_for_stage(context, Robot::kTreeArriveToBox)) {
+    if (!wait_for_stage(context, stage_for_slot(slot_))) {
         context->pilot->stop();
         return BT::FAILED;
     }
 
-
     std::vector<MoveBoxPlan> move_plan;
     int plan_index = 0;
     if (!tree.read_msg("plan_index", plan_index)) {
-        RCLCPP_ERROR(context->node_->get_logger(), "ArriveToTargetAction: 缺少 plan_index");
+        RCLCPP_ERROR(context->node_->get_logger(), "ArriveToBoxAction: 缺少 plan_index");
         return BT::FAILED;
     }
     if (!tree.read_msg("move_plan", move_plan)) {
-        RCLCPP_ERROR(context->node_->get_logger(), "ArriveToTargetAction: 缺少 move_plan");
+        RCLCPP_ERROR(context->node_->get_logger(), "ArriveToBoxAction: 缺少 move_plan");
         return BT::FAILED;
     }
 
@@ -78,36 +89,29 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
     }
 
     const auto& current_plan = move_plan[plan_index];
-    const size_t expected_target_point_count =
-        current_plan.catch_trajectory.size() + current_plan.place_trajectory.size();
-    if (current_plan.target_point.size() != expected_target_point_count) {
+    const auto& current_task = task_for_slot(current_plan, slot_);
+    const auto& trajectory_plan = current_task.to_box;
+
+    if (trajectory_plan.trajectory.size() != trajectory_plan.target_points.size()) {
         RCLCPP_ERROR(
             context->node_->get_logger(),
-            "ArriveToBoxAction: target_point 数量=%zu 与轨迹点总数=%zu 不一致",
-            current_plan.target_point.size(),
-            expected_target_point_count);
+            "ArriveToBoxAction: %s 轨迹点数量=%zu 与参数数量=%zu 不一致",
+            slot_name(slot_),
+            trajectory_plan.trajectory.size(),
+            trajectory_plan.target_points.size());
         return BT::FAILED;
     }
 
-    if (current_plan.catch_trajectory.empty()) {
-        RCLCPP_ERROR(context->node_->get_logger(), "ArriveToBoxAction: catch_trajectory 为空");
+    if (trajectory_plan.trajectory.empty()) {
+        RCLCPP_ERROR(context->node_->get_logger(), "ArriveToBoxAction: %s to_box 为空", slot_name(slot_));
         return BT::FAILED;
     }
 
     std::vector<Pilot::TargetPoint> pilot_targets;
-    pilot_targets.reserve(current_plan.catch_trajectory.size());
-    for (size_t point_index = 0; point_index < current_plan.catch_trajectory.size(); ++point_index) {
-        if (point_index >= current_plan.target_point.size()) {
-            RCLCPP_ERROR(
-                context->node_->get_logger(),
-                "ArriveToBoxAction: 第 %zu 个轨迹点缺少 target_point 参数",
-                point_index);
-            context->pilot->stop();
-            return BT::FAILED;
-        }
-
-        const auto& point = current_plan.catch_trajectory[point_index];
-        const auto& plan_target_point = current_plan.target_point[point_index];
+    pilot_targets.reserve(trajectory_plan.trajectory.size());
+    for (size_t point_index = 0; point_index < trajectory_plan.trajectory.size(); ++point_index) {
+        const auto& point = trajectory_plan.trajectory[point_index];
+        const auto& plan_target_point = trajectory_plan.target_points[point_index];
 
         Pilot::TargetPoint target_point;
         target_point.target_pos = Eigen::Vector2d(point[0], point[1]);
@@ -130,10 +134,11 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
 
     RCLCPP_INFO(
         context->node_->get_logger(),
-        "ArriveToBoxAction: 开始执行第 %d 个到达计划, 目标箱子位置=(%.2f, %.2f), 连续轨迹点数量=%zu",
+        "ArriveToBoxAction: 开始执行第 %d 轮 %s 到箱计划, 目标箱子位置=(%.2f, %.2f), 连续轨迹点数量=%zu",
         plan_index,
-        current_plan.src_box_pos[0],
-        current_plan.src_box_pos[1],
+        slot_name(slot_),
+        current_task.pick_box_pos[0],
+        current_task.pick_box_pos[1],
         pilot_targets.size());
 
     if (!context->pilot->set_target(pilot_targets)) {
@@ -153,11 +158,12 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    for (size_t point_index = 0; point_index < current_plan.catch_trajectory.size(); ++point_index) {
-        const auto& point = current_plan.catch_trajectory[point_index];
+    for (size_t point_index = 0; point_index < trajectory_plan.trajectory.size(); ++point_index) {
+        const auto& point = trajectory_plan.trajectory[point_index];
         RCLCPP_INFO(
             context->node_->get_logger(),
-            "ArriveToBoxAction: 连续轨迹点 %zu -> (%.2f, %.2f, %.2f)",
+            "ArriveToBoxAction: %s 连续轨迹点 %zu -> (%.2f, %.2f, %.2f)",
+            slot_name(slot_),
             point_index,
             point[0],
             point[1],
@@ -187,8 +193,9 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
 
     RCLCPP_INFO(
         context->node_->get_logger(),
-        "ArriveToBoxAction: 第 %d 个到达计划执行完成，等待后续抓取动作",
-        plan_index);
+        "ArriveToBoxAction: 第 %d 轮 %s 到箱计划执行完成，等待后续抓取动作",
+        plan_index,
+        slot_name(slot_));
 
     return BT::SUCCESS;
 }

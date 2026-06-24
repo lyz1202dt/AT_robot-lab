@@ -17,6 +17,12 @@ using namespace std::chrono_literals;
 
 namespace {
 
+// 机械臂协议：box1 从手上放，box0 从平板放；二层命令保留独立编号。
+constexpr int kArmPlaceHandFirstFloor = 5;
+constexpr int kArmPlaceHandSecondFloor = 6;
+constexpr int kArmPlacePlateFirstFloor = 3;
+constexpr int kArmPlacePlateSecondFloor = 4;
+
 bool wait_for_stage(Robot* context, int32_t expected_stage) {
     while (rclcpp::ok() && context->auto_pilot_enabled.load() && context->tree_start_key.load() != expected_stage) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -24,23 +30,42 @@ bool wait_for_stage(Robot* context, int32_t expected_stage) {
     return rclcpp::ok() && context->auto_pilot_enabled.load();
 }
 
+int32_t stage_for_slot(BoxSlot slot) {
+    return slot == BoxSlot::Box1 ? Robot::kTreePlaceBox1 : Robot::kTreePlaceBox0;
+}
+
+const BoxMoveTask& task_for_slot(const MoveBoxPlan& plan, BoxSlot slot) {
+    return slot == BoxSlot::Box1 ? plan.box1 : plan.box0;
+}
+
+int place_command_for_slot(BoxSlot slot, bool second_floor) {
+    if (slot == BoxSlot::Box1) {
+        return second_floor ? kArmPlaceHandSecondFloor : kArmPlaceHandFirstFloor;
+    }
+    return second_floor ? kArmPlacePlateSecondFloor : kArmPlacePlateFirstFloor;
+}
+
+const char* slot_name(BoxSlot slot) {
+    return slot == BoxSlot::Box1 ? "box1" : "box0";
+}
+
 Pilot::TargetPoint make_retreat_target(const MoveBoxPlan& plan)
 {
     Pilot::TargetPoint target;
     target.target_pos = Eigen::Vector2d(plan.dst2_pos[0], plan.dst2_pos[1]);
     target.target_yaw = plan.dst2_pos[2];
-    target.constraint_target_yaw = plan.dst_to_dst2.constraint_target_yaw;
-    target.target_vel = plan.dst_to_dst2.target_vel;
-    target.max_velocity = plan.dst_to_dst2.max_velocity;
-    target.max_accelation = plan.dst_to_dst2.max_accelation;
-    target.max_omega = plan.dst_to_dst2.max_omega;
-    target.kp = plan.dst_to_dst2.kp;
-    target.allow_start_dir_error = plan.dst_to_dst2.allow_start_dir_error;
-    target.allow_final_dir_error = plan.dst_to_dst2.allow_final_dir_error;
-    target.allow_final_pos_allow = plan.dst_to_dst2.allow_final_pos_allow;
-    target.adjust_min_vel = plan.dst_to_dst2.adjust_min_vel;
-    target.adjust_min_omega = plan.dst_to_dst2.adjust_min_omega;
-    target.allow_y_vel = plan.dst_to_dst2.allow_y_vel;
+    target.constraint_target_yaw = plan.dst0_to_dst2.constraint_target_yaw;
+    target.target_vel = plan.dst0_to_dst2.target_vel;
+    target.max_velocity = plan.dst0_to_dst2.max_velocity;
+    target.max_accelation = plan.dst0_to_dst2.max_accelation;
+    target.max_omega = plan.dst0_to_dst2.max_omega;
+    target.kp = plan.dst0_to_dst2.kp;
+    target.allow_start_dir_error = plan.dst0_to_dst2.allow_start_dir_error;
+    target.allow_final_dir_error = plan.dst0_to_dst2.allow_final_dir_error;
+    target.allow_final_pos_allow = plan.dst0_to_dst2.allow_final_pos_allow;
+    target.adjust_min_vel = plan.dst0_to_dst2.adjust_min_vel;
+    target.adjust_min_omega = plan.dst0_to_dst2.adjust_min_omega;
+    target.allow_y_vel = plan.dst0_to_dst2.allow_y_vel;
     target.trajectory_connection_radius = 0.0f;
     return target;
 }
@@ -93,8 +118,8 @@ bool retreat_to_dst2(Robot* context, const MoveBoxPlan& plan)
 } // namespace
 
 
-PlaceBoxAction::PlaceBoxAction()
-    : BT::ActionNode("place_box_action") {}
+PlaceBoxAction::PlaceBoxAction(BoxSlot slot)
+    : BT::ActionNode(slot == BoxSlot::Box1 ? "place_box1_action" : "place_box0_action"), slot_(slot) {}
 
 void PlaceBoxAction::arm_place_cmd_callback(const std_msgs::msg::Int32::SharedPtr msg) { arm_state_ = msg->data; }
 
@@ -108,18 +133,18 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
 
     arm_state_ = 0;
 
-    RCLCPP_INFO(context->node_->get_logger(), "等待机械臂放置完成");
+    RCLCPP_INFO(context->node_->get_logger(), "等待机械臂放置 %s 完成", slot_name(slot_));
 
     if (!subscriptions_ready_) {
         arm_cmd_pub_ = context->node_->create_publisher<std_msgs::msg::Int32>("arm_cmd", 10);
 
         arm_state_sub = context->node_->create_subscription<std_msgs::msg::Int32>(
             "arm_cmd_state", 10, std::bind(&PlaceBoxAction::arm_place_cmd_callback, this, std::placeholders::_1));
-        
+
         subscriptions_ready_ = true;
     }
 
-    if (!wait_for_stage(context, Robot::kTreePlaceBox)) {
+    if (!wait_for_stage(context, stage_for_slot(slot_))) {
         context->pilot->stop();
         return BT::FAILED;
     }
@@ -142,65 +167,42 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    // =========================================================
-    // 8. 当前计划
-    // =========================================================
     const auto& plan = move_plan[plan_index];
-    place_at_second_floor_ = plan.place_at_second_floor;
+    const auto& task = task_for_slot(plan, slot_);
+    place_at_second_floor_ = task.place_at_second_floor;
 
-    if (!place_at_second_floor_) {
-        std_msgs::msg::Int32 msg;
-        msg.data = 2;
-        arm_cmd_pub_->publish(msg);
-    } else {
+    std_msgs::msg::Int32 msg;
+    msg.data = place_command_for_slot(slot_, place_at_second_floor_);
+    arm_cmd_pub_->publish(msg);
 
-        std_msgs::msg::Int32 msg;
-        msg.data = 3;
-        arm_cmd_pub_->publish(msg);
-    }
-    // =========================================================
-    // 等待执行结果
-    // =========================================================
+    RCLCPP_INFO(context->node_->get_logger(), "放置 %s，arm_cmd=%d，second_floor=%s", slot_name(slot_), msg.data, place_at_second_floor_ ? "true" : "false");
+
     auto start = std::chrono::steady_clock::now();
 
     while (rclcpp::ok()) {
 
         if (arm_state_ == 1) {
-            RCLCPP_INFO(context->node_->get_logger(), "放置完成");
+            RCLCPP_INFO(context->node_->get_logger(), "放置 %s 完成", slot_name(slot_));
             arm_state_ = 0;
             break;
         }
 
         if (std::chrono::steady_clock::now() - start > 10s) {
             RCLCPP_ERROR(context->node_->get_logger(), "机械臂任务超时");
-
-            if (plan_index + 1 < static_cast<int>(move_plan.size())) {
-                tree.write_msg("plan_index", plan_index + 1);
-            } else {
-                RCLCPP_INFO(context->node_->get_logger(), "PlaceBoxAction: 全部搬箱计划执行完成");
-                if (!retreat_to_dst2(context, plan)) {
-                    return BT::FAILED;
-                }
-            }
-
-            if (!context->is_tree_debug_mode() && context->auto_pilot_enabled.load()) {
-                context->advance_tree_stage();
-            }
-
-            return BT::SUCCESS;
+            break;
         }
 
         std::this_thread::sleep_for(10ms);
     }
 
-    // std::this_thread::sleep_for(6s);
-
-    if (plan_index + 1 < static_cast<int>(move_plan.size())) {
-        tree.write_msg("plan_index", plan_index + 1);
-    } else {
-        RCLCPP_INFO(context->node_->get_logger(), "PlaceBoxAction: 全部搬箱计划执行完成");
-        if (!retreat_to_dst2(context, plan)) {
-            return BT::FAILED;
+    if (slot_ == BoxSlot::Box0) {
+        if (plan_index + 1 < static_cast<int>(move_plan.size())) {
+            tree.write_msg("plan_index", plan_index + 1);
+        } else {
+            RCLCPP_INFO(context->node_->get_logger(), "PlaceBoxAction: 全部搬箱计划执行完成");
+            if (!retreat_to_dst2(context, plan)) {
+                return BT::FAILED;
+            }
         }
     }
 

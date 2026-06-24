@@ -19,10 +19,14 @@ class Robot{
 public:
     static constexpr int32_t kTreeIdle = -2;
     static constexpr int32_t kTreeGeneratePlan = -1;
-    static constexpr int32_t kTreeArriveToBox = 0;
-    static constexpr int32_t kTreeCatchBox = 1;
-    static constexpr int32_t kTreeArriveToTarget = 2;
-    static constexpr int32_t kTreePlaceBox = 3;
+    static constexpr int32_t kTreeArriveToBox0 = 0;
+    static constexpr int32_t kTreeCatchBox0 = 1;
+    static constexpr int32_t kTreeArriveToBox1 = 2;
+    static constexpr int32_t kTreeCatchBox1 = 3;
+    static constexpr int32_t kTreeArriveToDst1 = 4;
+    static constexpr int32_t kTreePlaceBox1 = 5;
+    static constexpr int32_t kTreeArriveToDst0 = 6;
+    static constexpr int32_t kTreePlaceBox0 = 7;
 
     Robot(const std::shared_ptr<rclcpp::Node> node);
     ~Robot();
@@ -53,10 +57,7 @@ private:
     rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_server_;
     rclcpp::Subscription<robot_msgs::msg::Remote>::SharedPtr remote_sub_;
     rclcpp::Publisher<robot_msgs::msg::Cmd>::SharedPtr cmd_pub_;
-    //TODO:操作机械臂的话题，相机数据采集的话题等等
 
-    //TF  获取机器人位置
-    
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
     geometry_msgs::msg::TransformStamped robot_pos_transfer;
     std::array<double, 2> transfer_x_limits_{{-0.5, 6.5}};
@@ -65,8 +66,6 @@ private:
     int out_of_bounds_frames_{0};
     static constexpr int kOutOfBoundsStopFrames = 2;
     std::atomic_bool rl_real_stop_requested_{false};
-
-
 
     std::shared_ptr<std::thread> action_thread;
 

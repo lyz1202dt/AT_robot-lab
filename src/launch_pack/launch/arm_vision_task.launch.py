@@ -55,7 +55,7 @@ def generate_launch_description():
     arm_task = Node(
         package="arm_task",
         executable="arm_task",
-        parameters=[task_config],
+        arguments=["--ros-args", "--params-file", task_config],
         output="screen",
     )
 

@@ -6,8 +6,6 @@
 #include <cerrno>
 #include <cmath>
 #include <ctime>
-#include <thread>
-#include <functional>
 #include <limits>
 #include <mutex>
 #include <stdexcept>
@@ -15,16 +13,15 @@
 #include <tuple>
 #include <rclcpp/logging.hpp>
 #include <yaml-cpp/yaml.h>
-#include <utility>
 #include <vector>
 
 using namespace std::chrono_literals;
 
 namespace {
 
-//constexpr auto kSemaphoreTimeout = 10s;
- const auto box_id_kSemaphoreTimeout = std::chrono::hours(24 * 365 * 100);
- const auto vip_id_kSemaphoreTimeout = 10s;
+constexpr int kArmboxid = 7;
+
+const auto box_id_kSemaphoreTimeout = std::chrono::hours(24 * 365 * 100);
 constexpr const char* kGeneratePlanConfigParam = "generate_plan_config";
 
 bool wait_for_stage(Robot* context, int32_t expected_stage) {
@@ -90,7 +87,6 @@ using BoxPositionGrid = std::array<std::array<std::array<float, 2>, 4>, 3>;
 
 struct RoutePoints {
     std::array<float, 3> a1{};
-    std::array<float, 3> a2{};
 };
 
 struct PlanConfig {
@@ -100,43 +96,22 @@ struct PlanConfig {
     RoutePoints route_c{};
     RoutePoints route_e{};
     TargetPoint start_to_a1{};
-    TargetPoint a1_to_a2{};
-    TargetPoint a2_to_a3{};
-    TargetPoint a3_to_src{};
-    TargetPoint src_to_dst{};
-    TargetPoint dst_to_dst2{};
-    TargetPoint dst2_to_src{};
+    TargetPoint a1_to_box0{};
+    TargetPoint box0_to_box1{};
+    TargetPoint box1_to_dst1{};
+    TargetPoint dst1_to_dst0{};
+    TargetPoint dst0_to_dst2{};
+    TargetPoint dst2_to_box0{};
 };
 
-// 箱子布局、位置和 VIP ID 的聚合信息。
 struct BoxInfo {
     BoxIdGrid box_ids{};
     PositionGrid positions{};
-    int vip_box_id{-1};
+};
 
-    // 判断 VIP 箱子是否出现在第一条抓取线。
-    bool is_vip_in_first_line() const {
-        for (int col = 0; col < 4; ++col) {
-            if (box_ids[0][col] == vip_box_id) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // 查找 vip_box_id 在 box_ids 中的所有索引 (line, col)
-    // 支持同一个 ID 出现多次（如两个 VIP 箱子有相同 ID）
-    std::vector<std::pair<int, int>> find_vip_indices() const {
-        std::vector<std::pair<int, int>> results;
-        for (int line = 0; line < static_cast<int>(box_ids.size()); ++line) {
-            for (int col = 0; col < static_cast<int>(box_ids[line].size()); ++col) {
-                if (box_ids[line][col] == vip_box_id) {
-                    results.emplace_back(line, col);
-                }
-            }
-        }
-        return results;
-    }
+struct SelectedBox {
+    int line{-1};
+    int col{-1};
 };
 
 std::tuple<float, float, float> read_point3_tuple(const YAML::Node& node, const std::string& name) {
@@ -213,16 +188,6 @@ TargetPoint read_target_point(const YAML::Node& node, const std::string& name) {
     return target_point;
 }
 
-RoutePoints select_route_points(const PlanConfig& config, char plan_case) {
-    if (plan_case == 'A') {
-        return config.route_a;
-    }
-    if (plan_case == 'C') {
-        return config.route_c;
-    }
-    return config.route_e;
-}
-
 PlanConfig load_plan_config(const std::string& yaml_path) {
     const YAML::Node root = YAML::LoadFile(yaml_path);
 
@@ -243,90 +208,86 @@ PlanConfig load_plan_config(const std::string& yaml_path) {
     config.positions[2] = read_point3_row(box_positions["pick_line_1"], "box_positions.pick_line_1");
 
     config.route_a.a1 = read_point3(routes["A"]["a1"], "routes.A.a1");
-    config.route_a.a2 = read_point3(routes["A"]["a2"], "routes.A.a2");
     config.route_c.a1 = read_point3(routes["C"]["a1"], "routes.C.a1");
-    config.route_c.a2 = read_point3(routes["C"]["a2"], "routes.C.a2");
     config.route_e.a1 = read_point3(routes["E"]["a1"], "routes.E.a1");
-    config.route_e.a2 = read_point3(routes["E"]["a2"], "routes.E.a2");
 
     config.start_to_a1 = read_target_point(target_points["start_to_a1"], "target_points.start_to_a1");
-    config.a1_to_a2 = read_target_point(target_points["a1_to_a2"], "target_points.a1_to_a2");
-    config.a2_to_a3 = read_target_point(target_points["a2_to_a3"], "target_points.a2_to_a3");
-    config.a3_to_src = read_target_point(target_points["a3_to_src"], "target_points.a3_to_src");
-    config.src_to_dst = read_target_point(target_points["src_to_dst"], "target_points.src_to_dst");
-    config.dst_to_dst2 = read_target_point(target_points["dst_to_dst2"], "target_points.dst_to_dst2");
-    config.dst2_to_src = read_target_point(target_points["dst2_to_src"], "target_points.dst2_to_src");
+    config.a1_to_box0 = read_target_point(target_points["a1_to_box0"], "target_points.a1_to_box0");
+    config.box0_to_box1 = read_target_point(target_points["box0_to_box1"], "target_points.box0_to_box1");
+    config.box1_to_dst1 = read_target_point(target_points["box1_to_dst1"], "target_points.box1_to_dst1");
+    config.dst1_to_dst0 = read_target_point(target_points["dst1_to_dst0"], "target_points.dst1_to_dst0");
+    config.dst0_to_dst2 = read_target_point(target_points["dst0_to_dst2"], "target_points.dst0_to_dst2");
+    config.dst2_to_box0 = read_target_point(target_points["dst2_to_box0"], "target_points.dst2_to_box0");
     return config;
 }
 
-// 计算两点之间的欧几里得距离（仅考虑 x, y）
-float calc_distance(const std::array<float, 3>& point, const std::pair<float, float>& target) {
-    float dx = point[0] - target.first;
-    float dy = point[1] - target.second;
-    return std::sqrt(dx * dx + dy * dy);
+std::array<float, 3> pose_from_grid(const PositionGrid& positions, int line, int col) {
+    return {
+        std::get<0>(positions[line][col]),
+        std::get<1>(positions[line][col]),
+        std::get<2>(positions[line][col])};
 }
-// 计算点 a 到 positions 第 line 条抓取线各点的最小距离和对应的列索引
-struct NearestInfo {
-    int col{-1};                    // 最近点的列索引
-    float dist{std::numeric_limits<float>::max()};  // 最小距离
-};
 
-NearestInfo find_nearest_box(const std::array<float, 3>& point,
-                             const BoxInfo& box_info,
-                             int box_line,
-                             const std::array<std::array<bool, 4>, 2>& picked,
-                             const std::function<bool(int)>& accept_box_id) {
-    NearestInfo result;
-    const int position_line = box_line + 1;
+int choose_first_col(const PlanConfig& plan_config, const std::array<float, 3>& a1) {
+    int first_col = 0;
+    float min_y_error = std::numeric_limits<float>::max();
     for (int col = 0; col < 4; ++col) {
-        if (picked[box_line][col] || !accept_box_id(box_info.box_ids[box_line][col])) {
-            continue;
-        }
-
-        const float dist = calc_distance(point, {
-            std::get<0>(box_info.positions[position_line][col]),
-            std::get<1>(box_info.positions[position_line][col])});
-        if (dist < result.dist) {
-            result.dist = dist;
-            result.col = col;
+        const auto near_line_pose = pose_from_grid(plan_config.positions, 2, col);
+        const float y_error = std::abs(a1[1] - near_line_pose[1]);
+        if (y_error < min_y_error) {
+            first_col = col;
+            min_y_error = y_error;
         }
     }
-    return result;
+    return first_col;
 }
 
-// 按 VIP 所在边列选择进入路线：左右边都有 VIP 走 C，仅左边走 E，其余走 A。
-char detect_case(const BoxIdGrid& boxes, int vip_id) {
-    bool in_col_0 = false;
-    bool in_col_3 = false;
+std::vector<SelectedBox> make_fixed_pick_order(int first_col) {
+    std::vector<SelectedBox> pick_order;
+    pick_order.reserve(8);
 
-    for (int line = 0; line < 2; ++line) {
-        if (boxes[line][0] == vip_id) {
-            in_col_0 = true;
+    // 第一轮先清出一列通道：先抓近排放平板，再抓远排留在机械臂上。
+    pick_order.push_back({1, first_col});
+    pick_order.push_back({0, first_col});
+
+    for (int offset = 1; offset < 4; ++offset) {
+        const int lower_col = first_col + offset;
+        if (lower_col < 4) {
+            pick_order.push_back({0, lower_col});
+            pick_order.push_back({1, lower_col});
         }
-        if (boxes[line][3] == vip_id) {
-            in_col_3 = true;
+
+        const int upper_col = first_col - offset;
+        if (upper_col >= 0) {
+            pick_order.push_back({0, upper_col});
+            pick_order.push_back({1, upper_col});
         }
     }
 
-    if (in_col_0 && in_col_3) {
-        return 'C';
-    }
-    if (in_col_0) {
-        return 'E';
-    }
-    return 'A';
+    return pick_order;
+}
+
+void fill_box_task(BoxMoveTask& task,
+                   const PlanConfig& plan_config,
+                   const BoxInfo& box_info,
+                   const SelectedBox& selected) {
+    const int position_line = selected.line + 1;
+    const int box_id = box_info.box_ids[selected.line][selected.col];
+    task.pick_box_pos = plan_config.arm_box_positions[position_line][selected.col];
+    task.place_box_pos = plan_config.arm_box_positions[0][box_id];
+    task.box_id = box_id;
+    task.line = selected.line;
+    task.col = selected.col;
 }
 
 }  // namespace
 
 GeneratePlaneAction::GeneratePlaneAction()
     : BT::ActionNode("generate_plan_action") {
-    sem_init(&vip_box_id_sem_, 0, 0);
     sem_init(&box_id_grid_sem_, 0, 0);
 }
 
 GeneratePlaneAction::~GeneratePlaneAction() {
-    sem_destroy(&vip_box_id_sem_);
     sem_destroy(&box_id_grid_sem_);
 }
 
@@ -340,7 +301,7 @@ void GeneratePlaneAction::reset_generated() {
     drain_semaphore(&box_id_grid_sem_);
 }
 
-// 初始化 ROS 订阅，只创建一次订阅者，等待后续消息填充规划输入。
+// 只订阅箱子矩阵，规划输入统一来自 box_id_grid。
 void GeneratePlaneAction::init_subscriptions(const rclcpp::Node::SharedPtr& node) {
     if (subscriptions_ready_) {
         return;
@@ -348,14 +309,6 @@ void GeneratePlaneAction::init_subscriptions(const rclcpp::Node::SharedPtr& node
 
     node_ = node;
     node_->declare_parameter<std::string>(kGeneratePlanConfigParam, "");
-    vip_box_id_sub_ = node_->create_subscription<robot_msgs::msg::Int>(
-        "vip_box_id", 10,
-        [this](const robot_msgs::msg::Int& msg) {
-            vip_box_id_ = msg.data;
-            vip_box_id_ = std::abs(vip_box_id_) % 4;
-            sem_post(&vip_box_id_sem_);
-        });
-
     box_grid_sub_ = node_->create_subscription<std_msgs::msg::Int32MultiArray>(
         "box_id_grid", 10,
         [this](std_msgs::msg::Int32MultiArray::ConstSharedPtr msg) {
@@ -392,7 +345,6 @@ void GeneratePlaneAction::init_publishers(const rclcpp::Node::SharedPtr& node) {
     publishers_ready_ = true;
 }
 
-// 行为树动作入口：等待箱子布局和 VIP ID 后生成完整搬箱顺序。
 BT::Status GeneratePlaneAction::execute(BT& tree) {
     auto* context = tree.get_context<Robot>();
     if (!context) {
@@ -410,9 +362,6 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    // if (!wait_with_interrupt(context, 3s)) {
-    //     return BT::FAILED;
-    // }
     if (first_run_) {
         if (context->auto_pilot_enabled.load()) {
             context->cmd.mode = 1;
@@ -422,8 +371,7 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         }
 
         std_msgs::msg::Int32 msg;
-        msg.data = 5;
-
+        msg.data = kArmboxid;
         arm_cmd_pub_->publish(msg);
 
         if (!wait_semaphore_with_timeout(&box_id_grid_sem_, box_id_kSemaphoreTimeout)) {
@@ -443,16 +391,6 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         first_run_ = false;
     }
 
-
-
-    //此处有个话题用来触发工业相机识别VIP_ID功能，暂定，无需改动
-
-    if (!wait_semaphore_with_timeout(&vip_box_id_sem_, vip_id_kSemaphoreTimeout)) {
-        RCLCPP_ERROR(context->node_->get_logger(), "等待 vip_box_id 超时");
-        vip_box_id_ = box_id_grid_[0][0];
-        //return BT::FAILED;
-    }
-
     const auto config_path = context->node_->get_parameter(kGeneratePlanConfigParam).as_string();
     if (config_path.empty()) {
         RCLCPP_ERROR(context->node_->get_logger(), "GeneratePlaneAction: generate_plan_config 为空");
@@ -468,158 +406,101 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     }
 
     BoxInfo box_info;
-
-    //位置数据
     box_info.positions = plan_config.positions;
-
-    //箱子ID数据
     {
         std::lock_guard<std::mutex> lock(box_id_grid_mutex_);
         box_info.box_ids = box_id_grid_;
     }
-    //VIP箱子ID
-    box_info.vip_box_id = vip_box_id_;
 
-    // 查找 vip 箱子在 box_ids 中的所有索引 (line, col)
-    auto vip_indices = box_info.find_vip_indices();
-    for (size_t i = 0; i < vip_indices.size(); ++i) {
-        RCLCPP_INFO(context->node_->get_logger(), "VIP 箱子 %zu: line=%d, col=%d",
-                    i, vip_indices[i].first, vip_indices[i].second);
+    for (const auto& line : box_info.box_ids) {
+        for (const int box_id : line) {
+            if (box_id < 0 || box_id >= 4) {
+                RCLCPP_ERROR(context->node_->get_logger(), "箱子 ID=%d 越界，必须在 [0,3]", box_id);
+                return BT::FAILED;
+            }
+        }
     }
 
-    //判断VIP箱子是否在第一条抓取线
-    const bool vip_in_first_line = box_info.is_vip_in_first_line();
-    //判断VIP箱子列的信息
-    const char plan_case = detect_case(box_info.box_ids, box_info.vip_box_id);
-    const auto route_points = select_route_points(plan_config, plan_case);
-
-    std::array<float, 3> a1 = route_points.a1;
-    std::array<float, 3> a2 = route_points.a2;
-
-    // 根据进入路线设置机器人先到达的两个过渡点。
-    if (plan_case == 'A') {
-        RCLCPP_INFO(context->node_->get_logger(), "执行道路 A");
-    } else if (plan_case == 'C') {
-        RCLCPP_INFO(context->node_->get_logger(), "执行道路 C");
-    } else if (plan_case == 'E') {
-        RCLCPP_INFO(context->node_->get_logger(), "执行道路 E");
+    const std::array<float, 3> a1 = plan_config.route_a.a1;
+    const int first_col = choose_first_col(plan_config, a1);
+    const auto pick_order = make_fixed_pick_order(first_col);
+    if (pick_order.size() != 8) {
+        RCLCPP_ERROR(context->node_->get_logger(), "固定抓取顺序数量错误，当前为 %zu", pick_order.size());
+        return BT::FAILED;
     }
 
-    //此时走到第一排箱子区域
-    //A：65 C：67 E：69
-
-    // 记录两排抓取区中已经加入计划的箱子，避免重复规划。
-    std::array<std::array<bool, 4>, 2> picked{};
-    // 记录每种箱子 ID 已放置次数，第二次放置同 ID 时需要放到第二层。
     std::array<int, 4> placed_count{};
-    // 上一次规划结束时的期望位置，用于选择最近的下一个箱子。
-    std::array<float, 3> last_expected_pos = a2;
-    // 放置点后的退让点，x 方向相对放置点后退 0.5m，避免下一次转向时碰到放置区箱子。
-    std::array<float, 3> last_dst2 = a2;
-
-    //计移动箱子计划数容器
+    std::array<float, 3> last_dst2 = a1;
     std::vector<MoveBoxPlan> move_plan;
-    //移动8个箱子，所以应该有8个计划
-    move_plan.reserve(8);
-    //狗到中间标志位
-    bool dog_to_middle = false;
+    move_plan.reserve(4);
+    bool first_plan = true;
 
-    // 封装单次抓取/放置计划的生成逻辑。
-    auto append_plan = [&](int box_line, int col) {
-        const int position_line = box_line + 1;
-        const int box_id = box_info.box_ids[box_line][col];
-        const std::array<float, 2> src_box_pos = plan_config.arm_box_positions[position_line][col];
-        const std::array<float, 2> dst_box_pos = plan_config.arm_box_positions[0][box_id];
-        const std::array<float, 3> src = {
-            std::get<0>(box_info.positions[position_line][col]),
-            std::get<1>(box_info.positions[position_line][col]),
-            std::get<2>(box_info.positions[position_line][col])};
-        const std::array<float, 3> dst = {
-            std::get<0>(box_info.positions[0][box_id]),
-            std::get<1>(box_info.positions[0][box_id]),
-            std::get<2>(box_info.positions[0][box_id])};
-        const std::array<float, 3> dst2 = {
-            dst[0] - 0.1f,
-            dst[1],
-            dst[2]};
+    RCLCPP_INFO(context->node_->get_logger(), "GeneratePlaneAction: 根据 a1.y=%.3f 选择第 %d 列先清通道", a1[1], first_col + 1);
 
-        const std::array<float, 3> a3 = {
-            a2[0],
-            src[1],
-            src[2]};
+    for (size_t order_index = 0; order_index < pick_order.size(); order_index += 2) {
+        const auto box0_selected = pick_order[order_index];
+        const auto box1_selected = pick_order[order_index + 1];
+        const auto box0_src = pose_from_grid(plan_config.positions, box0_selected.line + 1, box0_selected.col);
+        const auto box1_src = pose_from_grid(plan_config.positions, box1_selected.line + 1, box1_selected.col);
 
         MoveBoxPlan plan;
-        if (!dog_to_middle) {
-            plan.catch_trajectory.push_back(a1);
-            plan.target_point.push_back(plan_config.start_to_a1);
-            plan.catch_trajectory.push_back(a2);
-            plan.target_point.push_back(plan_config.a1_to_a2);
-            plan.catch_trajectory.push_back(a3);
-            plan.target_point.push_back(plan_config.a2_to_a3);
-            plan.catch_trajectory.push_back(src);
-            plan.target_point.push_back(plan_config.a3_to_src);
-            dog_to_middle = true;
+        fill_box_task(plan.box0, plan_config, box_info, box0_selected);
+        fill_box_task(plan.box1, plan_config, box_info, box1_selected);
+
+        const auto box0_dst = pose_from_grid(plan_config.positions, 0, plan.box0.box_id);
+        const auto box1_dst = pose_from_grid(plan_config.positions, 0, plan.box1.box_id);
+
+        const bool is_first_plan = first_plan;
+        if (is_first_plan) {
+            plan.box0.to_box.trajectory.push_back(a1);
+            plan.box0.to_box.target_points.push_back(plan_config.start_to_a1);
+            first_plan = false;
         } else {
-            plan.catch_trajectory.push_back(last_dst2);
-            plan.target_point.push_back(plan_config.dst_to_dst2);
-            plan.catch_trajectory.push_back(src);
-            plan.target_point.push_back(plan_config.dst2_to_src);
+            plan.box0.to_box.trajectory.push_back(last_dst2);
+            plan.box0.to_box.target_points.push_back(plan_config.dst0_to_dst2);
         }
+        plan.box0.to_box.trajectory.push_back(box0_src);
+        plan.box0.to_box.target_points.push_back(is_first_plan ? plan_config.a1_to_box0 : plan_config.dst2_to_box0);
 
-        plan.place_trajectory.push_back(dst);
-        plan.target_point.push_back(plan_config.src_to_dst);
-        plan.src_box_pos = src_box_pos;
-        plan.dst_box_pos = dst_box_pos;
-        plan.dst2_pos = dst2;
-        plan.dst_to_dst2 = plan_config.dst_to_dst2;
-        plan.place_at_second_floor = placed_count[box_id] > 0;
-        move_plan.push_back(plan);
+        plan.box1.to_box.trajectory.push_back(box1_src);
+        plan.box1.to_box.target_points.push_back(plan_config.box0_to_box1);
 
-        picked[box_line][col] = true;
-        ++placed_count[box_id];
-        last_expected_pos = dst2;
-        last_dst2 = dst2;
+        plan.box1.to_dst.trajectory.push_back(box1_dst);
+        plan.box1.to_dst.target_points.push_back(plan_config.box1_to_dst1);
+        plan.box0.to_dst.trajectory.push_back(box0_dst);
+        plan.box0.to_dst.target_points.push_back(plan_config.dst1_to_dst0);
+
+        // 放置顺序是 box1 再 box0，因此二层计数也按这个顺序更新。
+        plan.box1.place_at_second_floor = placed_count[plan.box1.box_id] > 0;
+        ++placed_count[plan.box1.box_id];
+        plan.box0.place_at_second_floor = placed_count[plan.box0.box_id] > 0;
+        ++placed_count[plan.box0.box_id];
+
+        plan.dst2_pos = {box0_dst[0] - 0.1f, box0_dst[1], box0_dst[2]};
+        plan.dst0_to_dst2 = plan_config.dst0_to_dst2;
+        last_dst2 = plan.dst2_pos;
 
         RCLCPP_INFO(
             context->node_->get_logger(),
-            "生成抓取计划: line=%d, col=%d, box_id=%d, second_floor=%s",
-            box_line,
-            col,
-            box_id,
-            plan.place_at_second_floor ? "true" : "false");
-    };
+            "生成双箱计划: box0(line=%d,col=%d,id=%d,second=%s), box1(line=%d,col=%d,id=%d,second=%s)",
+            plan.box0.line,
+            plan.box0.col,
+            plan.box0.box_id,
+            plan.box0.place_at_second_floor ? "true" : "false",
+            plan.box1.line,
+            plan.box1.col,
+            plan.box1.box_id,
+            plan.box1.place_at_second_floor ? "true" : "false");
 
-    auto pick_nearest_in_line = [&](int box_line, const std::function<bool(int)>& accept_box_id) {
-        const auto nearest = find_nearest_box(last_expected_pos, box_info, box_line, picked, accept_box_id);
-        if (nearest.col < 0) {
-            return false;
-        }
-
-        append_plan(box_line, nearest.col);
-        return true;
-    };
-
-    while (pick_nearest_in_line(0, [&](int box_id) { return box_id == box_info.vip_box_id; })) {
-    }
-    while (pick_nearest_in_line(0, [](int) { return true; })) {
-    }
-    while (pick_nearest_in_line(1, [&](int box_id) { return box_id == box_info.vip_box_id; })) {
-    }
-    while (pick_nearest_in_line(1, [](int) { return true; })) {
+        move_plan.push_back(plan);
     }
 
     tree.write_msg("move_plan", move_plan);
     tree.write_msg<int>("plan_index", 0);
 
-    RCLCPP_INFO(
-        context->node_->get_logger(),
-        "GeneratePlaneAction: case=%c, vip_box_id=%d, vip_in_first_line=%s, 已生成 %zu 条移动计划",
-        plan_case,
-        box_info.vip_box_id,
-        vip_in_first_line ? "true" : "false",
-        move_plan.size());
+    RCLCPP_INFO(context->node_->get_logger(), "GeneratePlaneAction: 已生成 %zu 轮双箱移动计划", move_plan.size());
 
-    generated=true;
+    generated = true;
     if (!context->is_tree_debug_mode()) {
         context->advance_tree_stage();
     }
