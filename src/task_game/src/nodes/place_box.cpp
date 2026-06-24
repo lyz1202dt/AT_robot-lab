@@ -187,7 +187,7 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
             break;
         }
 
-        if (std::chrono::steady_clock::now() - start > 10s) {
+        if (std::chrono::steady_clock::now() - start > 5s) {
             RCLCPP_ERROR(context->node_->get_logger(), "机械臂任务超时");
             break;
         }
