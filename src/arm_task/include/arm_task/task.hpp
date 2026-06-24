@@ -1,9 +1,12 @@
 #pragma once
 
 #include <atomic>
+#include <geometry_msgs/msg/detail/pose__struct.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <memory>
+#include <mutex>
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/subscription.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <string>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -64,6 +67,7 @@ private:
 
     // Subscribers
     rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr arm_cmd_sub_;
+    rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr box_pos_by_vision_sub;
 
 
     // Parameters
@@ -78,6 +82,7 @@ private:
     std::string base_frame_{"arm_base_link"};
     std::string object_frame_{"target_object"};
     std::string arm_calc_node_name_{"arm_calc_node"};
+    std::string vision_model_node_name_{"arm_node"};
     bool air_pump_{false};              // Parameter service index for air pump control
     std::atomic<int> scan_finished_{0}; // 0: not started, 1: finished
 
@@ -88,12 +93,14 @@ private:
     std::vector<double> place_position_2{0.0, 1.7, 2.8, 3.3};
     std::vector<double> look_for_position_{0.0, 1.2, 2.3, 2.8};   //这是全场扫描时机械臂合适的位置    //0.0 1.0 2.45 3.1
     std::vector<double> grasp_finish_position{0.0, 0.1, 0.1, -0.8};
-
+    
     double grasp_z_{-0.16};
+    double rady_grasp_z_{0.07};
     double place_level_1_z_{-0.10};
     double place_level_2_z_{0.15};
     double pitch_offset_{-0.25};
 
+    double grasp_vision_threshold_variance_{0.1};
     double grasp_prepare_duration_{0.6};
     double grasp_cartesian_duration_{0.5};
     int pump_on_wait_ms_{600};
@@ -111,6 +118,12 @@ private:
 
     // Remote node clients for parameter setting
     rclcpp::AsyncParametersClient::SharedPtr arm_calc_param_client_;
+    rclcpp::AsyncParametersClient::SharedPtr vision_model_param_client_;
+
+    std::mutex vision_pose_mutex_;
+    geometry_msgs::msg::Point latest_vision_box_pos_;
+    rclcpp::Time latest_vision_box_pos_time_;
+    bool has_vision_box_pos_{false};
 };
 
 } // namespace arm_task

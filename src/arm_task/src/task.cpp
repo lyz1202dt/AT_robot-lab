@@ -1,8 +1,12 @@
 #include "arm_task/task.hpp"
 #include <array>
+#include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <future>
+#include <geometry_msgs/msg/detail/pose__struct.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
+#include <limits>
 #include <std_msgs/msg/int32.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <thread>
@@ -26,6 +30,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     this->declare_parameter<std::string>("base_frame", "arm_base_link");
     this->declare_parameter<std::string>("object_frame", "target_object");
     this->declare_parameter<std::string>("arm_calc_node_name", "arm_calc_node");
+    this->declare_parameter<std::string>("vision_model_node_name", "arm_node");
     declare_config_parameters();
 
     // Get parameters
@@ -33,6 +38,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     this->get_parameter("base_frame", base_frame_);
     this->get_parameter("object_frame", object_frame_);
     this->get_parameter("arm_calc_node_name", arm_calc_node_name_);
+    this->get_parameter("vision_model_node_name", vision_model_node_name_);
     load_config_parameters();
 
     // Create publishers
@@ -56,11 +62,21 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     // 气泵的控制话题，发布机械臂需要的吸取和放置命令
     air_pub_ = this->create_publisher<std_msgs::msg::Int32>("air_pump_target", 10);
 
+    box_pos_by_vision_sub = this->create_subscription<geometry_msgs::msg::Point>(
+        "pnp_move", 10, [this](geometry_msgs::msg::Point::ConstSharedPtr pose) {
+            std::lock_guard<std::mutex> lock(vision_pose_mutex_);
+            latest_vision_box_pos_ = *pose;
+            latest_vision_box_pos_time_ = this->now();
+            has_vision_box_pos_ = true;
+        });
+
     // 参数服务的回调
     param_callback_ = this->add_on_set_parameters_callback(std::bind(&ArmTaskNode::on_parameters_changed, this, std::placeholders::_1));
 
     arm_calc_param_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, arm_calc_node_name_);
     RCLCPP_INFO(this->get_logger(), "Using arm_calc parameter client target: %s", arm_calc_node_name_.c_str());
+    vision_model_param_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, vision_model_node_name_);
+    RCLCPP_INFO(this->get_logger(), "Using vision parameter client target: %s", vision_model_node_name_.c_str());
 
     // Start task execution thread
     task_thread_ = std::thread(&ArmTaskNode::task_execution_thread, this);
@@ -86,9 +102,12 @@ void ArmTaskNode::declare_config_parameters() {
     this->declare_parameter<std::vector<double>>("positions.grasp_finish", grasp_finish_position);
 
     this->declare_parameter<double>("poses.grasp_z", grasp_z_);
+    this->declare_parameter<double>("poses.rady_grasp_z", rady_grasp_z_);
     this->declare_parameter<double>("poses.place_level_1_z", place_level_1_z_);
     this->declare_parameter<double>("poses.place_level_2_z", place_level_2_z_);
     this->declare_parameter<double>("poses.pitch_offset", pitch_offset_);
+
+    this->declare_parameter<double>("vision.grasp_threshold_variance", grasp_vision_threshold_variance_);
 
     this->declare_parameter<double>("timing.grasp_prepare_duration", grasp_prepare_duration_);
     this->declare_parameter<double>("timing.grasp_cartesian_duration", grasp_cartesian_duration_);
@@ -112,9 +131,12 @@ void ArmTaskNode::load_config_parameters() {
     grasp_finish_position = this->get_parameter("positions.grasp_finish").as_double_array();
 
     grasp_z_ = this->get_parameter("poses.grasp_z").as_double();
+    rady_grasp_z_ = this->get_parameter("poses.rady_grasp_z").as_double();
     place_level_1_z_ = this->get_parameter("poses.place_level_1_z").as_double();
     place_level_2_z_ = this->get_parameter("poses.place_level_2_z").as_double();
     pitch_offset_ = this->get_parameter("poses.pitch_offset").as_double();
+
+    grasp_vision_threshold_variance_ = this->get_parameter("vision.grasp_threshold_variance").as_double();
 
     grasp_prepare_duration_ = this->get_parameter("timing.grasp_prepare_duration").as_double();
     grasp_cartesian_duration_ = this->get_parameter("timing.grasp_cartesian_duration").as_double();
@@ -245,7 +267,7 @@ void ArmTaskNode::execute_grasp_flow() {
 
     std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
     int i=0;
-    int count=100;      //等10s
+    int count=100;      //最长等10s
      do{
     try{
         transfer_array[i]=tf_buffer_->lookupTransform(base_frame_, object_frame_, tf2::TimePointZero, tf2::durationFromSec(0.02));
@@ -272,11 +294,11 @@ void ArmTaskNode::execute_grasp_flow() {
     x/=8.0;
     y/=8.0;
 
-    // 强制规定姿态
-    geometry_msgs::msg::PoseStamped object_pose;
+    //移动到预抓取位置，等待相机识别
+    geometry_msgs::msg::PoseStamped object_pose;    //这是目标位姿
     object_pose.pose.position.x=x;
     object_pose.pose.position.y=y;
-    object_pose.pose.position.z=grasp_z_;
+    object_pose.pose.position.z=rady_grasp_z_;
     tf2::Quaternion quat;
     quat.setRPY(0, M_PI / 2.0 + pitch_offset_, 0);
     object_pose.pose.orientation.w = quat.getW();
@@ -285,10 +307,79 @@ void ArmTaskNode::execute_grasp_flow() {
     object_pose.pose.orientation.z = quat.getZ();
 
 
-    // 3.笛卡尔轨迹规划使机械臂运动到物块的位置
-    RCLCPP_INFO(this->get_logger(), "移动到块的位置");
+    // 3.笛卡尔轨迹规划使机械臂运动到开启视觉识别的位置
+    RCLCPP_INFO(this->get_logger(), "移动到块的预抓取位置");
+    execute_cartesian_space_trajectory(object_pose, 1.0);
+    std::this_thread::sleep_for(1100ms);
+
+    //4.触发视觉识别动作
+    RCLCPP_INFO(this->get_logger(), "启动视觉识别");
+    {
+        std::lock_guard<std::mutex> lock(vision_pose_mutex_);
+        has_vision_box_pos_ = false;
+    }
+
+    bool vision_ready = false;
+    double vision_variance = std::numeric_limits<double>::infinity();
+    geometry_msgs::msg::Point vision_box_pos;
+
+    if (vision_model_param_client_->wait_for_service(1s)) {
+        vision_model_param_client_->set_parameters({rclcpp::Parameter("start_pnp", true)});
+
+        const auto vision_start_time = std::chrono::steady_clock::now();
+        while (std::chrono::steady_clock::now() - vision_start_time < 5s) {
+            auto variance_future = vision_model_param_client_->get_parameters({"vision_variance"});
+            if (variance_future.wait_for(300ms) == std::future_status::ready) {
+                const auto params = variance_future.get();
+                if (!params.empty()) {
+                    vision_variance = params.front().as_double();
+                    RCLCPP_INFO(this->get_logger(), "当前视觉方差: %.6f", vision_variance);
+
+                    if (vision_variance < grasp_vision_threshold_variance_) {
+                        std::lock_guard<std::mutex> lock(vision_pose_mutex_);
+                        if (has_vision_box_pos_) {
+                            vision_box_pos = latest_vision_box_pos_;
+                            vision_ready = true;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                RCLCPP_WARN(this->get_logger(), "读取视觉方差超时，继续等待");
+            }
+
+            std::this_thread::sleep_for(400ms);
+        }
+
+        vision_model_param_client_->set_parameters({rclcpp::Parameter("start_pnp", false)});
+    } else {
+        RCLCPP_ERROR(this->get_logger(), "Parameter service for %s not available", vision_model_node_name_.c_str());
+    }
+
+    double vision_weight = 0.0;
+    if (vision_ready) {
+        vision_weight = grasp_vision_threshold_variance_ / (grasp_vision_threshold_variance_ + vision_variance);
+        vision_weight = std::max(0.0, std::min(1.0, vision_weight));
+    } else {
+        RCLCPP_WARN(this->get_logger(), "视觉识别未在超时时间内稳定，使用雷达坐标抓取");
+    }
+
+    object_pose.pose.position.x =
+        object_pose.pose.position.x * (1.0 - vision_weight) + vision_box_pos.x * vision_weight;
+    object_pose.pose.position.y =
+        object_pose.pose.position.y * (1.0 - vision_weight) + vision_box_pos.y * vision_weight;
+    object_pose.pose.position.z = grasp_z_;
+
+    RCLCPP_INFO(this->get_logger(),
+                "抓取坐标: x=%.4f, y=%.4f, z=%.4f, vision_weight=%.3f",
+                object_pose.pose.position.x,
+                object_pose.pose.position.y,
+                object_pose.pose.position.z,
+                vision_weight);
+
     execute_cartesian_space_trajectory(object_pose, grasp_cartesian_duration_);
-    std::this_thread::sleep_for(300ms);
+    std::this_thread::sleep_for(700ms);
+
 
 
     // 通知气泵开始吸了
