@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <geometry_msgs/msg/detail/pose__struct.hpp>
+#include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <memory>
 #include <mutex>
@@ -31,9 +32,13 @@ private:
 
     // State machine for task execution
     void execute_task_state_machine();
-    void execute_grasp_flow();
-    void execute_place_flow_1();
-    void execute_place_flow_2();
+    
+    void execute_grasp_flow_on_hand();
+    void execute_grasp_flow_on_box();
+    void execute_place_flow_1_on_hand();
+    void execute_place_flow_2_on_hand();
+    void execute_place_flow_1_on_box();
+    void execute_place_flow_2_on_box();
     void execut_pos_record();
     void execute_look_for();
 
@@ -80,6 +85,7 @@ private:
 
     // Configuration
     std::string base_frame_{"arm_base_link"};
+    std::string camera_frame_{"camera_link"};
     std::string object_frame_{"target_object"};
     std::string arm_calc_node_name_{"arm_calc_node"};
     std::string vision_model_node_name_{"arm_node"};
