@@ -197,7 +197,7 @@ void ArmTaskNode::execut_pos_record()
 // 该函数为线性执行函数
 void ArmTaskNode::execute_task_state_machine() {
 
-    //current_mode = arm_task_mode_.load(); // 调试时用的，实际跑时应该注释掉，current_mode直接接受回调里的赋值（在最下面）
+    current_mode = arm_task_mode_.load(); // 调试时用的，实际跑时应该注释掉，current_mode直接接受回调里的赋值（在最下面）
 
 
     // 已经在运行
@@ -428,10 +428,9 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(pump_on_wait_ms_));
 
-
-    // 6.回到初始位置
+    // 6.转到抓着块的位置
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(grasp_finish_position, 1.5);
+    execute_joint_space_trajectory(grasp_finish_position, 2.5);
 
     std::this_thread::sleep_for(1000ms);
 
@@ -446,20 +445,20 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
 
 void ArmTaskNode::execute_grasp_flow_on_box() {
     std_msgs::msg::Int32 msg;
-    //移动到背上吸取箱子
-    RCLCPP_INFO(this->get_logger(), "移动到再吸块位置");
-    execute_joint_space_trajectory(re_graspe_box_position, 2.0);
-    std::this_thread::sleep_for(2100ms);
+    // //移动到背上吸取箱子
+    // RCLCPP_INFO(this->get_logger(), "移动到再吸块位置");
+    // execute_joint_space_trajectory(re_graspe_box_position, 2.0);
+    // std::this_thread::sleep_for(2100ms);
 
-    msg.data = 1;
-    air_pub_->publish(msg);
+    // msg.data = 1;
+    // air_pub_->publish(msg);
 
     std::this_thread::sleep_for(500ms);
     
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     std::this_thread::sleep_for(300ms);
-    execute_joint_space_trajectory(ready_position, grasp_prepare_duration_);
-    std::this_thread::sleep_for(700ms);
+    execute_joint_space_trajectory(ready_position, 2.0);
+    std::this_thread::sleep_for(2100ms);
 
     std::array<geometry_msgs::msg::TransformStamped,8>  transfer_array;
     int i=0;

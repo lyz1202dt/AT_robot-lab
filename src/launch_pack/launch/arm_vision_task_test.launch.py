@@ -86,10 +86,10 @@ def generate_launch_description():
     package="tf2_ros",
     executable="static_transform_publisher",
     arguments=[
-        "0.25", "0.0", "-0.1",
+        "0.4", "0.0", "-0.1",
         "0.7071", "0.0", "0.7071", "0.0",
         "arm_base_link",
-        "object_frame"
+        "target_object"
     ],
     output="screen",
 )
