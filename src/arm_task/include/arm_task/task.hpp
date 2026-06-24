@@ -1,9 +1,13 @@
 #pragma once
 
 #include <atomic>
+#include <geometry_msgs/msg/detail/pose__struct.hpp>
+#include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <memory>
+#include <mutex>
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/subscription.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <string>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -28,9 +32,13 @@ private:
 
     // State machine for task execution
     void execute_task_state_machine();
-    void execute_grasp_flow();
-    void execute_place_flow_1();
-    void execute_place_flow_2();
+    
+    void execute_grasp_flow_on_hand();
+    void execute_grasp_flow_on_box();
+    void execute_place_flow_1_on_hand();
+    void execute_place_flow_2_on_hand();
+    void execute_place_flow_1_on_box();
+    void execute_place_flow_2_on_box();
     void execut_pos_record();
     void execute_look_for();
 
@@ -40,6 +48,10 @@ private:
     // Arm control operations (private methods)
     void execute_joint_space_trajectory(const std::vector<double>& joint_angles, double duration);
     void execute_cartesian_space_trajectory(const geometry_msgs::msg::PoseStamped& target_pose, double duration);
+    bool sample_target_xy_from_tf(double tf_timeout_sec, double& x, double& y);
+    geometry_msgs::msg::PoseStamped make_fixed_pitch_pose(double x, double y, double z, double pitch_offset) const;
+    bool wait_for_stable_vision_target(geometry_msgs::msg::Point& vision_box_pos, double& vision_variance);
+    void set_air_pump(bool enabled);
     
 
     // Helper methods
@@ -64,6 +76,7 @@ private:
 
     // Subscribers
     rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr arm_cmd_sub_;
+    rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr box_pos_by_vision_sub;
 
 
     // Parameters
@@ -76,9 +89,12 @@ private:
 
     // Configuration
     std::string base_frame_{"arm_base_link"};
+    std::string camera_frame_{"camera_link"};
     std::string object_frame_{"target_object"};
     std::string arm_calc_node_name_{"arm_calc_node"};
+    std::string vision_model_node_name_{"arm_node"};
     bool air_pump_{false};              // Parameter service index for air pump control
+    std::atomic<bool> use_vision_grasp_{true};
     std::atomic<int> scan_finished_{0}; // 0: not started, 1: finished
 
     // Joint positions from task_config.yaml
@@ -88,12 +104,16 @@ private:
     std::vector<double> place_position_2{0.0, 1.7, 2.8, 3.3};
     std::vector<double> look_for_position_{0.0, 1.2, 2.3, 2.8};   //这是全场扫描时机械臂合适的位置    //0.0 1.0 2.45 3.1
     std::vector<double> grasp_finish_position{0.0, 0.1, 0.1, -0.8};
+    std::vector<double> release_box_position{0.0, 1.8, 3.8, 0.6};   //将箱子放到狗背上的关节位置
+    std::vector<double> re_graspe_box_position{0.0, 0.7, 3.14, -1.0};
 
     double grasp_z_{-0.16};
+    double rady_grasp_z_{0.07};
     double place_level_1_z_{-0.10};
     double place_level_2_z_{0.15};
     double pitch_offset_{-0.25};
 
+    double grasp_vision_threshold_variance_{0.1};
     double grasp_prepare_duration_{0.6};
     double grasp_cartesian_duration_{0.5};
     int pump_on_wait_ms_{600};
@@ -111,6 +131,12 @@ private:
 
     // Remote node clients for parameter setting
     rclcpp::AsyncParametersClient::SharedPtr arm_calc_param_client_;
+    rclcpp::AsyncParametersClient::SharedPtr vision_model_param_client_;
+
+    std::mutex vision_pose_mutex_;
+    geometry_msgs::msg::Point latest_vision_box_pos_;
+    rclcpp::Time latest_vision_box_pos_time_;
+    bool has_vision_box_pos_{false};
 };
 
 } // namespace arm_task
