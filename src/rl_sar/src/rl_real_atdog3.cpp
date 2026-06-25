@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <array>
 #include <memory>
+#include <atomic>
 
 RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
 
@@ -24,6 +25,19 @@ RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
     // Shut down motion control-related service
 
     leg_driver = std::make_unique<LegDriver>();
+    std::weak_ptr<rclcpp::Node> weak_node = node_;
+    leg_driver->set_motor_error_callback([weak_node](uint16_t motor_state) {
+        static std::atomic_bool motor_error_shutdown_requested{false};
+        if (motor_error_shutdown_requested.exchange(true)) {
+            return;
+        }
+        auto node = weak_node.lock();
+        if (!node) {
+            return;
+        }
+        std::cout << LOGGER::ERROR << "atdog3 电机异常，准备退出节点，motor_state=" << motor_state << std::endl;
+        rclcpp::shutdown();
+    });
 
     cmd_sub =
         node_->create_subscription<robot_msgs::msg::Cmd>("robot_move_cmd", 10, [this](const robot_msgs::msg::Cmd& msg) {
