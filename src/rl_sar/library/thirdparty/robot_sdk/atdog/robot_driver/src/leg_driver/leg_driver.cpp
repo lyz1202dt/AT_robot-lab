@@ -1,6 +1,5 @@
 #include "leg_driver/leg_driver.hpp"
 
-#include <algorithm>
 #include <array>
 #include <cstring>
 #include <iostream>
@@ -70,20 +69,29 @@ LegDriver::LegDriver(uint16_t vid, uint16_t pid) {
         }
 
         motor_has_error = false;
+        uint16_t motor_error_code = 0;
 
         if (is_pack3&&state_pack.pack3.motor_state) {
             motor_has_error = true;
+            motor_error_code = state_pack.pack3.motor_state;
             std::cout << "电机异常:" << state_pack.pack3.motor_state << std::endl;
+            //dog2
         }
         else if(is_pack0&&state_pack.pack0.motor_state)
         {
             motor_has_error = true;
+            motor_error_code = state_pack.pack0.motor_state;
             std::cout << "电机异常:" << state_pack.pack0.motor_state << std::endl;
+            //dog3
         }
 
-
+        auto motor_error_callback = motor_error_callback_;
 
         first_update = false;
+
+        if (motor_has_error && motor_error_callback) {
+            motor_error_callback(motor_error_code);
+        }
 
         // std::cout<<"joint1_pos="<<position[0][0]<<std::endl;
     });
@@ -114,6 +122,11 @@ bool LegDriver::get_imu_state(std::array<float,4> &q,std::array<float,3> &w) {
     w[1]=imu.wy;
     w[2]=imu.wz;
     return true;
+}
+
+void LegDriver::set_motor_error_callback(std::function<void(uint16_t)> callback) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    motor_error_callback_ = std::move(callback);
 }
 
 LegDriver::~LegDriver() {

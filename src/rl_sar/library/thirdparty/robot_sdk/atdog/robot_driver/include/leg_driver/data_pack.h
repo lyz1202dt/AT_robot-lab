@@ -78,7 +78,7 @@ typedef struct {
     IMU_t imu;
     uint16_t motor_state;
     uint32_t time;
-} DogStatePack0_t;
+} DogStatePack0_t;//dog3
 
 
 // 包类型为1——无IMU数据
@@ -87,7 +87,7 @@ typedef struct {
     LegState_t leg[4];
     uint16_t motor_state;
     uint32_t time;
-} DogStatePack3_t;
+} DogStatePack3_t;//dog2
 
 typedef struct {
     int pack_type;
