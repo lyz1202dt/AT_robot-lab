@@ -228,38 +228,37 @@ public:
     bool support_trajectory_is_available = false;
     inline void update_support_trajectory(const Eigen::Vector3d& cur_pos, const Eigen::Vector3d final_pos, double time) {
         traj.time = time;
+        flight_trajectory_is_available = false;
+        support_trajectory_is_available = true;
 
+        double v0 = 0.0;
+        double vT = 0.0;
+        double a0 = 0.0;
+        double aT = 0.0;
 
-            double v0 = 0.0;
-            double vT = 0.0;
-            double a0 = 0.0;
-            double aT = 0.0;
-
-
-                set_quintic(traj.x, cur_pos[0], v0, a0, final_pos[0], vT, aT, time);
-
-                set_quintic(traj.y, cur_pos[1], v0, a0, final_pos[1], vT, aT, time);
-
-                set_quintic(traj.z, cur_pos[2], v0, a0, final_pos[2], vT, aT, time);
-        
+        set_quintic(traj.x, cur_pos[0], v0, a0, final_pos[0], vT, aT, time);
+        set_quintic(traj.y, cur_pos[1], v0, a0, final_pos[1], vT, aT, time);
+        set_quintic(traj.z, cur_pos[2], v0, a0, final_pos[2], vT, aT, time);
     }
     inline void update_flight_trajectory(
         const Eigen::Vector3d& cur_pos, const Eigen::Vector3d& cur_vel, const Eigen::Vector3d& exp_pos, const Eigen::Vector3d& exp_vel, const double time, const double step_height) {
 
-            traj.time = time;
+        traj.time = time;
+        flight_trajectory_is_available = true;
+        support_trajectory_is_available = false;
 
-            set_quintic(
-                traj.x, cur_pos[0], cur_vel[0], 0.0, // 起点
-                exp_pos[0], -exp_vel[0], 0.0, time);               // 终点
-            // y方向轨迹
-            set_quintic(traj.y, cur_pos[1], cur_vel[1], 0.0, exp_pos[1], -exp_vel[1], 0.0, time);
-            // z方向分为两段：抬腿 -> 落腿
-            // 第一段：从当前z抬到最高点
-            set_quintic(traj.l1_z, cur_pos[2], cur_vel[2], 0.0, step_height, 0.0, 0.0, time * 0.5f);
+        set_quintic(
+            traj.x, cur_pos[0], cur_vel[0], 0.0, // 起点
+            exp_pos[0], -exp_vel[0], 0.0, time);               // 终点
+        // y方向轨迹
+        set_quintic(traj.y, cur_pos[1], cur_vel[1], 0.0, exp_pos[1], -exp_vel[1], 0.0, time);
+        // z方向分为两段：抬腿 -> 落腿
+        // 第一段：从当前z抬到最高点
+        set_quintic(traj.l1_z, cur_pos[2], cur_vel[2], 0.0, step_height, 0.0, 0.0, time * 0.5);
 
-            // 第二段：从最高点落到地面
-            set_quintic(traj.l2_z, step_height, 0.0, 0.0, exp_pos[2], 0.0, 0.0, time * 0.5f);
-}
+        // 第二段：从最高点落到地面
+        set_quintic(traj.l2_z, step_height, 0.0, 0.0, exp_pos[2], 0.0, 0.0, time * 0.5);
+    }
     inline std::tuple<Eigen::Vector3d, Eigen::Vector3d, Eigen::Vector3d> get_target(double time, bool& success) {
         Eigen::Vector3d pos, vel, acc;
 
@@ -278,9 +277,27 @@ public:
         vel[1] = get_quintic_dt(traj.y, time);
         acc[1] = get_quintic_dtdt(traj.y, time);
 
-        pos[2] = get_quintic_value(traj.z, time);
-        vel[2] = get_quintic_dt(traj.z, time);
-        acc[2] = get_quintic_dtdt(traj.z, time);
+        if (flight_trajectory_is_available) {
+            const double half_time = traj.time * 0.5;
+            if (time <= half_time) {
+                pos[2] = get_quintic_value(traj.l1_z, time);
+                vel[2] = get_quintic_dt(traj.l1_z, time);
+                acc[2] = get_quintic_dtdt(traj.l1_z, time);
+            } else {
+                const double t2 = time - half_time;
+                pos[2] = get_quintic_value(traj.l2_z, t2);
+                vel[2] = get_quintic_dt(traj.l2_z, t2);
+                acc[2] = get_quintic_dtdt(traj.l2_z, t2);
+            }
+        } else if (support_trajectory_is_available) {
+            pos[2] = get_quintic_value(traj.z, time);
+            vel[2] = get_quintic_dt(traj.z, time);
+            acc[2] = get_quintic_dtdt(traj.z, time);
+        } else {
+            pos[2] = 0.0;
+            vel[2] = 0.0;
+            acc[2] = 0.0;
+        }
 
         return {pos, vel, acc};
     }

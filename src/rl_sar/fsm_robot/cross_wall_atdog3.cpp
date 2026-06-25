@@ -88,7 +88,6 @@ std::tuple<Vector3D, double> CrossWallStateAtdog3::get_robot_mass_info(
 
 CrossWallStateAtdog3::CrossWallStateAtdog3(const std::string& urdf_file_path)
 {
-
         robot = std::make_shared<Robot_t>(urdf_file_path);
     
         Vector3D com_3d;
@@ -116,25 +115,25 @@ void CrossWallStateAtdog3::enter() {
 
 RobotTarget CrossWallStateAtdog3::update() {
 
-    lf_foot_exp_pos = Eigen::Vector3d(0.0, 0.0, 0.0);
-    rf_foot_exp_pos = Eigen::Vector3d(0.0, 0.0, 0.0);
-    lb_foot_exp_pos = Eigen::Vector3d(0.0, 0.0, 0.0);
-    rb_foot_exp_pos = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // lf_foot_exp_pos = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // rf_foot_exp_pos = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // lb_foot_exp_pos = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // rb_foot_exp_pos = Eigen::Vector3d(0.0, 0.0, 0.0);
 
-    lf_foot_exp_vel = Eigen::Vector3d(0.0, 0.0, 0.0);
-    rf_foot_exp_vel = Eigen::Vector3d(0.0, 0.0, 0.0);
-    lb_foot_exp_vel = Eigen::Vector3d(0.0, 0.0, 0.0);
-    rb_foot_exp_vel = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // lf_foot_exp_vel = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // rf_foot_exp_vel = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // lb_foot_exp_vel = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // rb_foot_exp_vel = Eigen::Vector3d(0.0, 0.0, 0.0);
 
-    lf_foot_exp_acc = Eigen::Vector3d(0.0, 0.0, 0.0);
-    rf_foot_exp_acc = Eigen::Vector3d(0.0, 0.0, 0.0);
-    lb_foot_exp_acc = Eigen::Vector3d(0.0, 0.0, 0.0);
-    rb_foot_exp_acc = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // lf_foot_exp_acc = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // rf_foot_exp_acc = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // lb_foot_exp_acc = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // rb_foot_exp_acc = Eigen::Vector3d(0.0, 0.0, 0.0);
 
-    lf_foot_exp_force = Eigen::Vector3d(0.0, 0.0, 0.0);
-    rf_foot_exp_force = Eigen::Vector3d(0.0, 0.0, 0.0);
-    lb_foot_exp_force = Eigen::Vector3d(0.0, 0.0, 0.0);
-    rb_foot_exp_force = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // lf_foot_exp_force = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // rf_foot_exp_force = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // lb_foot_exp_force = Eigen::Vector3d(0.0, 0.0, 0.0);
+    // rb_foot_exp_force = Eigen::Vector3d(0.0, 0.0, 0.0);
 
 
 
@@ -189,10 +188,10 @@ RobotTarget CrossWallStateAtdog3::update() {
             wall_lb_foot_pos = robot->lb_leg_calc->foot_pos(robot->lb_joint_pos);
             wall_rb_foot_pos = robot->rb_leg_calc->foot_pos(robot->rb_joint_pos);
 
-            lf_step.update_support_trajectory(wall_lf_foot_pos, Vector3D(0.0,0.08,0.0), 1.0);
-            rf_step.update_support_trajectory(wall_rf_foot_pos, Vector3D(0.0,0.08,0.0), 1.0);
-            lb_step.update_support_trajectory(wall_lb_foot_pos, Vector3D(0.0,0.08,0.0), 1.0);
-            rb_step.update_support_trajectory(wall_rb_foot_pos, Vector3D(0.0,0.08,0.0), 1.0);
+            lf_step.update_support_trajectory(wall_lf_foot_pos, Vector3D(0.0,0.1,0.0), 1.0);
+            rf_step.update_support_trajectory(wall_rf_foot_pos, Vector3D(0.0,0.1,0.0), 1.0);
+            lb_step.update_support_trajectory(wall_lb_foot_pos, Vector3D(0.0,0.1,0.0), 1.0);
+            rb_step.update_support_trajectory(wall_rb_foot_pos, Vector3D(0.0,0.1,0.0), 1.0);
 
             //change_flag=false;
             cross_wall_stage = 1;       
@@ -270,7 +269,7 @@ RobotTarget CrossWallStateAtdog3::update() {
                 lf_step.update_support_trajectory(lf_cart_pos,lf_cart_pos,1.0);
                 rf_step.update_support_trajectory(rf_cart_pos,rf_cart_pos,1.0);
                 rb_step.update_support_trajectory(rb_cart_pos,rb_cart_pos,1.0);
-                lb_step.update_flight_trajectory(lb_cart_pos,Vector3D(0.0,0.0,0.0), Vector3D(0.12,0.08,0.0), Vector3D(0.0,0.0,0.0), 1.0,0.06);
+                lb_step.update_flight_trajectory(lb_cart_pos,Vector3D(0.0,0.0,0.0), Vector3D(0.3,0.08,0.0), Vector3D(0.0,0.0,0.0),2.0, 0.4);
                 //change_flag=false;
                 cross_wall_stage=2;     
             }
@@ -291,6 +290,7 @@ RobotTarget CrossWallStateAtdog3::update() {
             std::tie(lf_foot_exp_pos,lf_foot_exp_vel,lf_foot_exp_acc)=lf_step.get_target(time, success);
             std::tie(rf_foot_exp_pos,rf_foot_exp_vel,rf_foot_exp_acc)=rf_step.get_target(time, success);
             std::tie(lb_foot_exp_pos,lb_foot_exp_vel,lb_foot_exp_acc)=lb_step.get_target(time, success);
+
             std::tie(rb_foot_exp_pos,rb_foot_exp_vel,rb_foot_exp_acc)=rb_step.get_target(time, success);
             
             // 3足支撑力计算 (lf, rf, rb支撑，lb摆动)
@@ -336,7 +336,7 @@ RobotTarget CrossWallStateAtdog3::update() {
 
                 lf_step.update_support_trajectory(robot->lf_joint_pos,Vector3D(1.44,0.822,-0.165),2.0);
                 
-                //change_flag=false;
+                change_flag=false;
                 cross_wall_stage=3;    
             }
         }
@@ -1058,7 +1058,7 @@ RobotTarget CrossWallStateAtdog3::update() {
     // }
         // 打印当前各关节的输出
     static int print_counter = 0;
-    if (print_counter++ % 10 == 0) {  // 每10次调用打印一次，避免刷屏
+    if (print_counter++ % 500 == 0) {  // 每10次调用打印一次，避免刷屏
         std::cout << "\n========== Joint Output (stage=" << cross_wall_stage << ") ==========" << std::endl;
         
         // 左前腿 (LF) - legs[0]
@@ -1102,7 +1102,7 @@ RobotTarget CrossWallStateAtdog3::update() {
                   << "kd=[" << joints_target.legs[2].joints[0].kd << ", " 
                   << joints_target.legs[2].joints[1].kd << ", " 
                   << joints_target.legs[2].joints[2].kd << "]" << std::endl;
-        
+        std::cout << "lb_foot_exp_pos: " << lb_foot_exp_pos << std::endl;
         // 右后腿 (RB) - legs[3]
         std::cout << "RB: pos=[" << joints_target.legs[3].joints[0].rad << ", " 
                   << joints_target.legs[3].joints[1].rad << ", " 

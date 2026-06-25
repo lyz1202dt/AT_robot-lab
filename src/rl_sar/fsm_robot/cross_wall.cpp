@@ -10,10 +10,10 @@ using Vector3D = Eigen::Vector3d;
 using Vector2D = Eigen::Vector2d;
 
 Robot_t::Robot_t(const std::string& urdf_file_path)
-    : lf_base_offset(0.25, 0.18, -0.28)
-    , rf_base_offset(0.25, -0.18, -0.28)
-    , lb_base_offset(-0.25, 0.18, -0.28)
-    , rb_base_offset(-0.25, -0.18, -0.28)
+    : lf_base_offset(0.25, 0.21, -0.28)
+    , rf_base_offset(0.25, -0.21, -0.28)
+    , lb_base_offset(-0.25, 0.21, -0.28)
+    , rb_base_offset(-0.25, -0.21, -0.28)
     , kp{80.0, 80.0, 80.0}
     , kd{3.0, 3.0, 3.0} {
     // 从文件直接读取 URDF
@@ -87,6 +87,11 @@ Robot_t::Robot_t(const std::string& urdf_file_path)
         robot_rf_grivate = total_load * front_ratio * right_ratio;
         robot_lb_grivate = total_load * rear_ratio * left_ratio;
         robot_rb_grivate = total_load * rear_ratio * right_ratio;
+
+        robot_lf_grivate = 30;
+        robot_rf_grivate = 30;
+        robot_lb_grivate = 38;
+        robot_rb_grivate = 38;
     }
 }
 
