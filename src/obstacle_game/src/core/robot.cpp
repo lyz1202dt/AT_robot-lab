@@ -150,6 +150,10 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 cmd.mode = 7; // 木桥策略
                 current_record_policy_id = 7;
                 RCLCPP_INFO(node_->get_logger(), "木桥模式");
+            } else if (check_key_trigger(msg.key,10)) {
+                cmd.mode = 8; // 翻墙状态
+                current_record_policy_id = 8;
+                RCLCPP_INFO(node_->get_logger(), "翻墙模式");
             }
 
             //摇杆赋值

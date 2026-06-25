@@ -252,6 +252,17 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
     PathPoint& path = paths_[current_path_index_];
     cmd.mode = policy_id_to_cmd_mode(path.policy_id);
 
+    if (path.mode_switch_only) {
+        if (path.stand_duration > 0.0) {
+            const double elapsed = std::chrono::duration<double>(time - segment_start_time_).count();
+            if (elapsed < path.stand_duration) {
+                return cmd;
+            }
+        }
+        finish_current_target(time);
+        return cmd;
+    }
+
     if (state_ == PilotState::Standing) {
         const double elapsed = std::chrono::duration<double>(time - stand_start_time_).count();
         if (elapsed < std::max(0.0, path.stand_duration)) {
@@ -517,8 +528,10 @@ bool Pilot::load_paths(const std::string& yaml_path)
         for (const auto& path_node : paths_node) {
             PathPoint point;
             point.policy_id = path_node["policy_id"].as<int32_t>();
-            point.target_pos.x() = read_required_double(path_node["target_pos"], "x");
-            point.target_pos.y() = read_required_double(path_node["target_pos"], "y");
+            if (path_node["target_pos"]) {
+                point.target_pos.x() = read_required_double(path_node["target_pos"], "x");
+                point.target_pos.y() = read_required_double(path_node["target_pos"], "y");
+            }
             point.target_vel = read_optional_double(path_node, "target_vel", point.target_vel);
             point.max_velocity = read_optional_double(path_node, "max_velocity", point.max_velocity);
             point.max_accelation = read_optional_double(path_node, "max_accelation", point.max_accelation);
@@ -539,6 +552,7 @@ bool Pilot::load_paths(const std::string& yaml_path)
             point.trajectory_connection_radius = read_optional_double(path_node, "trajectory_connection_radius", point.trajectory_connection_radius);
             point.stand_at_target = read_optional_bool(path_node, "stand_at_target", point.stand_at_target);
             point.stand_duration = read_optional_double(path_node, "stand_duration", point.stand_duration);
+            point.mode_switch_only = read_optional_bool(path_node, "mode_switch_only", point.mode_switch_only);
             loaded_paths.push_back(point);
         }
 
@@ -674,6 +688,9 @@ int32_t Pilot::policy_id_to_cmd_mode(int32_t policy_id)
     }
     if (policy_id == 6) {
         return 5;
+    }
+    if (policy_id == 8) {
+        return 8;
     }
     return policy_id;
 }

@@ -54,6 +54,7 @@ private:
         double trajectory_connection_radius{0.0};   //三次多项式轨迹衔接半径
         bool stand_at_target{false};   // 到达该点后是否进入位控站立
         double stand_duration{0.0};   // 到达该点后的位控站立时间，单位秒
+        bool mode_switch_only{false};   // 只切换控制模式，不按目标位姿生成运动轨迹
     };
 
     enum class PilotState {
