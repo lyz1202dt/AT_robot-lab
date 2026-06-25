@@ -102,6 +102,9 @@ void ArmCtrlNode::declare_parameters() {
     // 声明关节目标参数：4个关节的目标角度（弧度）
     this->declare_parameter<std::vector<double>>("joint_target", std::vector<double>(kJointDoF, 0.0));
 
+    // 声明当前关节状态参数：外部程序可通过参数服务设置机械臂启动/空闲状态
+    this->declare_parameter<std::vector<double>>("current_joint_state", std::vector<double>(kJointDoF, 0.0));
+
     // 声明笛卡尔目标位置参数：末端执行器的目标位置（x, y, z）
     this->declare_parameter<std::vector<double>>("cartesian_target_position", std::vector<double>{0.7, 0.0, 0.15});
 
@@ -170,9 +173,9 @@ void ArmCtrlNode::load_robot_description_and_build_solver() {
         joint_target_state_.position[static_cast<int>(i)] = joint_target[i]; // 设置关节目标位置
     }
 
-    current_joint_state_.position = joint_target_state_.position;
-    has_joint_state_              = true;                                    // 启动即认为已拥有关节状态
-    idle_hold_initialized_        = false;
+    const std::vector<double> current_joint_state = get_double_array_param(*this, "current_joint_state", kJointDoF);
+    set_current_joint_state_from_values(current_joint_state);
+    idle_hold_initialized_ = false;
 
     // 获取笛卡尔空间目标位置和姿态
     const std::vector<double> cartesian_position   = get_double_array_param(*this, "cartesian_target_position", 3);
@@ -626,6 +629,26 @@ void ArmCtrlNode::publish_visualization(const JointTrajectoryPoint& target_point
     marker_pub_->publish(markers); // 发布完整的 MarkerArray
 }
 
+bool ArmCtrlNode::set_current_joint_state_from_values(const std::vector<double>& values, std::string* error_reason) {
+    if (values.size() != kJointDoF) {
+        if (error_reason) {
+            *error_reason = "current_joint_state must contain 4 values";
+        }
+        return false;
+    }
+
+    for (std::size_t i = 0; i < kJointDoF; ++i) {
+        current_joint_state_.position[static_cast<int>(i)] = values[i];
+    }
+
+    has_joint_state_ = true;
+    if (active_motion_mode_ == MotionMode::kIdle || !execute_trajectory_) {
+        capture_idle_hold_from_current_state();
+    }
+
+    return true;
+}
+
 /**
  * @brief 关节状态消息回调
  *
@@ -764,6 +787,17 @@ rcl_interfaces::msg::SetParametersResult ArmCtrlNode::on_parameters_changed(cons
             for (std::size_t i = 0; i < kJointDoF; ++i) {
                 joint_target_state_.position[static_cast<int>(i)] = values[i];
             }
+        } else if (param.get_name() == "current_joint_state") {
+            const auto values = param.as_double_array();
+            if (!set_current_joint_state_from_values(values, &result.reason)) {
+                result.successful = false;
+                return result;
+            }
+            RCLCPP_INFO(get_logger(), "Updated current_joint_state to [%.3f, %.3f, %.3f, %.3f]",
+                        current_joint_state_.position[0],
+                        current_joint_state_.position[1],
+                        current_joint_state_.position[2],
+                        current_joint_state_.position[3]);
         } else if (param.get_name() == "cartesian_target_position") {
             const auto values = param.as_double_array();
             if (values.size() != 3) {

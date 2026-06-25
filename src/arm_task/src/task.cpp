@@ -81,6 +81,8 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
 
     arm_calc_param_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, arm_calc_node_name_);
     RCLCPP_INFO(this->get_logger(), "Using arm_calc parameter client target: %s", arm_calc_node_name_.c_str());
+    set_initial_arm_state(home_position_);
+
     vision_model_param_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, vision_model_node_name_);
     RCLCPP_INFO(this->get_logger(), "Using vision parameter client target: %s", vision_model_node_name_.c_str());
 
@@ -838,6 +840,17 @@ void ArmTaskNode::set_air_pump(bool enabled) {
     std_msgs::msg::Int32 msg;
     msg.data = enabled ? 1 : 0;
     air_pub_->publish(msg);
+}
+
+void ArmTaskNode::set_initial_arm_state(const std::vector<double>& joint_angles) {
+    if (!arm_calc_param_client_->wait_for_service(5s)) {
+        RCLCPP_ERROR(this->get_logger(), "Parameter service for %s not available, failed to set initial arm state",
+                     arm_calc_node_name_.c_str());
+        return;
+    }
+
+    arm_calc_param_client_->set_parameters({rclcpp::Parameter("current_joint_state", joint_angles)});
+    RCLCPP_INFO(this->get_logger(), "Set arm initial state to home_position_");
 }
 
 

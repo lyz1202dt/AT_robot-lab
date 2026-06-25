@@ -48,6 +48,7 @@ private:
     // Arm control operations (private methods)
     void execute_joint_space_trajectory(const std::vector<double>& joint_angles, double duration);
     void execute_cartesian_space_trajectory(const geometry_msgs::msg::PoseStamped& target_pose, double duration);
+    void set_initial_arm_state(const std::vector<double>& joint_angles);
     bool sample_target_xy_from_tf(double tf_timeout_sec, double& x, double& y);
     geometry_msgs::msg::PoseStamped make_fixed_pitch_pose(double x, double y, double z, double pitch_offset) const;
     bool wait_for_stable_vision_target(geometry_msgs::msg::Point& vision_box_pos, double& vision_variance);

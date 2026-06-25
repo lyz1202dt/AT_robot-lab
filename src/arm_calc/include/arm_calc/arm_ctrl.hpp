@@ -46,6 +46,7 @@ private:
     void publish_control_loop();
     void publish_joint_target(const JointTrajectoryPoint& point);
     void publish_visualization(const JointTrajectoryPoint& target_point);
+    bool set_current_joint_state_from_values(const std::vector<double>& values, std::string* error_reason = nullptr);
 
     void on_joint_state(const JointTrajectoryPoint& point);
     void on_visual_target(const geometry_msgs::msg::PoseStamped& msg);
