@@ -249,7 +249,7 @@ void ArmTaskNode::execute_task_state_machine() {
             RCLCPP_INFO(this->get_logger(), "巡视扫描物块");
             execute_look_for();
         }
-        else if(current_mode==6)
+        else if(current_mode==10)
         {
             RCLCPP_INFO(this->get_logger(), "调试录点模式");
             execut_pos_record();
@@ -279,8 +279,7 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
 
     // 机械臂先预摆到一个合适的位置，方便相机观察和后续运动
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    std::this_thread::sleep_for(300ms);
-    execute_joint_space_trajectory(ready_position, grasp_prepare_duration_);
+    execute_joint_space_trajectory(ready_position, 0.6);
     std::this_thread::sleep_for(700ms);
 
     double x = 0.0;
@@ -363,13 +362,13 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
     RCLCPP_INFO(this->get_logger(), "启动气泵");
     set_air_pump(true);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(pump_on_wait_ms_));
+    std::this_thread::sleep_for(500ms);
 
     // 6.转到抓着块的位置
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     execute_joint_space_trajectory(grasp_finish_position, 2.5);
 
-    std::this_thread::sleep_for(1000ms);
+    std::this_thread::sleep_for(1200ms);
 
     std_msgs::msg::Int32 ret;
     ret.data=1;
@@ -381,20 +380,10 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
 }
 
 void ArmTaskNode::execute_grasp_flow_on_box() {
-    // //移动到背上吸取箱子
-    // RCLCPP_INFO(this->get_logger(), "移动到再吸块位置");
-    // execute_joint_space_trajectory(re_graspe_box_position, 2.0);
-    // std::this_thread::sleep_for(2100ms);
-
-    // msg.data = 1;
-    // air_pub_->publish(msg);
-
-    std::this_thread::sleep_for(500ms);
-    
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    std::this_thread::sleep_for(300ms);
-    execute_joint_space_trajectory(ready_position, 2.0);
-    std::this_thread::sleep_for(2100ms);
+    execute_joint_space_trajectory(ready_position, 0.5);
+    std::this_thread::sleep_for(600ms);
+    
 
     double x = 0.0;
     double y = 0.0;
@@ -403,11 +392,8 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
     }
 
     //移动到预抓取位置，等待相机识别
+    RCLCPP_INFO(this->get_logger(), "移动到预抓取位置");
     geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
-
-
-    // 3.笛卡尔轨迹规划使机械臂运动到开启视觉识别的位置
-    RCLCPP_INFO(this->get_logger(), "移动到块的预抓取位置");
     execute_cartesian_space_trajectory(object_pose, 1.0);
     std::this_thread::sleep_for(1100ms);
 
@@ -476,10 +462,10 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
     RCLCPP_INFO(this->get_logger(), "启动气泵");
     set_air_pump(true);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(pump_on_wait_ms_));
+    std::this_thread::sleep_for(500ms);
 
 
-    RCLCPP_INFO(this->get_logger(), "移动到放块位置");
+    RCLCPP_INFO(this->get_logger(), "移动到框的位置");
     execute_joint_space_trajectory(release_box_position, 3.0);
 
     std::this_thread::sleep_for(3100ms);
