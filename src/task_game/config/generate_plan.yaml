@@ -21,7 +21,7 @@ start_to_a1_target_point: &start_to_a1_target_point
   max_velocity: 0.6
   max_accelation: 0.25
   max_omega: 1.2
-  kp: [2.0, 0.5, 0.5]
+  kp: [2.0, 0.5, 1.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.1
   allow_final_pos_allow: 0.05
@@ -36,7 +36,7 @@ a1_to_box0_target_point: &a1_to_box0_target_point
   max_velocity: 0.8
   max_accelation: 0.25
   max_omega: 1.2
-  kp: [2.0, 0.5, 0.5]
+  kp: [2.0, 0.5, 1.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.1
@@ -51,7 +51,7 @@ box0_to_box1_target_point: &box0_to_box1_target_point
   max_velocity: 0.8
   max_accelation: 0.25
   max_omega: 1.2
-  kp: [2.0, 0.5, 0.5]
+  kp: [2.0, 0.5, 1.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.1
@@ -66,7 +66,7 @@ box1_to_a2_target_point: &box1_to_a2_target_point
   max_velocity: 0.8
   max_accelation: 0.25
   max_omega: 1.2
-  kp: [2.5, 0.5, 0.5]
+  kp: [2.5, 0.5, 1.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.1
@@ -79,9 +79,9 @@ a2_to_dst1_target_point: &a2_to_dst1_target_point
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 1.5
-  max_accelation: 0.5
+  max_accelation: 0.75
   max_omega: 1.5
-  kp: [2.5, 0.5, 0.5]
+  kp: [2.5, 0.5, 1.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.1
@@ -94,9 +94,9 @@ box1_to_dst1_target_point: &box1_to_dst1_target_point
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 1.5
-  max_accelation: 0.5
+  max_accelation: 0.75
   max_omega: 1.5
-  kp: [2.5, 0.5, 0.5]
+  kp: [2.5, 0.5, 1.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.1
@@ -111,7 +111,7 @@ dst1_to_dst0_target_point: &dst1_to_dst0_target_point
   max_velocity: 0.7
   max_accelation: 0.3
   max_omega: 1.5
-  kp: [2.5, 1.0, 0.5]
+  kp: [2.5, 1.0, 1.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.1
@@ -124,7 +124,7 @@ dst0_to_dst2_target_point: &dst0_to_dst2_target_point
   constraint_target_yaw: true
   target_vel: 0.4
   max_velocity: 1.5
-  max_accelation: 0.5
+  max_accelation: 0.75
   max_omega: 1.5
   kp: [2.0, 0.5, 1.0]
   allow_start_dir_error: 3.2
@@ -139,9 +139,9 @@ dst2_to_box0_target_point: &dst2_to_box0_target_point
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 1.5
-  max_accelation: 0.5
+  max_accelation: 0.75
   max_omega: 1.5
-  kp: [2.5, 0.5, 0.5]
+  kp: [2.5, 0.5, 1.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.1
