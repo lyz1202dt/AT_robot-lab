@@ -87,17 +87,18 @@ using BoxPositionGrid = std::array<std::array<std::array<float, 2>, 4>, 3>;
 
 struct RoutePoints {
     std::array<float, 3> a1{};
+    std::array<float, 3> a2{};
 };
 
 struct PlanConfig {
     PositionGrid positions{};
     BoxPositionGrid arm_box_positions{};
-    RoutePoints route_a{};
-    RoutePoints route_c{};
-    RoutePoints route_e{};
+    RoutePoints route{};
     TargetPoint start_to_a1{};
     TargetPoint a1_to_box0{};
     TargetPoint box0_to_box1{};
+    TargetPoint box1_to_a2{};
+    TargetPoint a2_to_dst1{};
     TargetPoint box1_to_dst1{};
     TargetPoint dst1_to_dst0{};
     TargetPoint dst0_to_dst2{};
@@ -207,13 +208,14 @@ PlanConfig load_plan_config(const std::string& yaml_path) {
     config.positions[1] = read_point3_row(box_positions["pick_line_0"], "box_positions.pick_line_0");
     config.positions[2] = read_point3_row(box_positions["pick_line_1"], "box_positions.pick_line_1");
 
-    config.route_a.a1 = read_point3(routes["A"]["a1"], "routes.A.a1");
-    config.route_c.a1 = read_point3(routes["C"]["a1"], "routes.C.a1");
-    config.route_e.a1 = read_point3(routes["E"]["a1"], "routes.E.a1");
+    config.route.a1 = read_point3(routes["a1"], "routes.a1");
+    config.route.a2 = read_point3(routes["a2"], "routes.a2");
 
     config.start_to_a1 = read_target_point(target_points["start_to_a1"], "target_points.start_to_a1");
     config.a1_to_box0 = read_target_point(target_points["a1_to_box0"], "target_points.a1_to_box0");
     config.box0_to_box1 = read_target_point(target_points["box0_to_box1"], "target_points.box0_to_box1");
+    config.box1_to_a2 = read_target_point(target_points["box1_to_a2"], "target_points.box1_to_a2");
+    config.a2_to_dst1 = read_target_point(target_points["a2_to_dst1"], "target_points.a2_to_dst1");
     config.box1_to_dst1 = read_target_point(target_points["box1_to_dst1"], "target_points.box1_to_dst1");
     config.dst1_to_dst0 = read_target_point(target_points["dst1_to_dst0"], "target_points.dst1_to_dst0");
     config.dst0_to_dst2 = read_target_point(target_points["dst0_to_dst2"], "target_points.dst0_to_dst2");
@@ -421,7 +423,8 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         }
     }
 
-    const std::array<float, 3> a1 = plan_config.route_a.a1;
+    const std::array<float, 3> a1 = plan_config.route.a1;
+    const std::array<float, 3> a2 = plan_config.route.a2;
     const int first_col = choose_first_col(plan_config, a1);
     const auto pick_order = make_fixed_pick_order(first_col);
     if (pick_order.size() != 8) {
@@ -465,8 +468,12 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         plan.box1.to_box.trajectory.push_back(box1_src);
         plan.box1.to_box.target_points.push_back(plan_config.box0_to_box1);
 
+        if (is_first_plan) {
+            plan.box1.to_dst.trajectory.push_back(a2);
+            plan.box1.to_dst.target_points.push_back(plan_config.box1_to_a2);
+        }
         plan.box1.to_dst.trajectory.push_back(box1_dst);
-        plan.box1.to_dst.target_points.push_back(plan_config.box1_to_dst1);
+        plan.box1.to_dst.target_points.push_back(is_first_plan ? plan_config.a2_to_dst1 : plan_config.box1_to_dst1);
         plan.box0.to_dst.trajectory.push_back(box0_dst);
         plan.box0.to_dst.target_points.push_back(plan_config.dst1_to_dst0);
 

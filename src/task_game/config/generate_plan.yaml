@@ -8,7 +8,9 @@
 # - start_to_a1：启动区 -> 抓取区入口 a1（仅第一轮使用）
 # - a1_to_box0：a1 -> 第一轮 box0
 # - box0_to_box1：box0 -> box1
-# - box1_to_dst1：box1 -> dst1（放手上箱 box1）
+# - box1_to_a2：第一轮 box1 -> 出抓取区过渡点 a2
+# - a2_to_dst1：第一轮 a2 -> dst1（放手上箱 box1）
+# - box1_to_dst1：后续轮 box1 -> dst1（放手上箱 box1）
 # - dst1_to_dst0：dst1 -> dst0（放平板箱 box0）
 # - dst0_to_dst2：dst0 -> dst2（后退点位）
 # - dst2_to_box0：dst2 -> 下一轮 box0
@@ -19,7 +21,7 @@ start_to_a1_target_point: &start_to_a1_target_point
   max_velocity: 0.6
   max_accelation: 0.25
   max_omega: 1.2
-  kp: [2.0, 1.5, 1.5]
+  kp: [2.0, 1.0, 1.5]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.1
   allow_final_pos_allow: 0.05
@@ -33,8 +35,8 @@ a1_to_box0_target_point: &a1_to_box0_target_point
   target_vel: 0.0
   max_velocity: 0.5
   max_accelation: 0.25
-  max_omega: 1.8
-  kp: [2.0, 1.5, 1.5]
+  max_omega: 1.2
+  kp: [2.0, 1.0, 1.5]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.1
@@ -48,8 +50,38 @@ box0_to_box1_target_point: &box0_to_box1_target_point
   target_vel: 0.0
   max_velocity: 0.5
   max_accelation: 0.25
-  max_omega: 1.8
-  kp: [2.0, 1.5, 1.5]
+  max_omega: 1.2
+  kp: [2.0, 1.0, 1.5]
+  allow_start_dir_error: 0.1
+  allow_final_dir_error: 0.2
+  allow_final_pos_allow: 0.1
+  adjust_min_vel: 0.35
+  adjust_min_omega: 0.35
+  allow_y_vel: true
+  trajectory_connection_radius: 0.0
+
+box1_to_a2_target_point: &box1_to_a2_target_point
+  constraint_target_yaw: true
+  target_vel: 0.0
+  max_velocity: 0.5
+  max_accelation: 0.25
+  max_omega: 1.2
+  kp: [2.5, 1.0, 1.5]
+  allow_start_dir_error: 0.1
+  allow_final_dir_error: 0.2
+  allow_final_pos_allow: 0.1
+  adjust_min_vel: 0.35
+  adjust_min_omega: 0.35
+  allow_y_vel: true
+  trajectory_connection_radius: 0.0
+
+a2_to_dst1_target_point: &a2_to_dst1_target_point
+  constraint_target_yaw: true
+  target_vel: 0.0
+  max_velocity: 1.2
+  max_accelation: 0.5
+  max_omega: 1.2
+  kp: [2.5, 1.0, 1.5]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.1
@@ -64,7 +96,7 @@ box1_to_dst1_target_point: &box1_to_dst1_target_point
   max_velocity: 1.2
   max_accelation: 0.5
   max_omega: 1.2
-  kp: [2.5, 1.5, 1.5]
+  kp: [2.5, 1.0, 1.5]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.1
@@ -76,10 +108,10 @@ box1_to_dst1_target_point: &box1_to_dst1_target_point
 dst1_to_dst0_target_point: &dst1_to_dst0_target_point
   constraint_target_yaw: true
   target_vel: 0.0
-  max_velocity: 1.2
-  max_accelation: 0.5
+  max_velocity: 0.6
+  max_accelation: 0.25
   max_omega: 1.2
-  kp: [2.5, 1.5, 1.5]
+  kp: [2.5, 1.0, 1.5]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.1
@@ -94,7 +126,7 @@ dst0_to_dst2_target_point: &dst0_to_dst2_target_point
   max_velocity: 1.2
   max_accelation: 0.5
   max_omega: 1.2
-  kp: [2.0, 1.5, 1.5]
+  kp: [2.0, 1.0, 1.5]
   allow_start_dir_error: 3.2
   allow_final_dir_error: 0.15
   allow_final_pos_allow: 0.1
@@ -109,7 +141,7 @@ dst2_to_box0_target_point: &dst2_to_box0_target_point
   max_velocity: 1.2
   max_accelation: 0.5
   max_omega: 1.2
-  kp: [2.5, 1.5, 1.5]
+  kp: [2.5, 1.0, 1.5]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.1
@@ -155,33 +187,15 @@ box_positions:
     - [2.2019516369279833, -3.2947027090480336, -3.1193922909543348]
 
 routes:
-  # 默认使用 A.a1 作为初次进入抓取区的过渡点。
-  A:
-    a1: [0.895, -0.725, 0.0]
-  C:
-    a1: [0.895, -0.725, 0.0]
-  E:
-    a1: [0.895, -0.725, 0.0]
-
-  # 根据 VIP 所在边列选择进入路线：
-  # - A：默认路线
-  # - C：左右边都有 VIP 时走中间路线
-  # - E：仅左边有 VIP 时走上方路线
-  # 每条路线包含两个固定过渡点：a1、a2，格式为 [x, y, yaw]
-  # A:
-  #   a1: [0.895, -0.25, 0.0]
-  #   a2: [3.20, -0.25, 3.1415926]
-  # C:
-  #   a1: [0.895, -2.0, 0.0]
-  #   a2: [3.20, -2.0, 3.1415926]
-  # E:
-  #   a1: [0.895, -3.7, 0.0]
-  #   a2: [3.20, -3.7, 3.1415926]
+  a1: [0.895, -0.725, 0.0]
+  a2: [2.755, -0.725, 0.0]
 
 target_points:
   start_to_a1: *start_to_a1_target_point
   a1_to_box0: *a1_to_box0_target_point
   box0_to_box1: *box0_to_box1_target_point
+  box1_to_a2: *box1_to_a2_target_point
+  a2_to_dst1: *a2_to_dst1_target_point
   box1_to_dst1: *box1_to_dst1_target_point
   dst1_to_dst0: *dst1_to_dst0_target_point
   dst0_to_dst2: *dst0_to_dst2_target_point
