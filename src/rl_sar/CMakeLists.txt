@@ -527,7 +527,7 @@ endif()
 
 # executable for rl sim
 if(NOT USE_CMAKE)
-    add_executable(rl_sim src/rl_sim.cpp fsm_robot/cross_wall.cpp fsm_robot/cross_wall_atdog2.cpp)
+    add_executable(rl_sim src/rl_sim.cpp fsm_robot/cross_wall.cpp fsm_robot/cross_wall_atdog2.cpp fsm_robot/cross_wall_atdog3.cpp)
     target_link_libraries(rl_sim
         rl_sdk
         observation_buffer
@@ -872,7 +872,7 @@ if(USE_MUJOCO)
     endif()
 
     # Build executable
-    add_executable(rl_sim_mujoco src/rl_sim_mujoco.cpp ${MUJOCO_SIMULATE_SRC} ${JOYSTICK_SRC})
+    add_executable(rl_sim_mujoco src/rl_sim_mujoco.cpp fsm_robot/cross_wall.cpp fsm_robot/cross_wall_atdog2.cpp fsm_robot/cross_wall_atdog3.cpp ${MUJOCO_SIMULATE_SRC} ${JOYSTICK_SRC})
 
     # Suppress deprecation warnings for macOS 15.0 API changes in MuJoCo Simulate
     if(SYSTEM_TYPE STREQUAL "Darwin")

@@ -5,10 +5,10 @@
 using Vector3D = Eigen::Vector3d;
 using Vector2D = Eigen::Vector2d;
 
-bool use_limit_lf = false;
-bool use_limit_rf = false;
-bool use_limit_lb = false;
-bool use_limit_rb = false;
+static bool use_limit_lf = false;
+static bool use_limit_rf = false;
+static bool use_limit_lb = false;
+static bool use_limit_rb = false;
 
 
 std::tuple<Vector3D, double> CrossWallStateAtdog3::get_robot_mass_info(
