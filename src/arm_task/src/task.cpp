@@ -509,8 +509,8 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
 void ArmTaskNode::execute_place_flow_1_on_hand() {
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(place_position, 3.0);
-    std::this_thread::sleep_for(3100ms);
+    execute_joint_space_trajectory(place_position, 2.4);
+    std::this_thread::sleep_for(2500ms);
 
     double x = 0.0;
     double y = 0.0;
@@ -526,21 +526,19 @@ void ArmTaskNode::execute_place_flow_1_on_hand() {
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
         object_pose.pose.position.z);
 
-    execute_cartesian_space_trajectory(object_pose, place_cartesian_duration_);
+    execute_cartesian_space_trajectory(object_pose, 0.4);
 
-    std::this_thread::sleep_for(1000ms);
+    std::this_thread::sleep_for(400ms);
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
     set_air_pump(false);
 
-    std::this_thread::sleep_for(200ms);
+    std::this_thread::sleep_for(100ms);
 
     RCLCPP_INFO(this->get_logger(), "返回初始位置");
 
-    execute_joint_space_trajectory(home_position_, 0.5);
-
-    std::this_thread::sleep_for(200ms);
+    execute_joint_space_trajectory(home_position_, 0.3);
 
     std_msgs::msg::Int32 ret;
     ret.data=1;
@@ -571,9 +569,9 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
         object_pose.pose.position.z);
 
-    execute_cartesian_space_trajectory(object_pose, place_cartesian_duration_);
+    execute_cartesian_space_trajectory(object_pose, 0.6);
 
-    std::this_thread::sleep_for(1000ms);
+    std::this_thread::sleep_for(600ms);
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
@@ -603,12 +601,9 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
 void ArmTaskNode::execute_place_flow_1_on_box() {
 
     RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
-    execute_joint_space_trajectory(re_graspe_box_position, 2.0);
-    std::this_thread::sleep_for(2100ms);
-
     set_air_pump(true);
-
-    std::this_thread::sleep_for(500ms);
+    execute_joint_space_trajectory(re_graspe_box_position, 1.0);
+    std::this_thread::sleep_for(1500ms);
 
     execute_joint_space_trajectory(place_position, 3.5);
     std::this_thread::sleep_for(3600ms);
@@ -627,9 +622,9 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
         object_pose.pose.position.z);
 
-    execute_cartesian_space_trajectory(object_pose, place_cartesian_duration_);
+    execute_cartesian_space_trajectory(object_pose, 0.6);
 
-    std::this_thread::sleep_for(1000ms);
+    std::this_thread::sleep_for(600ms);
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
@@ -639,9 +634,7 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
 
     RCLCPP_INFO(this->get_logger(), "返回初始位置");
 
-    execute_joint_space_trajectory(home_position_, 0.5);
-
-    std::this_thread::sleep_for(200ms);
+    execute_joint_space_trajectory(home_position_, 0.3);
 
     std_msgs::msg::Int32 ret;
     ret.data=1;
@@ -655,12 +648,9 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
 void ArmTaskNode::execute_place_flow_2_on_box() {
 
     RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
-    execute_joint_space_trajectory(re_graspe_box_position, 2.0);
-    std::this_thread::sleep_for(2100ms);
-
     set_air_pump(true);
-
-    std::this_thread::sleep_for(500ms);
+    execute_joint_space_trajectory(re_graspe_box_position, 1.0);
+    std::this_thread::sleep_for(1500ms);
 
     execute_joint_space_trajectory(place_position_2, 3.5);
     std::this_thread::sleep_for(3600ms);
