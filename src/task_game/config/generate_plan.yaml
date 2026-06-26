@@ -75,7 +75,7 @@ box1_to_a2_target_point: &box1_to_a2_target_point
   allow_y_vel: false
   trajectory_connection_radius: 0.0
 
-a2_to_dst1_target_point: &a2_to_dst1_target_point
+a2_to_dst1_target_point: &a2_to_dst1_target_point #第一轮放
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 1.5
@@ -90,7 +90,7 @@ a2_to_dst1_target_point: &a2_to_dst1_target_point
   allow_y_vel: false
   trajectory_connection_radius: 0.0
 
-box1_to_dst1_target_point: &box1_to_dst1_target_point
+box1_to_dst1_target_point: &box1_to_dst1_target_point   #去
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 1.5
@@ -135,7 +135,7 @@ dst0_to_dst2_target_point: &dst0_to_dst2_target_point
   allow_y_vel: false
   trajectory_connection_radius: 0.0
 
-dst2_to_box0_target_point: &dst2_to_box0_target_point
+dst2_to_box0_target_point: &dst2_to_box0_target_point #回
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 1.5
@@ -158,15 +158,15 @@ arm_box_positions:
     - [5.3029109705983279, -2.5868884826018284]
     - [5.3007335126728156, -3.3749089465412117]
   arm_pick_line_0:
-    - [2.3057031825718362, -0.78742797639946691]
-    - [2.3041269846744017, -1.6230616797420099]
-    - [2.3075279121257311, -2.4930207968257649]
-    - [2.3178222657119596, -3.3118344263207438]
+    - [2.4057031825718362, -0.78742797639946691]
+    - [2.4041269846744017, -1.6230616797420099]
+    - [2.4075279121257311, -2.4930207968257649]
+    - [2.4178222657119596, -3.3118344263207438]
   arm_pick_line_1:
-    - [1.4482148673405985, -0.73649526379411068]
-    - [1.4484261795525111, -1.6042791426841454]
-    - [1.4260375673972872, -2.4545454227376979]
-    - [1.4337945100063618, -3.3067648749227123]
+    - [1.5482148673405985, -0.73649526379411068]
+    - [1.5484261795525111, -1.6042791426841454]
+    - [1.5260375673972872, -2.4545454227376979]
+    - [1.5337945100063618, -3.3067648749227123]
 
 # 机器狗导航到的箱子抓取/放置姿态，格式为 [x, y, yaw]
 box_positions:
