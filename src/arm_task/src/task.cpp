@@ -366,6 +366,10 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
 
     std::this_thread::sleep_for(500ms);
 
+    object_pose.pose.position.z = rady_grasp_z_;
+    execute_cartesian_space_trajectory(object_pose, 0.4);
+    std::this_thread::sleep_for(500ms);
+
     // 6.转到抓着块的位置
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     execute_joint_space_trajectory(grasp_finish_position, 2.5);
@@ -466,6 +470,9 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
 
     std::this_thread::sleep_for(500ms);
 
+    object_pose.pose.position.z = rady_grasp_z_;
+    execute_cartesian_space_trajectory(object_pose, 0.4);
+    std::this_thread::sleep_for(500ms);
 
     RCLCPP_INFO(this->get_logger(), "移动到框的位置");
     execute_joint_space_trajectory(release_box_position, 3.0);
@@ -477,13 +484,16 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
 
     std::this_thread::sleep_for(100ms);     //等待箱子落下
 
+    //回到初始位姿
+    execute_joint_space_trajectory(home_position_, 0.2);
+    std::this_thread::sleep_for(300ms);
+
     //通知抓取流程完成
     std_msgs::msg::Int32 ret;
     ret.data=1;
     arm_finished_pub->publish(ret);
 
-    //回到初始位姿
-    execute_joint_space_trajectory(home_position_, 0.5);
+    execute_joint_space_trajectory(finished_release_box_position, 0.5);
     std::this_thread::sleep_for(500ms);
 
     RCLCPP_INFO(this->get_logger(), "抓取流程完成");
@@ -492,7 +502,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
 void ArmTaskNode::execute_place_flow_1_on_hand() {
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(place_position, 0.3);
+    execute_joint_space_trajectory(place_position, 3.0);
     std::this_thread::sleep_for(3100ms);
 
     double x = 0.0;
@@ -537,7 +547,7 @@ void ArmTaskNode::execute_place_flow_1_on_hand() {
 void ArmTaskNode::execute_place_flow_2_on_hand() {
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(place_position_2, 0.3);
+    execute_joint_space_trajectory(place_position_2, 3.0);
     std::this_thread::sleep_for(3100ms);
 
     double x = 0.0;

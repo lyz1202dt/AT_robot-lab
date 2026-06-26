@@ -107,6 +107,7 @@ private:
     std::vector<double> grasp_finish_position{0.0, 0.1, 0.1, -0.8};
     std::vector<double> release_box_position{0.0, 1.8, 3.8, 0.6};   //将箱子放到狗背上的关节位置
     std::vector<double> re_graspe_box_position{0.0, 0.8, 3.3, -1.2};
+    std::vector<double> finished_release_box_position{0.0, 1.8, 2.0, 0.6};  //放置碰撞的中间轨迹点
     
 
     double grasp_z_{-0.16};
