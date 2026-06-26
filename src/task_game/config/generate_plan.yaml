@@ -22,7 +22,7 @@ start_to_a1_target_point: &start_to_a1_target_point
   max_accelation: 0.4
   max_omega: 1.2
   kp: [2.0, 0.5, 1.7]
-  allow_start_dir_error: 0.1
+  allow_start_dir_error: 0.2
   allow_final_dir_error: 0.1
   allow_final_pos_allow: 0.05
   adjust_min_vel: 0.25
@@ -37,9 +37,9 @@ a1_to_box0_target_point: &a1_to_box0_target_point
   max_accelation: 0.4
   max_omega: 1.2
   kp: [2.0, 0.5, 1.7]
-  allow_start_dir_error: 0.1
+  allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
-  allow_final_pos_allow: 0.1
+  allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
   adjust_min_omega: 0.35
   allow_y_vel: true
@@ -52,9 +52,9 @@ box0_to_box1_target_point: &box0_to_box1_target_point
   max_accelation: 0.4
   max_omega: 1.2
   kp: [2.0, 0.5, 1.7]
-  allow_start_dir_error: 0.1
+  allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
-  allow_final_pos_allow: 0.1
+  allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
   adjust_min_omega: 0.35
   allow_y_vel: false
@@ -67,9 +67,9 @@ box1_to_a2_target_point: &box1_to_a2_target_point
   max_accelation: 0.4
   max_omega: 1.2
   kp: [2.5, 0.5, 1.7]
-  allow_start_dir_error: 0.1
+  allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
-  allow_final_pos_allow: 0.1
+  allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
   adjust_min_omega: 0.35
   allow_y_vel: false
@@ -82,9 +82,9 @@ a2_to_dst1_target_point: &a2_to_dst1_target_point #第一轮放
   max_accelation: 0.9
   max_omega: 2.0
   kp: [2.5, 0.5, 1.7]
-  allow_start_dir_error: 0.1
+  allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
-  allow_final_pos_allow: 0.1
+  allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
   adjust_min_omega: 0.35
   allow_y_vel: false
@@ -97,9 +97,9 @@ box1_to_dst1_target_point: &box1_to_dst1_target_point   #去
   max_accelation: 0.9
   max_omega: 2.0
   kp: [2.5, 0.5, 1.7]
-  allow_start_dir_error: 0.1
+  allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
-  allow_final_pos_allow: 0.1
+  allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
   adjust_min_omega: 0.35
   allow_y_vel: false
@@ -112,9 +112,9 @@ dst1_to_dst0_target_point: &dst1_to_dst0_target_point
   max_accelation: 0.5
   max_omega: 2.0
   kp: [2.5, 1.0, 1.7]
-  allow_start_dir_error: 0.1
+  allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
-  allow_final_pos_allow: 0.1
+  allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
   adjust_min_omega: 0.35
   allow_y_vel: true
@@ -129,7 +129,7 @@ dst0_to_dst2_target_point: &dst0_to_dst2_target_point
   kp: [2.0, 0.5, 1.7]
   allow_start_dir_error: 3.2
   allow_final_dir_error: 0.15
-  allow_final_pos_allow: 0.1
+  allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
   adjust_min_omega: 0.35
   allow_y_vel: true
@@ -142,9 +142,9 @@ dst2_to_box0_target_point: &dst2_to_box0_target_point #回
   max_accelation: 0.9
   max_omega: 2.0
   kp: [2.5, 0.5, 1.7]
-  allow_start_dir_error: 0.1
+  allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
-  allow_final_pos_allow: 0.1
+  allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
   adjust_min_omega: 0.35
   allow_y_vel: false
