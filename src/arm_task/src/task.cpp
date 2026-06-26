@@ -281,8 +281,8 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
 
     // 机械臂先预摆到一个合适的位置，方便相机观察和后续运动
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(ready_position, 0.3);
-    std::this_thread::sleep_for(400ms);
+    execute_joint_space_trajectory(ready_position, 0.2);
+    std::this_thread::sleep_for(250ms);
 
     double x = 0.0;
     double y = 0.0;
@@ -296,8 +296,8 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
 
     // 3.笛卡尔轨迹规划使机械臂运动到开启视觉识别的位置
     RCLCPP_INFO(this->get_logger(), "移动到块的预抓取位置");
-    execute_cartesian_space_trajectory(object_pose, 0.5);
-    std::this_thread::sleep_for(600ms);
+    execute_cartesian_space_trajectory(object_pose, 0.3);
+    std::this_thread::sleep_for(350ms);
 
     double vision_weight = 0.0;
     geometry_msgs::msg::Point vision_box_pos;
@@ -342,6 +342,10 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         RCLCPP_INFO(this->get_logger(), "未启用视觉辅助抓取，使用雷达坐标抓取");
     }
 
+    sample_target_xy_from_tf(0.02, x, y);   //拿到最新的稳定TF
+    object_pose.pose.position.x=x;
+    object_pose.pose.position.y=y;
+
     if (vision_weight > 0.0) {
         object_pose.pose.position.x =
             object_pose.pose.position.x * (1.0 - vision_weight) + vision_box_pos.x * vision_weight;
@@ -357,8 +361,8 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
                 object_pose.pose.position.z,
                 vision_weight);
 
-    execute_cartesian_space_trajectory(object_pose,0.5);
-    std::this_thread::sleep_for(500ms);
+    execute_cartesian_space_trajectory(object_pose,0.3);
+    std::this_thread::sleep_for(200ms);
 
     // 通知气泵开始吸了
     RCLCPP_INFO(this->get_logger(), "启动气泵");
@@ -370,25 +374,23 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
     execute_cartesian_space_trajectory(object_pose, 0.4);
     std::this_thread::sleep_for(500ms);
 
-    // 6.转到抓着块的位置
-    RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(grasp_finish_position, 2.0);
-
-    std::this_thread::sleep_for(1000ms);
-
     std_msgs::msg::Int32 ret;
     ret.data=1;
     arm_finished_pub->publish(ret);
 
-    std::this_thread::sleep_for(1000ms);
+    // 6.转到抓着块的位置
+    RCLCPP_INFO(this->get_logger(), "移动到准备位置");
+    execute_joint_space_trajectory(grasp_finish_position, 1.7);
+
+    std::this_thread::sleep_for(1700ms);
 
     RCLCPP_INFO(this->get_logger(), "抓取流程完成");
 }
 
 void ArmTaskNode::execute_grasp_flow_on_box() {
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(ready_position, 0.3);
-    std::this_thread::sleep_for(400ms);
+    execute_joint_space_trajectory(ready_position, 0.2);
+    std::this_thread::sleep_for(250ms);
     
 
     double x = 0.0;
@@ -400,8 +402,8 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
     //移动到预抓取位置，等待相机识别
     RCLCPP_INFO(this->get_logger(), "移动到预抓取位置");
     geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
-    execute_cartesian_space_trajectory(object_pose, 0.5);
-    std::this_thread::sleep_for(600ms);
+    execute_cartesian_space_trajectory(object_pose, 0.3);
+    std::this_thread::sleep_for(350ms);
 
     double vision_weight = 0.0;
     geometry_msgs::msg::Point vision_box_pos;
@@ -446,6 +448,10 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
         RCLCPP_INFO(this->get_logger(), "未启用视觉辅助抓取，使用雷达坐标抓取");
     }
 
+    sample_target_xy_from_tf(0.02, x, y);   //拿到最新的稳定TF
+    object_pose.pose.position.x=x;
+    object_pose.pose.position.y=y;
+
     if (vision_weight > 0.0) {
         object_pose.pose.position.x =
             object_pose.pose.position.x * (1.0 - vision_weight) + vision_box_pos.x * vision_weight;
@@ -461,8 +467,8 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
                 object_pose.pose.position.z,
                 vision_weight);
 
-    execute_cartesian_space_trajectory(object_pose,0.5);
-    std::this_thread::sleep_for(500ms);
+    execute_cartesian_space_trajectory(object_pose,0.3);
+    std::this_thread::sleep_for(200ms);
 
     // 通知气泵开始吸了
     RCLCPP_INFO(this->get_logger(), "启动气泵");
@@ -475,14 +481,15 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
     std::this_thread::sleep_for(500ms);
 
     RCLCPP_INFO(this->get_logger(), "移动到框的位置");
-    execute_joint_space_trajectory(release_box_position, 2.5);
+    execute_joint_space_trajectory(release_box_position, 2.1);
 
-    std::this_thread::sleep_for(2500ms);
+    std::this_thread::sleep_for(2400ms);
 
     //设置气泵松开，
     set_air_pump(false);
 
     std::this_thread::sleep_for(100ms);     //等待箱子落下
+
 
     //回退到中间位置防止动作干涉
     execute_joint_space_trajectory(finished_release_box_position, 0.2);
@@ -493,8 +500,8 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
     ret.data=1;
     arm_finished_pub->publish(ret);
 
-    execute_joint_space_trajectory(home_position_, 0.4);
-    std::this_thread::sleep_for(00ms);
+    execute_joint_space_trajectory(home_position_, 0.35);
+    std::this_thread::sleep_for(300ms);
 
     RCLCPP_INFO(this->get_logger(), "抓取流程完成");
 }
@@ -749,7 +756,7 @@ void ArmTaskNode::execute_lift_search() {
 }
 
 bool ArmTaskNode::sample_target_xy_from_tf(double tf_timeout_sec, double& x, double& y) {
-    constexpr int sample_count = 8;
+    constexpr int sample_count = 4;
     int successful_samples = 0;
     int remaining_retries = 100;
     std::array<geometry_msgs::msg::TransformStamped, sample_count> transfer_array;
