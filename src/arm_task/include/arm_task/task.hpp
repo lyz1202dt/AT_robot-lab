@@ -91,7 +91,7 @@ private:
     // Configuration
     std::string base_frame_{"arm_base_link"};
     std::string camera_frame_{"camera_link"};
-    std::string object_frame_{"target_object"};
+    std::string object_frame_{"object_fame"};
     std::string arm_calc_node_name_{"arm_calc_node"};
     std::string vision_model_node_name_{"arm_node"};
     bool air_pump_{false};              // Parameter service index for air pump control

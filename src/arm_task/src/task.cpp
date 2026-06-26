@@ -31,7 +31,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     this->declare_parameter<bool>("air_pump", false);
     this->declare_parameter<bool>("use_vision_grasp", false);
     this->declare_parameter<std::string>("base_frame", "arm_base_link");
-    this->declare_parameter<std::string>("object_frame", "target_object");
+    this->declare_parameter<std::string>("object_frame", "object_frame");
     this->declare_parameter<std::string>("arm_calc_node_name", "arm_calc_node");
     this->declare_parameter<std::string>("vision_model_node_name", "arm_node");
     declare_config_parameters();

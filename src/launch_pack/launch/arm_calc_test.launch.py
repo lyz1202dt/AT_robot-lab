@@ -64,18 +64,6 @@ def generate_launch_description():
         output="screen",
     )
 
-    static_tf_target = Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        arguments=[
-            "0.06", "-0.02", "0.29",  # x, y, z translation
-            "0.0", "0.0", "0.0", "1.0",  # quaternion (x, y, z, w) - identity (no rotation)
-            "camera_link",
-            "target_object"
-        ],
-        output="screen",
-    )
-
     # Based on robotic_arm.xml: camera at pos="0.1 0.09 -0.03" relative to link5
     # xyaxes="0 0 1 0 1 0" means x-axis points in z direction, y-axis points in y direction
     # This is a 90-degree rotation about y-axis
