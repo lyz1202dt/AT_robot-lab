@@ -63,7 +63,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
 
     // 上层控制命令订阅，告诉机械臂执行哪个任务
     arm_cmd_sub_ = this->create_subscription<std_msgs::msg::Int32>(
-        "arm_cmd", 10, [this](const std_msgs::msg::Int32& msg){current_mode=msg.data;});
+        "arm_cmd", 10, [this](const std_msgs::msg::Int32& msg){RCLCPP_INFO(get_logger(),"arm_task接收到命令");arm_task_mode_=msg.data;});
 
     // 气泵的控制话题，发布机械臂需要的吸取和放置命令
     air_pub_ = this->create_publisher<std_msgs::msg::Int32>("air_pump_target", 10);
