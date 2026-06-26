@@ -489,7 +489,7 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         plan.box0.place_at_second_floor = placed_count[plan.box0.box_id] > 0;
         ++placed_count[plan.box0.box_id];
 
-        plan.dst2_pos = {box0_dst[0] - 0.1f, box0_dst[1], box0_dst[2]};
+        plan.dst2_pos = {box0_dst[0] - 0.1f, box0_dst[1], 3.14};
         plan.dst0_to_dst2 = plan_config.dst0_to_dst2;
         last_dst2 = plan.dst2_pos;
 

@@ -132,7 +132,7 @@ dst0_to_dst2_target_point: &dst0_to_dst2_target_point
   allow_final_pos_allow: 0.1
   adjust_min_vel: 0.25
   adjust_min_omega: 0.3
-  allow_y_vel: false
+  allow_y_vel: true
   trajectory_connection_radius: 0.0
 
 dst2_to_box0_target_point: &dst2_to_box0_target_point #回
