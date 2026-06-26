@@ -78,7 +78,7 @@ box1_to_a2_target_point: &box1_to_a2_target_point
 a2_to_dst1_target_point: &a2_to_dst1_target_point #第一轮放
   constraint_target_yaw: true
   target_vel: 0.0
-  max_velocity: 1.8
+  max_velocity: 2.0
   max_accelation: 0.9
   max_omega: 1.75
   kp: [2.5, 0.5, 1.4]
@@ -93,7 +93,7 @@ a2_to_dst1_target_point: &a2_to_dst1_target_point #第一轮放
 box1_to_dst1_target_point: &box1_to_dst1_target_point   #去
   constraint_target_yaw: true
   target_vel: 0.0
-  max_velocity: 1.8
+  max_velocity: 2.0
   max_accelation: 0.9
   max_omega: 1.75
   kp: [2.5, 0.5, 1.4]
@@ -138,7 +138,7 @@ dst0_to_dst2_target_point: &dst0_to_dst2_target_point
 dst2_to_box0_target_point: &dst2_to_box0_target_point #回
   constraint_target_yaw: true
   target_vel: 0.0
-  max_velocity: 1.8
+  max_velocity: 2.0
   max_accelation: 0.9
   max_omega: 1.75
   kp: [2.5, 0.5, 1.4]
