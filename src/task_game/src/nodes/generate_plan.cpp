@@ -347,15 +347,7 @@ void GeneratePlaneAction::init_publishers(const rclcpp::Node::SharedPtr& node) {
     publishers_ready_ = true;
 }
 
-void GeneratePlaneAction::send_arm_cmd(int cmd_data, const std::function<void()>& on_sent) {
-    std_msgs::msg::Int32 msg;
-    msg.data = cmd_data;
-    arm_cmd_pub_->publish(msg);
-    RCLCPP_INFO(node_->get_logger(), "发送arm_cmd 消息 %d", msg.data);
-    if (on_sent) {
-        on_sent();
-    }
-}
+
 
 BT::Status GeneratePlaneAction::execute(BT& tree) {
     auto* context = tree.get_context<Robot>();
@@ -384,9 +376,10 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
             return BT::FAILED;
         }
 
-        send_arm_cmd(kArmboxid, [&]() {
-            RCLCPP_INFO(context->node_->get_logger(), "arm_cmd=%d 已发送完成", kArmboxid);
-        });
+        std_msgs::msg::Int32 msg;
+        msg.data = kArmboxid;
+        arm_cmd_pub_->publish(msg);
+        RCLCPP_INFO(node_->get_logger(), "发送arm_cmd 消息 %d", msg.data);
 
         if (!wait_semaphore_with_timeout(&box_id_grid_sem_, box_id_kSemaphoreTimeout)) {
             RCLCPP_ERROR(context->node_->get_logger(), "等待 box_id_grid 超时");
