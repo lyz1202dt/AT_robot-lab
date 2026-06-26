@@ -374,15 +374,16 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
     execute_cartesian_space_trajectory(object_pose, 0.4);
     std::this_thread::sleep_for(500ms);
 
-    std_msgs::msg::Int32 ret;
-    ret.data=1;
-    arm_finished_pub->publish(ret);
-
-    // 6.转到抓着块的位置
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     execute_joint_space_trajectory(grasp_finish_position, 1.7);
 
-    std::this_thread::sleep_for(1700ms);
+    std::this_thread::sleep_for(800ms);
+
+    std_msgs::msg::Int32 ret;
+    ret.data=1;
+    arm_finished_pub->publish(ret);
+    
+    std::this_thread::sleep_for(900ms);
 
     RCLCPP_INFO(this->get_logger(), "抓取流程完成");
 }
