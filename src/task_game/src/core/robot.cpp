@@ -261,7 +261,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             if (auto_pilot_enabled.load()) {
                 bt.run();
             }
-            std::this_thread::sleep_for(50ms);
+            //std::this_thread::sleep_for(50ms);
         }
     });
 }
