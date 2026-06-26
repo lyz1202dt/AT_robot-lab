@@ -368,7 +368,9 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     }
 
     init_subscriptions(context->node_);
+    RCLCPP_INFO(context->node_->get_logger(), box_grid_sub_ ? "创建接收方话题 box_id_grid 成功" : "创建接收方话题 box_id_grid 失败");
     init_publishers(context->node_);
+    RCLCPP_INFO(context->node_->get_logger(), arm_cmd_pub_ ? "创建发送方 arm_cmd 成功" : "创建发送方 arm_cmd 失败");
 
     if (!wait_for_stage(context, Robot::kTreeGeneratePlan)) {
         return BT::FAILED;
