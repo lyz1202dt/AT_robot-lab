@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <semaphore.h>
@@ -27,6 +28,7 @@ protected:
 private:
     void init_subscriptions(const rclcpp::Node::SharedPtr& node);
     void init_publishers(const rclcpp::Node::SharedPtr& node);
+    void send_arm_cmd(int cmd_data, const std::function<void()>& on_sent = {});
 
 private:
     bool generated{false};
