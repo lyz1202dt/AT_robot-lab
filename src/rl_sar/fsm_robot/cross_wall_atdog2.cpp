@@ -749,11 +749,46 @@ RobotTarget CrossWallStateAtdog2::update() {
            
             if(!success)
             {
+                // lf_step.update_flight_trajectory(lf_cart_pos,Vector3D(0.0,0.0,0.0),Vector3D(0.12,0.08,0.0),Vector3D(0.0,0.0,0.0),2.0,0.2);
+                lf_step.update_flight_trajectory(lf_cart_pos,Vector3D(0.0,0.0,0.0),Vector3D(0.12, 0.08,0.15),Vector3D(0.0,0.0,0.0),2.0,0.2);
+                rf_step.update_flight_trajectory(rf_cart_pos,Vector3D(0.0,0.0,0.0),Vector3D(0.12,-0.08,0.15),Vector3D(0.0,0.0,0.0),2.0,0.2);
+                // lf_step.update_support_trajectory(lf_cart_pos,Vector3D(0.12, 0.08, 0.15),2.0); 
+                // rf_step.update_support_trajectory(rf_cart_pos,Vector3D(0.12,-0.08, 0.15),2.0);  
+                lb_step.update_support_trajectory(lb_cart_pos,Vector3D(0.0,0.0,0.0),2.0);
+                rb_step.update_support_trajectory(rb_cart_pos,Vector3D(0.0,0.0,0.0),2.0);
                 // change_flag = false;   
                 cross_wall_stage=14;
             }
         }
         else if(cross_wall_stage == 14 && change_flag == true)
+        {
+            if (cross_wall_stage != last_stage)
+            {
+                cross_wall_stage_time = std::chrono::steady_clock::now();
+                last_stage = cross_wall_stage;
+            }
+            use_limit_lb = false;
+            use_limit_lf = false;
+            use_limit_rb = false;
+            use_limit_rf = false;
+         
+            bool success=false;
+
+            double time=get_elapsed_time();
+
+            std::tie(rf_foot_exp_pos,rf_foot_exp_vel,rf_foot_exp_acc)=rf_step.get_target(time, success);
+            std::tie(lf_foot_exp_pos,lf_foot_exp_vel,lf_foot_exp_acc)=lf_step.get_target(time, success);
+            std::tie(rb_foot_exp_pos,rb_foot_exp_vel,rb_foot_exp_acc)=rb_step.get_target(time, success);
+            std::tie(lb_foot_exp_pos,lb_foot_exp_vel,lb_foot_exp_acc)=lb_step.get_target(time, success);
+
+            if (!success)
+            {
+                // change_flag = false;   
+                cross_wall_stage=15;
+                // Cross_wall_over = true;
+            }
+        }
+        else if(cross_wall_stage == 15 && change_flag == true)
         {
             if (cross_wall_stage != last_stage)
             {
@@ -788,12 +823,12 @@ RobotTarget CrossWallStateAtdog2::update() {
             rf_foot_exp_force = walk_targets.rf_force;
             lb_foot_exp_force = walk_targets.lb_force;
             rb_foot_exp_force = walk_targets.rb_force;
-            // lb_foot_exp_vel = Eigen::Vector3d(0.0,0.0,0.0);
-            // rb_foot_exp_vel = Eigen::Vector3d(0.0,0.0,0.0);
-            // lb_foot_exp_acc = Eigen::Vector3d(0.0,0.0,0.0);
-            // rb_foot_exp_acc = Eigen::Vector3d(0.0,0.0,0.0);
-            // lb_foot_exp_force = Eigen::Vector3d(0.0,0.0,0.0);
-            // rb_foot_exp_force = Eigen::Vector3d(0.0,0.0,0.0);
+            lb_foot_exp_vel = Eigen::Vector3d(0.0,0.0,0.0);
+            rb_foot_exp_vel = Eigen::Vector3d(0.0,0.0,0.0);
+            lb_foot_exp_acc = Eigen::Vector3d(0.0,0.0,0.0);
+            rb_foot_exp_acc = Eigen::Vector3d(0.0,0.0,0.0);
+            lb_foot_exp_force = Eigen::Vector3d(0.0,0.0,0.0);
+            rb_foot_exp_force = Eigen::Vector3d(0.0,0.0,0.0);
 
             if (finished)
             {
