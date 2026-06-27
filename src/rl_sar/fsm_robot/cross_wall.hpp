@@ -28,6 +28,7 @@
 #include <chrono>
 #include <iostream>
 #include <memory>
+#include <vector>
 
 class LegCalc;
 
@@ -301,4 +302,49 @@ public:
 
         return {pos, vel, acc};
     }
+};
+
+struct DiagonalWalkTargets {
+    Eigen::Vector3d lf_pos{0.0, 0.0, 0.0}, rf_pos{0.0, 0.0, 0.0}, lb_pos{0.0, 0.0, 0.0}, rb_pos{0.0, 0.0, 0.0};
+    Eigen::Vector3d lf_vel{0.0, 0.0, 0.0}, rf_vel{0.0, 0.0, 0.0}, lb_vel{0.0, 0.0, 0.0}, rb_vel{0.0, 0.0, 0.0};
+    Eigen::Vector3d lf_acc{0.0, 0.0, 0.0}, rf_acc{0.0, 0.0, 0.0}, lb_acc{0.0, 0.0, 0.0}, rb_acc{0.0, 0.0, 0.0};
+    Eigen::Vector3d lf_force{0.0, 0.0, 0.0}, rf_force{0.0, 0.0, 0.0}, lb_force{0.0, 0.0, 0.0}, rb_force{0.0, 0.0, 0.0};
+};
+
+class DiagonalWalkController {
+public:
+    void configure(double step_time, double step_height, double step_support_rate, double body_vx, double body_vy, double yaw_rate, double duration);
+    void reset();
+    void start(const std::shared_ptr<Robot_t>& robot);
+    bool update(
+        const std::shared_ptr<Robot_t>& robot, double mass, const Eigen::Vector2d& mass_center_pos, double now, DiagonalWalkTargets& targets);
+
+private:
+    static Eigen::Vector2d calc_leg_planar_vel(const Eigen::Vector3d& body_vel, const Eigen::Vector3d& omega, const Eigen::Vector3d& leg_offset);
+    static Eigen::Vector3d make_support_target(const Eigen::Vector2d& exp_vel, double time);
+    static Eigen::Vector3d make_flight_target(const Eigen::Vector2d& exp_vel, double time);
+    void update_leg_velocity_targets(const std::shared_ptr<Robot_t>& robot);
+    void solve_support_forces(const std::shared_ptr<Robot_t>& robot, double mass, const Eigen::Vector2d& mass_center_pos, DiagonalWalkTargets& targets) const;
+
+    double step_time_{0.6};
+    double step_height_{0.08};
+    double step_support_rate_{0.6};
+    double body_vx_{0.18};
+    double body_vy_{0.0};
+    double yaw_rate_{0.0};
+    double duration_{3.0};
+
+    double main_phase_start_{0.0};
+    double slave_phase_start_{0.0};
+    double slave_phase_stop_{0.0};
+
+    bool initialized_{false};
+    bool stop_requested_{false};
+    bool step1_support_updated_{false};
+    bool step2_support_updated_{false};
+    bool step1_flight_updated_{false};
+    bool step2_flight_updated_{false};
+
+    Eigen::Vector2d lf_exp_vel_{0.0, 0.0}, rf_exp_vel_{0.0, 0.0}, lb_exp_vel_{0.0, 0.0}, rb_exp_vel_{0.0, 0.0};
+    Cross_Step lf_step_, rf_step_, lb_step_, rb_step_;
 };

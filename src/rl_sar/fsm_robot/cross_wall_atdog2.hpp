@@ -48,4 +48,5 @@ public:
     bool Cross_wall_over{false};
 
     Cross_Step lf_step, rf_step, lb_step, rb_step;
+    DiagonalWalkController diagonal_walk;
 };
