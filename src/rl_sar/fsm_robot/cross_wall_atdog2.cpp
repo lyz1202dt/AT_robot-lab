@@ -89,7 +89,7 @@ std::tuple<Vector3D, double> CrossWallStateAtdog2::get_robot_mass_info(
 CrossWallStateAtdog2::CrossWallStateAtdog2(const std::string& urdf_file_path)
 {
         robot = std::make_shared<Robot_t>(urdf_file_path);
-        diagonal_walk.configure(0.6, 0.08, 0.6, 0.6, 0.0, 0.0, 0.9, -0.04);
+        diagonal_walk.configure(0.6, 0.08, 0.6, 0.3, 0.0, 0.0, 2.0, -0.04);
     
         Vector3D com_3d;
         std::tie(com_3d, mass) = get_robot_mass_info(robot->lf_joint_pos, robot->rf_joint_pos, robot->lb_joint_pos, robot->rb_joint_pos);
@@ -749,12 +749,12 @@ RobotTarget CrossWallStateAtdog2::update() {
            
             if(!success)
             {
-                lf_step.update_flight_trajectory(lf_cart_pos,Vector3D(0.0,0.0,0.0),Vector3D(0.08, 0.08,0.0),Vector3D(0.0,0.0,0.0),2.0,0.2); 
-                rf_step.update_flight_trajectory(rf_cart_pos,Vector3D(0.0,0.0,0.0),Vector3D(0.08,-0.08,0.0),Vector3D(0.0,0.0,0.0),2.0,0.2);
-                // lf_step.update_support_trajectory(lf_cart_pos,lf_cart_pos,2.0); 
-                // rf_step.update_support_trajectory(rf_cart_pos,rf_cart_pos,2.0); 
-                lb_step.update_support_trajectory(lb_cart_pos,Vector3D(0.0, 0.18,0.2),2.0);
-                rb_step.update_support_trajectory(rb_cart_pos,Vector3D(0.0,-0.18,0.2),2.0);
+                // lf_step.update_flight_trajectory(lf_cart_pos,Vector3D(0.0,0.0,0.0),Vector3D(0.12, 0.08,0.0),Vector3D(0.0,0.0,0.0),1.0,0.2); 
+                // rf_step.update_flight_trajectory(rf_cart_pos,Vector3D(0.0,0.0,0.0),Vector3D(0.12,-0.08,0.0),Vector3D(0.0,0.0,0.0),1.0,0.2);
+                lf_step.update_support_trajectory(lf_cart_pos,lf_cart_pos,1.0); 
+                rf_step.update_support_trajectory(rf_cart_pos,rf_cart_pos,1.0); 
+                lb_step.update_support_trajectory(lb_cart_pos,Vector3D(0.16, 0.12,0.35),1.0);
+                rb_step.update_support_trajectory(rb_cart_pos,Vector3D(0.16,-0.12,0.35),1.0);
                 
 
                 // change_flag=false;
@@ -791,6 +791,7 @@ RobotTarget CrossWallStateAtdog2::update() {
         {
             if (cross_wall_stage != last_stage)
             {
+                diagonal_walk.configure(0.6, 0.08, 0.6, 0.6, 0.0, 0.0, 0.8, 0.0);
                 diagonal_walk.start(robot);
                 cross_wall_stage_time = std::chrono::steady_clock::now();
                 last_stage = cross_wall_stage;
@@ -802,22 +803,31 @@ RobotTarget CrossWallStateAtdog2::update() {
             DiagonalWalkTargets walk_targets;
             const bool finished = diagonal_walk.update(robot, mass, mass_center_pos, get_elapsed_time(), walk_targets);
 
-            lf_foot_exp_pos = walk_targets.lf_pos + Eigen::Vector3d(0.0,0.0,0.05);
-            rf_foot_exp_pos = walk_targets.rf_pos + Eigen::Vector3d(0.0,0.0,0.05);
+            // lf_foot_exp_pos = walk_targets.lf_pos + Eigen::Vector3d(0.0,0.0,0.05);
+            // rf_foot_exp_pos = walk_targets.rf_pos + Eigen::Vector3d(0.0,0.0,0.05);
+
+            lf_foot_exp_pos = walk_targets.lf_pos;
+            rf_foot_exp_pos = walk_targets.rf_pos;
             lb_foot_exp_pos = walk_targets.lb_pos + Eigen::Vector3d(0.0,0.0,0.05);
             rb_foot_exp_pos = walk_targets.rb_pos + Eigen::Vector3d(0.0,0.0,0.05);
             lf_foot_exp_vel = walk_targets.lf_vel;
             rf_foot_exp_vel = walk_targets.rf_vel;
-            lb_foot_exp_vel = walk_targets.lb_vel;
-            rb_foot_exp_vel = walk_targets.rb_vel;
+            // lb_foot_exp_vel = walk_targets.lb_vel;
+            // rb_foot_exp_vel = walk_targets.rb_vel;
             lf_foot_exp_acc = walk_targets.lf_acc;
             rf_foot_exp_acc = walk_targets.rf_acc;
-            lb_foot_exp_acc = walk_targets.lb_acc;
-            rb_foot_exp_acc = walk_targets.rb_acc;
+            // lb_foot_exp_acc = walk_targets.lb_acc;
+            // rb_foot_exp_acc = walk_targets.rb_acc;
             lf_foot_exp_force = walk_targets.lf_force;
             rf_foot_exp_force = walk_targets.rf_force;
-            lb_foot_exp_force = walk_targets.lb_force;
-            rb_foot_exp_force = walk_targets.rb_force;
+            // lb_foot_exp_force = walk_targets.lb_force;
+            // rb_foot_exp_force = walk_targets.rb_force;
+            lb_foot_exp_vel = Eigen::Vector3d(0.0,0.0,0.0);
+            rb_foot_exp_vel = Eigen::Vector3d(0.0,0.0,0.0);
+            lb_foot_exp_acc = Eigen::Vector3d(0.0,0.0,0.0);
+            rb_foot_exp_acc = Eigen::Vector3d(0.0,0.0,0.0);
+            lb_foot_exp_force = Eigen::Vector3d(0.0,0.0,0.0);
+            rb_foot_exp_force = Eigen::Vector3d(0.0,0.0,0.0);
 
             if (finished)
             {
