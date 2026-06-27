@@ -16,7 +16,7 @@ from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
 from rcl_interfaces.srv import SetParameters
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
-from std_msgs.msg import Int32MultiArray, MultiArrayDimension
+from std_msgs.msg import Int32, Int32MultiArray, MultiArrayDimension
 
 
 ROWS = 2
@@ -86,9 +86,14 @@ def make_grid_message(grid: Sequence[Sequence[int]]) -> Int32MultiArray:
 
 
 class BoxIdGridNode(Node):
-    def __init__(self, ui_updates: "queue.Queue[Grid]") -> None:
+    def __init__(
+        self,
+        ui_updates: "queue.Queue[Grid]",
+        vip_box_id_updates: "queue.Queue[int]",
+    ) -> None:
         super().__init__("task_game_ui")
         self._ui_updates = ui_updates
+        self._vip_box_id_updates = vip_box_id_updates
         self._publisher = self.create_publisher(Int32MultiArray, "box_id_grid", 10)
         self._start_game_client = self.create_client(
             SetParameters,
@@ -102,6 +107,12 @@ class BoxIdGridNode(Node):
             Int32MultiArray,
             "box_id_grid",
             self._on_box_id_grid,
+            10,
+        )
+        self._vip_box_id_subscription = self.create_subscription(
+            Int32,
+            "vip_box_id",
+            self._on_vip_box_id,
             10,
         )
 
@@ -190,18 +201,31 @@ class BoxIdGridNode(Node):
             return
         self._ui_updates.put(normalize_grid(msg.data))
 
+    def _on_vip_box_id(self, msg: Int32) -> None:
+        self._vip_box_id_updates.put(int(msg.data))
+
 
 class TaskGameUi:
-    def __init__(self, root: tk.Tk, ros_node: BoxIdGridNode, ui_updates: "queue.Queue[Grid]") -> None:
+    def __init__(
+        self,
+        root: tk.Tk,
+        ros_node: BoxIdGridNode,
+        ui_updates: "queue.Queue[Grid]",
+        vip_box_id_updates: "queue.Queue[int]",
+    ) -> None:
         self._root = root
         self._ros_node = ros_node
         self._ui_updates = ui_updates
+        self._vip_box_id_updates = vip_box_id_updates
         self._grid = default_grid()
+        self._vip_box_id: Optional[int] = None
         self._buttons: List[List[tk.Button]] = []
+        self._vip_box_id_label: Optional[tk.Label] = None
         self._after_id = None
 
         self._build_window()
         self._refresh_all_buttons()
+        self._refresh_vip_box_id()
         self._after_id = self._root.after(50, self._poll_ros_updates)
 
     def _build_window(self) -> None:
@@ -248,6 +272,15 @@ class TaskGameUi:
                 button_row.append(button)
             self._buttons.append(button_row)
 
+        self._vip_box_id_label = tk.Label(
+            shell,
+            bg="#f5f7fb",
+            fg="#111827",
+            font=("Sans", 72, "bold"),
+            anchor="center",
+        )
+        self._vip_box_id_label.grid(row=3, column=0, sticky="ew", pady=(18, 0))
+
     def _create_primary_button(self, parent: tk.Widget, text: str, command) -> tk.Button:
         return tk.Button(
             parent,
@@ -276,16 +309,27 @@ class TaskGameUi:
         self._ros_node.publish_grid(snapshot)
 
     def _poll_ros_updates(self) -> None:
-        updated = False
+        grid_updated = False
+        vip_box_id_updated = False
         while True:
             try:
                 self._grid = self._ui_updates.get_nowait()
-                updated = True
+                grid_updated = True
             except queue.Empty:
                 break
 
-        if updated:
+        while True:
+            try:
+                self._vip_box_id = self._vip_box_id_updates.get_nowait()
+                vip_box_id_updated = True
+            except queue.Empty:
+                break
+
+        if grid_updated:
             self._refresh_all_buttons()
+
+        if vip_box_id_updated:
+            self._refresh_vip_box_id()
 
         self._after_id = self._root.after(50, self._poll_ros_updates)
 
@@ -306,6 +350,12 @@ class TaskGameUi:
             activeforeground=style["fg"],
         )
 
+    def _refresh_vip_box_id(self) -> None:
+        if self._vip_box_id_label is None:
+            return
+        text = "" if self._vip_box_id is None else str(self._vip_box_id)
+        self._vip_box_id_label.configure(text=text)
+
     def close(self) -> None:
         if self._after_id is not None:
             try:
@@ -318,7 +368,8 @@ class TaskGameUi:
 def main(args: Optional[Sequence[str]] = None) -> None:
     rclpy.init(args=args)
     ui_updates: "queue.Queue[Grid]" = queue.Queue()
-    ros_node = BoxIdGridNode(ui_updates)
+    vip_box_id_updates: "queue.Queue[int]" = queue.Queue()
+    ros_node = BoxIdGridNode(ui_updates, vip_box_id_updates)
     executor = SingleThreadedExecutor()
     executor.add_node(ros_node)
 
@@ -328,7 +379,7 @@ def main(args: Optional[Sequence[str]] = None) -> None:
     app = None
     try:
         root = tk.Tk()
-        app = TaskGameUi(root, ros_node, ui_updates)
+        app = TaskGameUi(root, ros_node, ui_updates, vip_box_id_updates)
 
         def on_close() -> None:
             if app is not None:
