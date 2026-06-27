@@ -313,7 +313,9 @@ struct DiagonalWalkTargets {
 
 class DiagonalWalkController {
 public:
-    void configure(double step_time, double step_height, double step_support_rate, double body_vx, double body_vy, double yaw_rate, double duration);
+    void configure(
+        double step_time, double step_height, double step_support_rate, double body_vx, double body_vy, double yaw_rate, double duration,
+        double stance_z_offset = 0.0);
     void reset();
     void start(const std::shared_ptr<Robot_t>& robot);
     bool update(
@@ -321,8 +323,8 @@ public:
 
 private:
     static Eigen::Vector2d calc_leg_planar_vel(const Eigen::Vector3d& body_vel, const Eigen::Vector3d& omega, const Eigen::Vector3d& leg_offset);
-    static Eigen::Vector3d make_support_target(const Eigen::Vector2d& exp_vel, double time);
-    static Eigen::Vector3d make_flight_target(const Eigen::Vector2d& exp_vel, double time);
+    static Eigen::Vector3d make_support_target(const Eigen::Vector2d& exp_vel, double time, double stance_z_offset);
+    static Eigen::Vector3d make_flight_target(const Eigen::Vector2d& exp_vel, double time, double stance_z_offset);
     void update_leg_velocity_targets(const std::shared_ptr<Robot_t>& robot);
     void solve_support_forces(const std::shared_ptr<Robot_t>& robot, double mass, const Eigen::Vector2d& mass_center_pos, DiagonalWalkTargets& targets) const;
 
@@ -333,6 +335,7 @@ private:
     double body_vy_{0.0};
     double yaw_rate_{0.0};
     double duration_{3.0};
+    double stance_z_offset_{0.0};
 
     double main_phase_start_{0.0};
     double slave_phase_start_{0.0};

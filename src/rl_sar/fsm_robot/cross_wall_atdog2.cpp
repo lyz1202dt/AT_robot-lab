@@ -90,13 +90,40 @@ CrossWallStateAtdog2::CrossWallStateAtdog2(const std::string& urdf_file_path)
 {
 
         robot = std::make_shared<Robot_t>(urdf_file_path);
-        diagonal_walk.configure(0.6, 0.08, 0.6, 0.6, 0.0, 0.0, 10.0);
+        diagonal_walk.configure(0.6, 0.08, 0.6, 0.6, 0.0, 0.0, 10.0, -0.10);
     
         Vector3D com_3d;
         std::tie(com_3d, mass) = get_robot_mass_info(robot->lf_joint_pos, robot->rf_joint_pos, robot->lb_joint_pos, robot->rb_joint_pos);
         mass_center_pos = Eigen::Vector2d(com_3d.x(), com_3d.y());
         
 }
+// • diagonal_walk.configure(0.6, 0.08, 0.6, 0.6, 0.0, 0.0, 10.0, -0.04); 的参数顺序定义在 src/rl_sar/fsm_robot/cross_wall.hpp:316，含义是：
+
+//   1. step_time = 0.6
+//      每个步态周期时长，单位秒。越大步子越慢。
+
+//   2. step_height = 0.08
+//      摆动腿抬腿高度，单位米。这里是 8cm。
+
+//   3. step_support_rate = 0.6
+//      支撑相占整个周期的比例。0.6 表示一条腿大约 60% 时间在支撑，40% 时间在摆动。
+
+//   4. body_vx = 0.6
+//      机身期望前进速度，单位通常按 m/s 理解。这个值越大，插入的对角步态前进越快。
+
+//   5. body_vy = 0.0
+//      机身侧向速度。0.0 表示不横移。
+
+//   6. yaw_rate = 0.0
+//      机身转向角速度。0.0 表示直走不转弯。
+
+//   7. duration = 10.0
+//      这段 diagonal_walk 最长持续时间，单位秒。到时间后控制器会收步并结束这段行走。
+
+//   8. stance_z_offset = -0.04
+//      支撑/落脚的 z 偏置，单位米。这里是 -4cm。
+//      在你这套坐标里，z 更负表示脚往下伸，所以它的效果是“脚更往下撑，机身更高一点”。
+
 
 void CrossWallStateAtdog2::enter() {
     robot->lf_leg_calc->set_init_joint_pos(robot->lf_joint_pos);

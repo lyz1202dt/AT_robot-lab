@@ -398,7 +398,8 @@ void LegCalc::get_joint_pd(int index, double& kp, double& kd) {
 }
 
 void DiagonalWalkController::configure(
-    double step_time, double step_height, double step_support_rate, double body_vx, double body_vy, double yaw_rate, double duration) {
+    double step_time, double step_height, double step_support_rate, double body_vx, double body_vy, double yaw_rate, double duration,
+    double stance_z_offset) {
     step_time_         = step_time;
     step_height_       = step_height;
     step_support_rate_ = step_support_rate;
@@ -406,6 +407,7 @@ void DiagonalWalkController::configure(
     body_vy_           = body_vy;
     yaw_rate_          = yaw_rate;
     duration_          = duration;
+    stance_z_offset_   = stance_z_offset;
 }
 
 void DiagonalWalkController::reset() {
@@ -426,12 +428,12 @@ Eigen::Vector2d DiagonalWalkController::calc_leg_planar_vel(
     return {leg_vel.x(), leg_vel.y()};
 }
 
-Eigen::Vector3d DiagonalWalkController::make_support_target(const Eigen::Vector2d& exp_vel, double time) {
-    return {-exp_vel.x() * time * 0.5, -exp_vel.y() * time * 0.5, 0.0};
+Eigen::Vector3d DiagonalWalkController::make_support_target(const Eigen::Vector2d& exp_vel, double time, double stance_z_offset) {
+    return {-exp_vel.x() * time * 0.5, -exp_vel.y() * time * 0.5, stance_z_offset};
 }
 
-Eigen::Vector3d DiagonalWalkController::make_flight_target(const Eigen::Vector2d& exp_vel, double time) {
-    return {exp_vel.x() * time * 0.5, exp_vel.y() * time * 0.5, 0.0};
+Eigen::Vector3d DiagonalWalkController::make_flight_target(const Eigen::Vector2d& exp_vel, double time, double stance_z_offset) {
+    return {exp_vel.x() * time * 0.5, exp_vel.y() * time * 0.5, stance_z_offset};
 }
 
 void DiagonalWalkController::update_leg_velocity_targets(const std::shared_ptr<Robot_t>& robot) {
@@ -461,10 +463,14 @@ void DiagonalWalkController::start(const std::shared_ptr<Robot_t>& robot) {
     const auto lb_pos = robot->lb_leg_calc->foot_pos(robot->lb_joint_pos);
     const auto rb_pos = robot->rb_leg_calc->foot_pos(robot->rb_joint_pos);
 
-    lf_step_.update_flight_trajectory(lf_pos, Eigen::Vector3d::Zero(), make_flight_target(lf_exp_vel_, flight_time), Eigen::Vector3d(lf_exp_vel_.x(), lf_exp_vel_.y(), 0.0), flight_time, step_height_);
-    rb_step_.update_flight_trajectory(rb_pos, Eigen::Vector3d::Zero(), make_flight_target(rb_exp_vel_, flight_time), Eigen::Vector3d(rb_exp_vel_.x(), rb_exp_vel_.y(), 0.0), flight_time, step_height_);
-    rf_step_.update_support_trajectory(rf_pos, make_support_target(rf_exp_vel_, slave_time), slave_time);
-    lb_step_.update_support_trajectory(lb_pos, make_support_target(lb_exp_vel_, slave_time), slave_time);
+    lf_step_.update_flight_trajectory(
+        lf_pos, Eigen::Vector3d::Zero(), make_flight_target(lf_exp_vel_, flight_time, stance_z_offset_),
+        Eigen::Vector3d(lf_exp_vel_.x(), lf_exp_vel_.y(), 0.0), flight_time, step_height_);
+    rb_step_.update_flight_trajectory(
+        rb_pos, Eigen::Vector3d::Zero(), make_flight_target(rb_exp_vel_, flight_time, stance_z_offset_),
+        Eigen::Vector3d(rb_exp_vel_.x(), rb_exp_vel_.y(), 0.0), flight_time, step_height_);
+    rf_step_.update_support_trajectory(rf_pos, make_support_target(rf_exp_vel_, slave_time, stance_z_offset_), slave_time);
+    lb_step_.update_support_trajectory(lb_pos, make_support_target(lb_exp_vel_, slave_time, stance_z_offset_), slave_time);
 
     slave_phase_stop_ = slave_time;
 }
@@ -528,17 +534,17 @@ bool DiagonalWalkController::update(
         step1_support_updated_ = true;
         step1_flight_updated_  = false;
         slave_phase_stop_      = now + slave_gap;
-        lf_step_.update_support_trajectory(lf_pos, make_support_target(lf_exp_vel_, support_time), support_time);
-        rb_step_.update_support_trajectory(rb_pos, make_support_target(rb_exp_vel_, support_time), support_time);
+        lf_step_.update_support_trajectory(lf_pos, make_support_target(lf_exp_vel_, support_time, stance_z_offset_), support_time);
+        rb_step_.update_support_trajectory(rb_pos, make_support_target(rb_exp_vel_, support_time, stance_z_offset_), support_time);
         main_phase_start_ = now;
     } else if (!stop_requested_ && step1_support_updated_ && !step1_flight_updated_ && (now - main_phase_start_) > support_time) {
         step1_support_updated_ = false;
         step1_flight_updated_  = true;
         lf_step_.update_flight_trajectory(
-            lf_pos, Eigen::Vector3d(-lf_exp_vel_.x(), -lf_exp_vel_.y(), 0.0), make_flight_target(lf_exp_vel_, flight_time),
+            lf_pos, Eigen::Vector3d(-lf_exp_vel_.x(), -lf_exp_vel_.y(), 0.0), make_flight_target(lf_exp_vel_, flight_time, stance_z_offset_),
             Eigen::Vector3d(lf_exp_vel_.x(), lf_exp_vel_.y(), 0.0), flight_time, step_height_);
         rb_step_.update_flight_trajectory(
-            rb_pos, Eigen::Vector3d(-rb_exp_vel_.x(), -rb_exp_vel_.y(), 0.0), make_flight_target(rb_exp_vel_, flight_time),
+            rb_pos, Eigen::Vector3d(-rb_exp_vel_.x(), -rb_exp_vel_.y(), 0.0), make_flight_target(rb_exp_vel_, flight_time, stance_z_offset_),
             Eigen::Vector3d(rb_exp_vel_.x(), rb_exp_vel_.y(), 0.0), flight_time, step_height_);
         main_phase_start_ = now;
     }
@@ -546,18 +552,18 @@ bool DiagonalWalkController::update(
     if (step2_flight_updated_ && !step2_support_updated_ && (now - slave_phase_start_) > flight_time) {
         step2_support_updated_ = true;
         step2_flight_updated_  = false;
-        rf_step_.update_support_trajectory(rf_pos, make_support_target(rf_exp_vel_, support_time), support_time);
-        lb_step_.update_support_trajectory(lb_pos, make_support_target(lb_exp_vel_, support_time), support_time);
+        rf_step_.update_support_trajectory(rf_pos, make_support_target(rf_exp_vel_, support_time, stance_z_offset_), support_time);
+        lb_step_.update_support_trajectory(lb_pos, make_support_target(lb_exp_vel_, support_time, stance_z_offset_), support_time);
         slave_phase_start_ = now;
         slave_phase_stop_  = now + support_time;
     } else if (!stop_requested_ && step2_support_updated_ && !step2_flight_updated_ && now > slave_phase_stop_) {
         step2_support_updated_ = false;
         step2_flight_updated_  = true;
         rf_step_.update_flight_trajectory(
-            rf_pos, Eigen::Vector3d(-rf_exp_vel_.x(), -rf_exp_vel_.y(), 0.0), make_flight_target(rf_exp_vel_, flight_time),
+            rf_pos, Eigen::Vector3d(-rf_exp_vel_.x(), -rf_exp_vel_.y(), 0.0), make_flight_target(rf_exp_vel_, flight_time, stance_z_offset_),
             Eigen::Vector3d(rf_exp_vel_.x(), rf_exp_vel_.y(), 0.0), flight_time, step_height_);
         lb_step_.update_flight_trajectory(
-            lb_pos, Eigen::Vector3d(-lb_exp_vel_.x(), -lb_exp_vel_.y(), 0.0), make_flight_target(lb_exp_vel_, flight_time),
+            lb_pos, Eigen::Vector3d(-lb_exp_vel_.x(), -lb_exp_vel_.y(), 0.0), make_flight_target(lb_exp_vel_, flight_time, stance_z_offset_),
             Eigen::Vector3d(lb_exp_vel_.x(), lb_exp_vel_.y(), 0.0), flight_time, step_height_);
         slave_phase_start_ = now;
     }
