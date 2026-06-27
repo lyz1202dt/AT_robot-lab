@@ -24,7 +24,7 @@ COLS = 4
 GRID_SIZE = ROWS * COLS
 START_GAME_PARAM_NODE = "robot_calc_node"
 START_GAME_PARAM = "start_game"
-START_CALC_PARAM_NODE = "arithmetic_problem_node"
+START_CALC_PARAM_NODE = "arithmetic_node"
 START_CALC_PARAM = "start_calc"
 
 COLOR_SEQUENCE = (255, 0, 1, 2, 3)
