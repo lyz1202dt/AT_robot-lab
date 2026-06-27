@@ -101,12 +101,14 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         //     msg.key);
         if (!ignore_mode_switch) {
             if (!check_key_pressed(msg.key, 1)) {
-                if (current_control_mode == 1) {
+                if (current_control_mode == 1 && ++manual_switch_request_count_ >= kManualSwitchDebounceFrames) {
                     set_manual_mode(this);
                     current_control_mode = 0;
+                    manual_switch_request_count_ = 0;
                     RCLCPP_INFO(node_->get_logger(), "请求切入手动控制");
                 }
             } else {
+                manual_switch_request_count_ = 0;
                 if (current_control_mode == 0) {
                     current_control_mode = 1;
                     auto_pilot_enabled = true;
@@ -114,9 +116,12 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                     RCLCPP_INFO(node_->get_logger(), "请求切入自动控制");
                 }
             }
+        } else {
+            manual_switch_request_count_ = 0;
         }
 
         if (current_control_mode == 0) {
+            manual_switch_request_count_ = 0;
             if (check_key_trigger(msg.key, 4)) {
                 cmd.mode = 1;
                 RCLCPP_INFO(node_->get_logger(), "位控站立模式");

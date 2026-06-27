@@ -104,15 +104,17 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         // TODO:处理并发布遥控器数据
         if (!check_key_pressed(msg.key,1)) // 拨杆处于中间位置或向下位置，即手动控制
         {
-            if (current_control_mode == 1) {
+            if (current_control_mode == 1 && ++manual_switch_request_count_ >= kManualSwitchDebounceFrames) {
                 cmd.mode = 1;    // 如果刚才是自动控制，那么切入手动控制时进入位控站立模式(可能是有紧急情况)
                 pilot->reset();
                 pilot->stop();
                 current_control_mode = 0;
+                manual_switch_request_count_ = 0;
                 RCLCPP_INFO(node_->get_logger(), "请求切入手动控制");
             }
         }
         else {      //拨杆处于向上位置，切入自动模式
+            manual_switch_request_count_ = 0;
             if(current_control_mode==0)
             {
                 current_control_mode = 1;
@@ -237,6 +239,9 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 record->finishe_record();
                 RCLCPP_INFO(node_->get_logger(),"完成记录");
             }
+        }
+        if (current_control_mode == 0) {
+            manual_switch_request_count_ = 0;
         }
 
         record_key(msg.key);

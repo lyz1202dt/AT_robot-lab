@@ -32,6 +32,8 @@ private:
 
     uint32_t last_key{0};
     int current_control_mode{0};
+    int manual_switch_request_count_{0};
+    static constexpr int kManualSwitchDebounceFrames = 3;
     int32_t current_record_policy_id{2};
     bool autopilot_available{true};
     bool record_yaml_opened{false};
