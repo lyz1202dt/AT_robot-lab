@@ -101,7 +101,7 @@ private:
     // Joint positions from task_config.yaml
     std::vector<double> ready_position{0.0, 2.1, 2.0, 3.0}; //机械臂抓块时的预设位置
     std::vector<double> home_position_{0.0, 0.1, 0.1, 0.0};//机械臂初始0位置
-    std::vector<double> place_position{0.0, 2.1, 2.0, 3.0};
+    std::vector<double> place_position{0.0, 1.7, 2.8, 3.3};
     std::vector<double> place_position_2{0.0, 1.7, 2.8, 3.3};
     std::vector<double> look_for_position_{0.0, 1.2, 2.3, 2.8};   //这是全场扫描时机械臂合适的位置    //0.0 1.0 2.45 3.1
     std::vector<double> grasp_finish_position{0.0, 0.1, 0.1, -0.8};
@@ -112,7 +112,7 @@ private:
 
     double grasp_z_{-0.16};
     double rady_grasp_z_{0.07};
-    double place_level_1_z_{-0.10};
+    double place_level_1_z_{0.10};
     double place_level_2_z_{0.15};
     double pitch_offset_{-0.25};
 

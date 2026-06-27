@@ -109,9 +109,9 @@ dst1_to_dst0_target_point: &dst1_to_dst0_target_point
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 0.65
-  max_accelation: 0.5
+  max_accelation: 0.4
   max_omega: 2.0
-  kp: [2.5, 1.0, 1.2]
+  kp: [2.0, 0.5, 1.2]
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.15
