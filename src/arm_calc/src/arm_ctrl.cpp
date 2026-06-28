@@ -56,6 +56,16 @@ JointTrajectoryPoint BuildStaticJointTarget(const JointVector& position) {
     return point;
 }
 
+std::string DefaultUrdfFilename(const std::string& model_package) {
+    if (model_package == "arm") {
+        return "arm4.urdf";
+    }
+    if (model_package == "arm2") {
+        return "arm2.urdf";
+    }
+    return model_package + ".urdf";
+}
+
 } // namespace
 
 // ArmCtrlNode类构造函数：初始化机械臂控制节点
@@ -86,6 +96,11 @@ void ArmCtrlNode::declare_parameters() {
 
     // 声明是否执行轨迹参数：true=执行轨迹, false=仅预览
     this->declare_parameter<bool>("execute_trajectory", false);
+
+    // 声明URDF模型包参数：launch可注入arm或arm2
+    this->declare_parameter<std::string>("model_package", "arm");
+    // 声明URDF文件名参数：为空时按模型包名使用默认文件名
+    this->declare_parameter<std::string>("urdf_filename", "");
 
     // 声明视觉伺服比例增益参数：控制视觉伺服的响应速度
     this->declare_parameter<double>("visual_servo_kp", 2.0);
@@ -247,16 +262,25 @@ std::string ArmCtrlNode::fetch_robot_description() const {
 
 // 加载本地URDF文件：从包的share目录读取URDF文件
 std::string ArmCtrlNode::load_local_urdf() const {
-    // 获取arm包的share目录路径
-    const std::string arm_share = ament_index_cpp::get_package_share_directory("arm");
+    // 获取launch注入的模型包与URDF文件名
+    const std::string model_package = this->get_parameter("model_package").as_string();
+    std::string urdf_filename = this->get_parameter("urdf_filename").as_string();
+    if (urdf_filename.empty()) {
+        urdf_filename = DefaultUrdfFilename(model_package);
+    }
+
+    // 获取模型包的share目录路径
+    const std::string model_share = ament_index_cpp::get_package_share_directory(model_package);
     // 构建URDF文件路径
-    const std::string urdf_path = arm_share + "/model/arm4.urdf";
+    const std::string urdf_path = model_share + "/model/" + urdf_filename;
     // 打开文件
     std::ifstream input(urdf_path);
     if (!input.is_open()) {
         // 打开失败抛异常
         throw std::runtime_error("unable to open local URDF: " + urdf_path);
     }
+
+    RCLCPP_INFO(this->get_logger(), "Loaded local URDF from %s", urdf_path.c_str());
 
     // 读取文件内容到字符串流
     std::ostringstream buffer;

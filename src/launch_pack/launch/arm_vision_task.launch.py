@@ -1,5 +1,5 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -7,23 +7,23 @@ from ament_index_python.packages import get_package_share_directory
 import os
 
 
-def generate_launch_description():
-    arm_share = get_package_share_directory("arm")
+def launch_setup(context, *args, **kwargs):
+    model_package = LaunchConfiguration("model_package").perform(context)
     arm_task_share = get_package_share_directory("arm_task")
     launch_pack_share = get_package_share_directory("launch_pack")
 
-    urdf_path = os.path.join(arm_share, "model", "arm4.urdf")
+    urdf_filename = {
+        "arm": "arm4.urdf",
+        "arm2": "arm2.urdf",
+    }[model_package]
+
+    model_share = get_package_share_directory(model_package)
+    urdf_path = os.path.join(model_share, "model", urdf_filename)
     task_config = os.path.join(arm_task_share, "config", "task_config.yaml")
     rviz_path = os.path.join(launch_pack_share, "rviz", "display_config.rviz")
 
     with open(urdf_path, "r", encoding="utf-8") as inf:
         robot_desc = inf.read()
-
-    show_rviz_arg = DeclareLaunchArgument(
-        "show_rviz",
-        default_value="true",
-        description="Whether to start RViz2 together with MuJoCo simulation",
-    )
 
     robot_state_pub = Node(
         package="robot_state_publisher",
@@ -42,6 +42,10 @@ def generate_launch_description():
     arm_calc = Node(
         package="arm_calc",
         executable="arm_calc",
+        parameters=[{
+            "model_package": model_package,
+            "urdf_filename": urdf_filename,
+        }],
         output="screen",
     )
 
@@ -71,19 +75,18 @@ def generate_launch_description():
     # This is a 90-degree rotation about y-axis
     # Quaternion for 90-degree rotation about y-axis: (0, 0.7071, 0, 0.7071)
     static_tf_camera = Node(
-    package="tf2_ros",
-    executable="static_transform_publisher",
-    arguments=[
-        "-0.03165", "0.0", "0.042",
-        "0.7071", "0.0", "0.7071", "0.0",
-        "joint5",
-        "camera_link"
-    ],
-    output="screen",
-)
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        arguments=[
+            "-0.03165", "0.0", "0.042",
+            "0.7071", "0.0", "0.7071", "0.0",
+            "joint5",
+            "camera_link",
+        ],
+        output="screen",
+    )
 
-    return LaunchDescription([
-        show_rviz_arg,
+    return [
         robot_state_pub,
         joint_state_pub,
         arm_calc,
@@ -91,4 +94,25 @@ def generate_launch_description():
         arm_task,
         arm_driver,
         static_tf_camera,
+    ]
+
+
+def generate_launch_description():
+    model_package_arg = DeclareLaunchArgument(
+        "model_package",
+        default_value="arm",
+        choices=["arm", "arm2"],
+        description="URDF description package to load: arm or arm2",
+    )
+
+    show_rviz_arg = DeclareLaunchArgument(
+        "show_rviz",
+        default_value="true",
+        description="Whether to start RViz2 together with MuJoCo simulation",
+    )
+
+    return LaunchDescription([
+        model_package_arg,
+        show_rviz_arg,
+        OpaqueFunction(function=launch_setup),
     ])
