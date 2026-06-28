@@ -19,7 +19,11 @@ def launch_setup(context, *args, **kwargs):
 
     model_share = get_package_share_directory(model_package)
     urdf_path = os.path.join(model_share, "model", urdf_filename)
-    task_config = os.path.join(arm_task_share, "config", "task_config.yaml")
+    task_config_filename = {
+        "arm": "task_config.yaml",
+        "arm2": "task_config2.yaml",
+    }[model_package]
+    task_config = os.path.join(arm_task_share, "config", task_config_filename)
     rviz_path = os.path.join(launch_pack_share, "rviz", "display_config.rviz")
 
     with open(urdf_path, "r", encoding="utf-8") as inf:

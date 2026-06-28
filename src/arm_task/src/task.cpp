@@ -31,6 +31,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     this->declare_parameter<bool>("air_pump", false);
     this->declare_parameter<bool>("use_vision_grasp", false);
     this->declare_parameter<std::string>("base_frame", "arm_base_link");
+    this->declare_parameter<std::string>("camera_frame", "camera_link");
     this->declare_parameter<std::string>("object_frame", "object_frame");
     this->declare_parameter<std::string>("arm_calc_node_name", "arm_calc_node");
     this->declare_parameter<std::string>("vision_model_node_name", "arm_node");
@@ -42,6 +43,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     this->get_parameter("use_vision_grasp", use_vision_grasp);
     use_vision_grasp_ = use_vision_grasp;
     this->get_parameter("base_frame", base_frame_);
+    this->get_parameter("camera_frame", camera_frame_);
     this->get_parameter("object_frame", object_frame_);
     this->get_parameter("arm_calc_node_name", arm_calc_node_name_);
     this->get_parameter("vision_model_node_name", vision_model_node_name_);
@@ -102,61 +104,111 @@ ArmTaskNode::~ArmTaskNode() {
 }
 
 void ArmTaskNode::declare_config_parameters() {
-    // this->declare_parameter<std::vector<double>>("positions.ready", ready_position);
-    // this->declare_parameter<std::vector<double>>("positions.home", home_position_);
-    // this->declare_parameter<std::vector<double>>("positions.place_level_1", place_position);
-    // this->declare_parameter<std::vector<double>>("positions.place_level_2", place_position_2);
-    // this->declare_parameter<std::vector<double>>("positions.look_for", look_for_position_);
-    // this->declare_parameter<std::vector<double>>("positions.grasp_finish", grasp_finish_position);
+    this->declare_parameter<std::vector<double>>("positions.ready", ready_position);
+    this->declare_parameter<std::vector<double>>("positions.home", home_position_);
+    this->declare_parameter<std::vector<double>>("positions.place_level_1", place_position);
+    this->declare_parameter<std::vector<double>>("positions.place_level_2", place_position_2);
+    this->declare_parameter<std::vector<double>>("positions.look_for", look_for_position_);
+    this->declare_parameter<std::vector<double>>("positions.grasp_finish", grasp_finish_position);
+    this->declare_parameter<std::vector<double>>("positions.release_box", release_box_position);
+    this->declare_parameter<std::vector<double>>("positions.re_grasp_box", re_graspe_box_position);
+    this->declare_parameter<std::vector<double>>("positions.finished_release_box", finished_release_box_position);
 
-    // this->declare_parameter<double>("poses.grasp_z", grasp_z_);
-    // this->declare_parameter<double>("poses.rady_grasp_z", rady_grasp_z_);
-    // this->declare_parameter<double>("poses.place_level_1_z", place_level_1_z_);
-    // this->declare_parameter<double>("poses.place_level_2_z", place_level_2_z_);
-    // this->declare_parameter<double>("poses.pitch_offset", pitch_offset_);
+    this->declare_parameter<double>("poses.grasp_z", grasp_z_);
+    this->declare_parameter<double>("poses.rady_grasp_z", rady_grasp_z_);
+    this->declare_parameter<double>("poses.place_level_1_z", place_level_1_z_);
+    this->declare_parameter<double>("poses.place_level_2_z", place_level_2_z_);
+    this->declare_parameter<double>("poses.pitch_offset", pitch_offset_);
 
-    // this->declare_parameter<double>("vision.grasp_threshold_variance", grasp_vision_threshold_variance_);
+    this->declare_parameter<double>("vision.grasp_threshold_variance", grasp_vision_threshold_variance_);
 
-    // this->declare_parameter<double>("timing.grasp_prepare_duration", grasp_prepare_duration_);
-    // this->declare_parameter<double>("timing.grasp_cartesian_duration", grasp_cartesian_duration_);
-    // this->declare_parameter<int>("timing.pump_on_wait_ms", pump_on_wait_ms_);
-    // this->declare_parameter<double>("timing.place_prepare_duration", place_prepare_duration_);
-    // this->declare_parameter<double>("timing.place_cartesian_duration", place_cartesian_duration_);
-    // this->declare_parameter<double>("timing.home_duration", 0.5);
+    this->declare_parameter<int>("timing.pump_on_wait_ms", pump_on_wait_ms_);
+    this->declare_parameter<double>("timing.record_ready_duration", record_ready_duration_);
+    this->declare_parameter<double>("timing.grasp_ready_duration", grasp_ready_duration_);
+    this->declare_parameter<double>("timing.grasp_pregrasp_duration", grasp_pregrasp_duration_);
+    this->declare_parameter<double>("timing.grasp_descend_duration", grasp_descend_duration_);
+    this->declare_parameter<double>("timing.grasp_lift_duration", grasp_lift_duration_);
+    this->declare_parameter<double>("timing.grasp_finish_duration", grasp_finish_duration_);
+    this->declare_parameter<double>("timing.release_box_duration", release_box_duration_);
+    this->declare_parameter<double>("timing.release_collision_avoid_duration", release_collision_avoid_duration_);
+    this->declare_parameter<double>("timing.release_home_duration", release_home_duration_);
+    this->declare_parameter<double>("timing.place_hand_level_1_prepare_duration", place_hand_level_1_prepare_duration_);
+    this->declare_parameter<double>("timing.place_hand_level_1_cartesian_duration", place_hand_level_1_cartesian_duration_);
+    this->declare_parameter<double>("timing.place_hand_level_1_home_duration", place_hand_level_1_home_duration_);
+    this->declare_parameter<double>("timing.place_hand_level_2_prepare_duration", place_hand_level_2_prepare_duration_);
+    this->declare_parameter<double>("timing.place_hand_level_2_cartesian_duration", place_hand_level_2_cartesian_duration_);
+    this->declare_parameter<double>("timing.place_hand_level_2_retract_duration", place_hand_level_2_retract_duration_);
+    this->declare_parameter<double>("timing.place_hand_level_2_home_duration", place_hand_level_2_home_duration_);
+    this->declare_parameter<double>("timing.place_box_re_grasp_duration", place_box_re_grasp_duration_);
+    this->declare_parameter<double>("timing.place_box_level_1_prepare_duration", place_box_level_1_prepare_duration_);
+    this->declare_parameter<double>("timing.place_box_level_1_cartesian_duration", place_box_level_1_cartesian_duration_);
+    this->declare_parameter<double>("timing.place_box_level_1_home_duration", place_box_level_1_home_duration_);
+    this->declare_parameter<double>("timing.place_box_level_2_prepare_duration", place_box_level_2_prepare_duration_);
+    this->declare_parameter<double>("timing.place_box_level_2_cartesian_duration", place_box_level_2_cartesian_duration_);
+    this->declare_parameter<double>("timing.place_box_level_2_retract_duration", place_box_level_2_retract_duration_);
+    this->declare_parameter<double>("timing.place_box_level_2_home_duration", place_box_level_2_home_duration_);
+    this->declare_parameter<double>("timing.look_for_prepare_duration", look_for_prepare_duration_);
+    this->declare_parameter<double>("timing.scan_start_duration", scan_start_duration_);
+    this->declare_parameter<double>("timing.scan_home_duration", scan_home_duration_);
 
-    // this->declare_parameter<double>("scan.start_joint_0", scan_start_joint_0_);
-    // this->declare_parameter<double>("scan.stop_joint_0", scan_stop_joint_0_);
-    // this->declare_parameter<double>("scan.initial_wait_sec", scan_initial_wait_sec_);
-    // this->declare_parameter<double>("scan.sweep_duration", scan_sweep_duration_);
+    this->declare_parameter<double>("scan.start_joint_0", scan_start_joint_0_);
+    this->declare_parameter<double>("scan.stop_joint_0", scan_stop_joint_0_);
+    this->declare_parameter<double>("scan.initial_wait_sec", scan_initial_wait_sec_);
+    this->declare_parameter<double>("scan.sweep_duration", scan_sweep_duration_);
 }
 
 void ArmTaskNode::load_config_parameters() {
-    // ready_position = this->get_parameter("positions.ready").as_double_array();
-    // home_position_ = this->get_parameter("positions.home").as_double_array();
-    // place_position = this->get_parameter("positions.place_level_1").as_double_array();
-    // place_position_2 = this->get_parameter("positions.place_level_2").as_double_array();
-    // look_for_position_ = this->get_parameter("positions.look_for").as_double_array();
-    // grasp_finish_position = this->get_parameter("positions.grasp_finish").as_double_array();
+    ready_position = this->get_parameter("positions.ready").as_double_array();
+    home_position_ = this->get_parameter("positions.home").as_double_array();
+    place_position = this->get_parameter("positions.place_level_1").as_double_array();
+    place_position_2 = this->get_parameter("positions.place_level_2").as_double_array();
+    look_for_position_ = this->get_parameter("positions.look_for").as_double_array();
+    grasp_finish_position = this->get_parameter("positions.grasp_finish").as_double_array();
+    release_box_position = this->get_parameter("positions.release_box").as_double_array();
+    re_graspe_box_position = this->get_parameter("positions.re_grasp_box").as_double_array();
+    finished_release_box_position = this->get_parameter("positions.finished_release_box").as_double_array();
 
-    // grasp_z_ = this->get_parameter("poses.grasp_z").as_double();
-    // rady_grasp_z_ = this->get_parameter("poses.rady_grasp_z").as_double();
-    // place_level_1_z_ = this->get_parameter("poses.place_level_1_z").as_double();
-    // place_level_2_z_ = this->get_parameter("poses.place_level_2_z").as_double();
-    // pitch_offset_ = this->get_parameter("poses.pitch_offset").as_double();
+    grasp_z_ = this->get_parameter("poses.grasp_z").as_double();
+    rady_grasp_z_ = this->get_parameter("poses.rady_grasp_z").as_double();
+    place_level_1_z_ = this->get_parameter("poses.place_level_1_z").as_double();
+    place_level_2_z_ = this->get_parameter("poses.place_level_2_z").as_double();
+    pitch_offset_ = this->get_parameter("poses.pitch_offset").as_double();
 
-    // grasp_vision_threshold_variance_ = this->get_parameter("vision.grasp_threshold_variance").as_double();
+    grasp_vision_threshold_variance_ = this->get_parameter("vision.grasp_threshold_variance").as_double();
 
-    // grasp_prepare_duration_ = this->get_parameter("timing.grasp_prepare_duration").as_double();
-    // grasp_cartesian_duration_ = this->get_parameter("timing.grasp_cartesian_duration").as_double();
-    // pump_on_wait_ms_ = this->get_parameter("timing.pump_on_wait_ms").as_int();
-    // place_prepare_duration_ = this->get_parameter("timing.place_prepare_duration").as_double();
-    // place_cartesian_duration_ = this->get_parameter("timing.place_cartesian_duration").as_double();
-    // 0.5 = this->get_parameter("timing.home_duration").as_double();
+    pump_on_wait_ms_ = this->get_parameter("timing.pump_on_wait_ms").as_int();
+    record_ready_duration_ = this->get_parameter("timing.record_ready_duration").as_double();
+    grasp_ready_duration_ = this->get_parameter("timing.grasp_ready_duration").as_double();
+    grasp_pregrasp_duration_ = this->get_parameter("timing.grasp_pregrasp_duration").as_double();
+    grasp_descend_duration_ = this->get_parameter("timing.grasp_descend_duration").as_double();
+    grasp_lift_duration_ = this->get_parameter("timing.grasp_lift_duration").as_double();
+    grasp_finish_duration_ = this->get_parameter("timing.grasp_finish_duration").as_double();
+    release_box_duration_ = this->get_parameter("timing.release_box_duration").as_double();
+    release_collision_avoid_duration_ = this->get_parameter("timing.release_collision_avoid_duration").as_double();
+    release_home_duration_ = this->get_parameter("timing.release_home_duration").as_double();
+    place_hand_level_1_prepare_duration_ = this->get_parameter("timing.place_hand_level_1_prepare_duration").as_double();
+    place_hand_level_1_cartesian_duration_ = this->get_parameter("timing.place_hand_level_1_cartesian_duration").as_double();
+    place_hand_level_1_home_duration_ = this->get_parameter("timing.place_hand_level_1_home_duration").as_double();
+    place_hand_level_2_prepare_duration_ = this->get_parameter("timing.place_hand_level_2_prepare_duration").as_double();
+    place_hand_level_2_cartesian_duration_ = this->get_parameter("timing.place_hand_level_2_cartesian_duration").as_double();
+    place_hand_level_2_retract_duration_ = this->get_parameter("timing.place_hand_level_2_retract_duration").as_double();
+    place_hand_level_2_home_duration_ = this->get_parameter("timing.place_hand_level_2_home_duration").as_double();
+    place_box_re_grasp_duration_ = this->get_parameter("timing.place_box_re_grasp_duration").as_double();
+    place_box_level_1_prepare_duration_ = this->get_parameter("timing.place_box_level_1_prepare_duration").as_double();
+    place_box_level_1_cartesian_duration_ = this->get_parameter("timing.place_box_level_1_cartesian_duration").as_double();
+    place_box_level_1_home_duration_ = this->get_parameter("timing.place_box_level_1_home_duration").as_double();
+    place_box_level_2_prepare_duration_ = this->get_parameter("timing.place_box_level_2_prepare_duration").as_double();
+    place_box_level_2_cartesian_duration_ = this->get_parameter("timing.place_box_level_2_cartesian_duration").as_double();
+    place_box_level_2_retract_duration_ = this->get_parameter("timing.place_box_level_2_retract_duration").as_double();
+    place_box_level_2_home_duration_ = this->get_parameter("timing.place_box_level_2_home_duration").as_double();
+    look_for_prepare_duration_ = this->get_parameter("timing.look_for_prepare_duration").as_double();
+    scan_start_duration_ = this->get_parameter("timing.scan_start_duration").as_double();
+    scan_home_duration_ = this->get_parameter("timing.scan_home_duration").as_double();
 
-    // scan_start_joint_0_ = this->get_parameter("scan.start_joint_0").as_double();
-    // scan_stop_joint_0_ = this->get_parameter("scan.stop_joint_0").as_double();
-    // scan_initial_wait_sec_ = this->get_parameter("scan.initial_wait_sec").as_double();
-    // scan_sweep_duration_ = this->get_parameter("scan.sweep_duration").as_double();
+    scan_start_joint_0_ = this->get_parameter("scan.start_joint_0").as_double();
+    scan_stop_joint_0_ = this->get_parameter("scan.stop_joint_0").as_double();
+    scan_initial_wait_sec_ = this->get_parameter("scan.initial_wait_sec").as_double();
+    scan_sweep_duration_ = this->get_parameter("scan.sweep_duration").as_double();
 }
 
 rcl_interfaces::msg::SetParametersResult ArmTaskNode::on_parameters_changed(const std::vector<rclcpp::Parameter>& params) {
@@ -194,7 +246,7 @@ void ArmTaskNode::task_execution_thread() {
 void ArmTaskNode::execut_pos_record()
 {
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(ready_position, 0.7);
+    execute_joint_space_trajectory(ready_position, record_ready_duration_);
     std::this_thread::sleep_for(750ms);
 }
 
@@ -281,7 +333,7 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
 
     // 机械臂先预摆到一个合适的位置，方便相机观察和后续运动
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(ready_position, 0.2);
+    execute_joint_space_trajectory(ready_position, grasp_ready_duration_);
     std::this_thread::sleep_for(250ms);
 
     double x = 0.0;
@@ -296,7 +348,7 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
 
     // 3.笛卡尔轨迹规划使机械臂运动到开启视觉识别的位置
     RCLCPP_INFO(this->get_logger(), "移动到块的预抓取位置");
-    execute_cartesian_space_trajectory(object_pose, 0.3);
+    execute_cartesian_space_trajectory(object_pose, grasp_pregrasp_duration_);
     std::this_thread::sleep_for(350ms);
 
     double vision_weight = 0.0;
@@ -361,21 +413,21 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
                 object_pose.pose.position.z,
                 vision_weight);
 
-    execute_cartesian_space_trajectory(object_pose,0.3);
+    execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
     std::this_thread::sleep_for(200ms);
 
     // 通知气泵开始吸了
     RCLCPP_INFO(this->get_logger(), "启动气泵");
     set_air_pump(true);
 
-    std::this_thread::sleep_for(500ms);
+    std::this_thread::sleep_for(std::chrono::milliseconds(pump_on_wait_ms_));
 
     object_pose.pose.position.z = rady_grasp_z_;
-    execute_cartesian_space_trajectory(object_pose, 0.4);
-    std::this_thread::sleep_for(500ms);
+    execute_cartesian_space_trajectory(object_pose, grasp_lift_duration_);
+    std::this_thread::sleep_for(std::chrono::milliseconds(pump_on_wait_ms_));
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(grasp_finish_position, 1.7);
+    execute_joint_space_trajectory(grasp_finish_position, grasp_finish_duration_);
 
     std::this_thread::sleep_for(800ms);
 
@@ -390,7 +442,7 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
 
 void ArmTaskNode::execute_grasp_flow_on_box() {
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(ready_position, 0.2);
+    execute_joint_space_trajectory(ready_position, grasp_ready_duration_);
     std::this_thread::sleep_for(250ms);
     
 
@@ -403,7 +455,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
     //移动到预抓取位置，等待相机识别
     RCLCPP_INFO(this->get_logger(), "移动到预抓取位置");
     geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
-    execute_cartesian_space_trajectory(object_pose, 0.3);
+    execute_cartesian_space_trajectory(object_pose, grasp_pregrasp_duration_);
     std::this_thread::sleep_for(350ms);
 
     double vision_weight = 0.0;
@@ -468,7 +520,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
                 object_pose.pose.position.z,
                 vision_weight);
 
-    execute_cartesian_space_trajectory(object_pose,0.3);
+    execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
     std::this_thread::sleep_for(200ms);
 
     // 通知气泵开始吸了
@@ -478,11 +530,11 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
     std::this_thread::sleep_for(500ms);
 
     object_pose.pose.position.z = rady_grasp_z_;
-    execute_cartesian_space_trajectory(object_pose, 0.4);
+    execute_cartesian_space_trajectory(object_pose, grasp_lift_duration_);
     std::this_thread::sleep_for(500ms);
 
     RCLCPP_INFO(this->get_logger(), "移动到框的位置");
-    execute_joint_space_trajectory(release_box_position, 2.1);
+    execute_joint_space_trajectory(release_box_position, release_box_duration_);
 
     std::this_thread::sleep_for(2400ms);
 
@@ -493,7 +545,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
 
 
     //回退到中间位置防止动作干涉
-    execute_joint_space_trajectory(finished_release_box_position, 0.2);
+    execute_joint_space_trajectory(finished_release_box_position, release_collision_avoid_duration_);
     std::this_thread::sleep_for(250ms);
 
     //通知抓取流程完成
@@ -501,7 +553,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
     ret.data=1;
     arm_finished_pub->publish(ret);
 
-    execute_joint_space_trajectory(home_position_, 0.35);
+    execute_joint_space_trajectory(home_position_, release_home_duration_);
     std::this_thread::sleep_for(300ms);
 
     RCLCPP_INFO(this->get_logger(), "抓取流程完成");
@@ -510,7 +562,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
 void ArmTaskNode::execute_place_flow_1_on_hand() {
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(place_position, 2.4);
+    execute_joint_space_trajectory(place_position, place_hand_level_1_prepare_duration_);
     std::this_thread::sleep_for(2500ms);
 
     double x = 0.0;
@@ -527,7 +579,7 @@ void ArmTaskNode::execute_place_flow_1_on_hand() {
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
         object_pose.pose.position.z);
 
-    execute_cartesian_space_trajectory(object_pose, 0.4);
+    execute_cartesian_space_trajectory(object_pose, place_hand_level_1_cartesian_duration_);
 
     std::this_thread::sleep_for(400ms);
 
@@ -539,7 +591,7 @@ void ArmTaskNode::execute_place_flow_1_on_hand() {
 
     RCLCPP_INFO(this->get_logger(), "返回初始位置");
 
-    execute_joint_space_trajectory(home_position_, 0.3);
+    execute_joint_space_trajectory(home_position_, place_hand_level_1_home_duration_);
 
     std_msgs::msg::Int32 ret;
     ret.data=1;
@@ -553,7 +605,7 @@ void ArmTaskNode::execute_place_flow_1_on_hand() {
 void ArmTaskNode::execute_place_flow_2_on_hand() {
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(place_position_2, 3.0);
+    execute_joint_space_trajectory(place_position_2, place_hand_level_2_prepare_duration_);
     std::this_thread::sleep_for(3100ms);
 
     double x = 0.0;
@@ -570,7 +622,7 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
         object_pose.pose.position.z);
 
-    execute_cartesian_space_trajectory(object_pose, 0.6);
+    execute_cartesian_space_trajectory(object_pose, place_hand_level_2_cartesian_duration_);
 
     std::this_thread::sleep_for(600ms);
 
@@ -582,7 +634,7 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
 
     RCLCPP_INFO(this->get_logger(), "返回初始位置");
 
-    execute_joint_space_trajectory(place_position_2, 0.2);
+    execute_joint_space_trajectory(place_position_2, place_hand_level_2_retract_duration_);
 
     std::this_thread::sleep_for(200ms);
 
@@ -592,7 +644,7 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
 
     std::this_thread::sleep_for(500ms);     //等待狗子离开
 
-    execute_joint_space_trajectory(home_position_, 0.5);
+    execute_joint_space_trajectory(home_position_, place_hand_level_2_home_duration_);
 
     std::this_thread::sleep_for(500ms);
 
@@ -603,10 +655,10 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
 
     RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
     set_air_pump(true);
-    execute_joint_space_trajectory(re_graspe_box_position, 1.0);
+    execute_joint_space_trajectory(re_graspe_box_position, place_box_re_grasp_duration_);
     std::this_thread::sleep_for(1500ms);
 
-    execute_joint_space_trajectory(place_position, 3.5);
+    execute_joint_space_trajectory(place_position, place_box_level_1_prepare_duration_);
     std::this_thread::sleep_for(3600ms);
 
     double x = 0.0;
@@ -623,7 +675,7 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
         object_pose.pose.position.z);
 
-    execute_cartesian_space_trajectory(object_pose, 0.6);
+    execute_cartesian_space_trajectory(object_pose, place_box_level_1_cartesian_duration_);
 
     std::this_thread::sleep_for(600ms);
 
@@ -635,7 +687,7 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
 
     RCLCPP_INFO(this->get_logger(), "返回初始位置");
 
-    execute_joint_space_trajectory(home_position_, 0.3);
+    execute_joint_space_trajectory(home_position_, place_box_level_1_home_duration_);
 
     std_msgs::msg::Int32 ret;
     ret.data=1;
@@ -650,10 +702,10 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
 
     RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
     set_air_pump(true);
-    execute_joint_space_trajectory(re_graspe_box_position, 1.0);
+    execute_joint_space_trajectory(re_graspe_box_position, place_box_re_grasp_duration_);
     std::this_thread::sleep_for(1500ms);
 
-    execute_joint_space_trajectory(place_position_2, 3.5);
+    execute_joint_space_trajectory(place_position_2, place_box_level_2_prepare_duration_);
     std::this_thread::sleep_for(3600ms);
 
     double x = 0.0;
@@ -670,7 +722,7 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
         object_pose.pose.position.z);
 
-    execute_cartesian_space_trajectory(object_pose, place_cartesian_duration_);
+    execute_cartesian_space_trajectory(object_pose, place_box_level_2_cartesian_duration_);
 
     std::this_thread::sleep_for(1000ms);
 
@@ -682,7 +734,7 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
 
     RCLCPP_INFO(this->get_logger(), "返回初始位置");
 
-    execute_joint_space_trajectory(place_position_2, 0.2);
+    execute_joint_space_trajectory(place_position_2, place_box_level_2_retract_duration_);
 
     std::this_thread::sleep_for(200ms);
 
@@ -692,7 +744,7 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
 
     std::this_thread::sleep_for(500ms);     //等待狗子离开
 
-    execute_joint_space_trajectory(home_position_, 0.5);
+    execute_joint_space_trajectory(home_position_, place_box_level_2_home_duration_);
 
     std::this_thread::sleep_for(500ms);
 
@@ -708,7 +760,7 @@ void ArmTaskNode::execute_look_for() {
     vision_command_pub_->publish(scan_msg);
 
     // 机械臂先预摆到一个合适的位置，方便相机识别全场箱子
-    execute_joint_space_trajectory(look_for_position_, 1.5);
+    execute_joint_space_trajectory(look_for_position_, look_for_prepare_duration_);
     std::this_thread::sleep_for(1500ms);
 
     auto start_time = std::chrono::steady_clock::now();
@@ -721,7 +773,7 @@ void ArmTaskNode::execute_look_for() {
     // 在这里会阻塞等待视觉发布会扫描完成的消息（scan_finished_被置1），告诉机械臂可以结束等待了
     while (scan_finished_ == 0) {
         if (std::chrono::steady_clock::now() - start_time > std::chrono::duration<double>(scan_initial_wait_sec_)) {
-           execute_joint_space_trajectory(start_joint_pos, 0.2);    //机械臂旋转，执行扫描
+           execute_joint_space_trajectory(start_joint_pos, scan_start_duration_);    //机械臂旋转，执行扫描
            std::this_thread::sleep_for(200ms);
            execute_joint_space_trajectory(stop_joint_pos, scan_sweep_duration_);
            std::this_thread::sleep_for(std::chrono::duration<double>(scan_sweep_duration_));
@@ -734,7 +786,7 @@ void ArmTaskNode::execute_look_for() {
     scan_finished_ = 0; // 清状态
 
     // 机械臂回到初始位置，准备接受后续的抓取指令
-    execute_joint_space_trajectory(home_position_, 0.5);
+    execute_joint_space_trajectory(home_position_, scan_home_duration_);
     std::this_thread::sleep_for(500ms);
 }
 
