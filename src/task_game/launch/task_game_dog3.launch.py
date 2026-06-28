@@ -14,7 +14,7 @@ def generate_launch_description():
     plan_config_path = os.path.join(
         task_game_share,
         "config",
-        "generate_plan.yaml",
+        "generate_plan2.yaml",
     )
     arm_vision_launch_path = os.path.join(
         launch_pack_share,
@@ -47,7 +47,7 @@ def generate_launch_description():
         package="tf2_ros",
         executable="static_transform_publisher",
         arguments=[
-            "0.146", "0.0", "0.073",
+            "0.120", "0.0", "0.092",
             "0.0", "0.0", "0.0", "1.0",
             "base_link",
             "arm_base_link",
