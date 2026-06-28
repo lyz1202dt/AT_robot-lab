@@ -234,6 +234,22 @@ bool Pilot::get_current_path_info(uint32_t& path_num, float& time_rate)
     return true;
 }
 
+void Pilot::notify_policy_done(int32_t policy_id)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (current_path_index_ >= paths_.size()) {
+        return;
+    }
+
+    const auto& path = paths_[current_path_index_];
+    if (path.policy_id != policy_id || !is_external_action_policy(path)) {
+        return;
+    }
+
+    policy_done_pending_ = true;
+    done_policy_id_ = policy_id;
+}
+
 robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::high_resolution_clock> time)
 {
     robot_msgs::msg::Cmd cmd = walk_zero_command();
@@ -252,14 +268,12 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
     PathPoint& path = paths_[current_path_index_];
     cmd.mode = policy_id_to_cmd_mode(path.policy_id);
 
-    if (path.mode_switch_only) {
-        if (path.stand_duration > 0.0) {
-            const double elapsed = std::chrono::duration<double>(time - segment_start_time_).count();
-            if (elapsed < path.stand_duration) {
-                return cmd;
-            }
+    if (is_external_action_policy(path)) {
+        if (policy_done_pending_ && done_policy_id_ == path.policy_id) {
+            policy_done_pending_ = false;
+            done_policy_id_ = 0;
+            finish_current_target(time);
         }
-        finish_current_target(time);
         return cmd;
     }
 
@@ -528,10 +542,8 @@ bool Pilot::load_paths(const std::string& yaml_path)
         for (const auto& path_node : paths_node) {
             PathPoint point;
             point.policy_id = path_node["policy_id"].as<int32_t>();
-            if (path_node["target_pos"]) {
-                point.target_pos.x() = read_required_double(path_node["target_pos"], "x");
-                point.target_pos.y() = read_required_double(path_node["target_pos"], "y");
-            }
+            point.target_pos.x() = read_required_double(path_node["target_pos"], "x");
+            point.target_pos.y() = read_required_double(path_node["target_pos"], "y");
             point.target_vel = read_optional_double(path_node, "target_vel", point.target_vel);
             point.max_velocity = read_optional_double(path_node, "max_velocity", point.max_velocity);
             point.max_accelation = read_optional_double(path_node, "max_accelation", point.max_accelation);
@@ -552,7 +564,6 @@ bool Pilot::load_paths(const std::string& yaml_path)
             point.trajectory_connection_radius = read_optional_double(path_node, "trajectory_connection_radius", point.trajectory_connection_radius);
             point.stand_at_target = read_optional_bool(path_node, "stand_at_target", point.stand_at_target);
             point.stand_duration = read_optional_double(path_node, "stand_duration", point.stand_duration);
-            point.mode_switch_only = read_optional_bool(path_node, "mode_switch_only", point.mode_switch_only);
             loaded_paths.push_back(point);
         }
 
@@ -582,6 +593,8 @@ void Pilot::reset_execution()
     aiming_done_ = false;
     segment_start_time_ = {};
     stand_start_time_ = {};
+    policy_done_pending_ = false;
+    done_policy_id_ = 0;
     transition_ = CubicTransition{};
 }
 
@@ -597,6 +610,11 @@ void Pilot::begin_current_segment(std::chrono::time_point<std::chrono::high_reso
         aiming_done_ = paths_[current_path_index_].allow_y_vel;
     } else {
         aiming_done_ = true;
+    }
+
+    if (current_path_index_ < paths_.size() && is_external_action_policy(paths_[current_path_index_])) {
+        policy_done_pending_ = false;
+        done_policy_id_ = 0;
     }
 }
 
@@ -632,18 +650,34 @@ void Pilot::advance_after_stand(std::chrono::time_point<std::chrono::high_resolu
     if (current_path_index_ + 1 < paths_.size()) {
         const auto previous_path = paths_[current_path_index_];
         ++current_path_index_;
-        segment_start_pos_ = previous_path.target_pos;
+        if (is_external_action_policy(previous_path)) {
+            segment_start_pos_ = current_pos_;
+        } else {
+            segment_start_pos_ = previous_path.target_pos;
+        }
         segment_start_yaw_ = current_yaw_;
         segment_start_speed_ = std::max(0.0, previous_path.target_vel);
         segment_start_time_ = time;
         stand_start_time_ = {};
         transition_ = CubicTransition{};
         aiming_done_ = paths_[current_path_index_].allow_y_vel;
+        policy_done_pending_ = false;
+        done_policy_id_ = 0;
         state_ = PilotState::Running;
         return;
     }
 
+    const auto& previous_path = paths_[current_path_index_];
     stand_start_time_ = {};
+    if (is_external_action_policy(previous_path)) {
+        current_path_index_ = paths_.size();
+        state_ = PilotState::Finished;
+        transition_ = CubicTransition{};
+        policy_done_pending_ = false;
+        done_policy_id_ = 0;
+        return;
+    }
+
     state_ = PilotState::Adjusting;
     adjust_phase_ = AdjustPhase::Position;
     transition_ = CubicTransition{};
@@ -681,6 +715,11 @@ robot_msgs::msg::Cmd Pilot::walk_zero_command() const
     return cmd;
 }
 
+bool Pilot::is_external_action_policy(const PathPoint& path)
+{
+    return path.policy_id == 8;
+}
+
 int32_t Pilot::policy_id_to_cmd_mode(int32_t policy_id)
 {
     if (policy_id == 5) {
@@ -688,9 +727,6 @@ int32_t Pilot::policy_id_to_cmd_mode(int32_t policy_id)
     }
     if (policy_id == 6) {
         return 5;
-    }
-    if (policy_id == 8) {
-        return 8;
     }
     return policy_id;
 }

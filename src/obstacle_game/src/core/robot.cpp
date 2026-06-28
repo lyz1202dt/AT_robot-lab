@@ -96,6 +96,10 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     pilot = std::make_shared<Pilot>(node_, yaml_path);
     record=std::make_shared<Record>(node_);
 
+    policy_done_sub_ = node_->create_subscription<robot_msgs::msg::Int>("policy_done", 10, [this](const robot_msgs::msg::Int& msg) {
+        pilot->notify_policy_done(msg.data);
+    });
+
     // 机器人运动控制指令发布
     cmd_pub_ = node_->create_publisher<robot_msgs::msg::Cmd>("robot_move_cmd", 10);
 

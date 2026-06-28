@@ -34,6 +34,9 @@ public:
     //获取当前机器人的速度指令输出
     robot_msgs::msg::Cmd get_command(std::chrono::time_point<std::chrono::high_resolution_clock> time);
 
+    // 底层固定动作执行完成后，通知 Pilot 切到下一段策略
+    void notify_policy_done(int32_t policy_id);
+
 private:
     struct PathPoint {
         int32_t policy_id{0};
@@ -54,7 +57,6 @@ private:
         double trajectory_connection_radius{0.0};   //三次多项式轨迹衔接半径
         bool stand_at_target{false};   // 到达该点后是否进入位控站立
         double stand_duration{0.0};   // 到达该点后的位控站立时间，单位秒
-        bool mode_switch_only{false};   // 只切换控制模式，不按目标位姿生成运动轨迹
     };
 
     enum class PilotState {
@@ -92,6 +94,7 @@ private:
     bool should_stand_at_current_target() const;
     robot_msgs::msg::Cmd stand_command() const;
     robot_msgs::msg::Cmd walk_zero_command() const;
+    static bool is_external_action_policy(const PathPoint& path);
     static int32_t policy_id_to_cmd_mode(int32_t policy_id);
     static double normalize_angle(double angle);
     static double clamp_abs(double value, double limit);
@@ -116,6 +119,8 @@ private:
     bool aiming_done_{false};
     std::chrono::time_point<std::chrono::high_resolution_clock> segment_start_time_{};
     std::chrono::time_point<std::chrono::high_resolution_clock> stand_start_time_{};
+    bool policy_done_pending_{false};
+    int32_t done_policy_id_{0};
 
     CubicTransition transition_;
 };

@@ -5,6 +5,7 @@
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <robot_msgs/msg/cmd.hpp>
+#include <robot_msgs/msg/int.hpp>
 #include <robot_msgs/msg/remote.hpp>
 #include <core/pilot.hpp>
 #include <core/record.hpp>
@@ -22,6 +23,7 @@ private:
     rclcpp::TimerBase::SharedPtr control_timer;
     rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_server_;
     rclcpp::Subscription<robot_msgs::msg::Remote>::SharedPtr remote_sub_;
+    rclcpp::Subscription<robot_msgs::msg::Int>::SharedPtr policy_done_sub_;
     rclcpp::Publisher<robot_msgs::msg::Cmd>::SharedPtr cmd_pub_;
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;

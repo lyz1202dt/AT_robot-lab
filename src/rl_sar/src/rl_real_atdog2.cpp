@@ -46,6 +46,7 @@ RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
             remote_cmd = msg;
             std::cout << "mode=" << msg.mode << std::endl;
         });
+    policy_done_pub_ = node_->create_publisher<robot_msgs::msg::Int>("policy_done", 10);
 
 
     // 键盘控制、底层控制、策略推理循环
@@ -128,6 +129,7 @@ void RL_Real::GetState(RobotState<float>* state) {
 void RL_Real::RobotControl() {
     // 获取各个传感器数据，遥控器期望，填写到robot_state中
     this->GetState(&this->robot_state);
+    const std::string state_before = this->fsm.current_state_ ? this->fsm.current_state_->GetStateName() : "";
 
     if (remote_cmd.mode != 0) {     //由ROS2上层接管控制
         this->control.setMode(remote_cmd.mode);
@@ -142,6 +144,16 @@ void RL_Real::RobotControl() {
 
     // 执行状态机，送入state，输出command
     this->StateController(&this->robot_state, &this->robot_command);
+
+    if (state_before == "RLFSMStateCrosswall"
+        && this->fsm.current_state_
+        && this->fsm.previous_state_
+        && this->fsm.current_state_->GetStateName() == "RLFSMStateGetUp"
+        && this->fsm.previous_state_->GetStateName() == "RLFSMStateCrosswall") {
+        robot_msgs::msg::Int msg;
+        msg.data = 8;
+        policy_done_pub_->publish(msg);
+    }
 
     // 清空上一次遥控器的输入
     this->control.ClearInput();
