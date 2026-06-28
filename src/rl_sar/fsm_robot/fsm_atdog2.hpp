@@ -14,6 +14,42 @@
 namespace atdog2_fsm
 {
 
+inline std::string ResolveRemoteModeState(int mode, const std::string& current_state)
+{
+    std::string target_state;
+    switch (mode)
+    {
+        case 1:
+            target_state = "RLFSMStateGetUp";
+            break;
+        case 2:
+            target_state = "RLFSMStateRLLocomotion";
+            break;
+        case 3:
+            target_state = "RLFSMStateRLStairs";
+            break;
+        case 4:
+            target_state = "RLFSMStateRLSand";
+            break;
+        case 5:
+            target_state = "RLFSMStateRLSlope";
+            break;
+        case 6:
+            target_state = "RLFSMStateRLBar";
+            break;
+        case 7:
+            target_state = "RLFSMStateRLBridge";
+            break;
+        case 8:
+            target_state = "RLFSMStateCrosswall";
+            break;
+        default:
+            return current_state;
+    }
+
+    return target_state == current_state ? current_state : target_state;
+}
+
 class RLFSMStatePassive : public RLFSMState
 {
 public:
@@ -44,11 +80,7 @@ public:
         {
             return "RLFSMStateGetUp";
         }
-        if(rl.control.mode==1)  //检查切换到位控站立
-        {
-            return "RLFSMStateGetUp";
-        }
-        return state_name_;
+        return ResolveRemoteModeState(rl.control.mode, state_name_);
     }
 };
 
@@ -127,36 +159,7 @@ public:
                 return "RLFSMStateCrosswall";
             }
 
-            //std::cout<<"检查切换\n";
-            if(rl.control.mode==2)   //转到位控站立状态
-            {
-                std::cout<<"切入普通行走状态\n";
-                return "RLFSMStateRLLocomotion";
-            }
-            else if(rl.control.mode==4)     //切换到爬台阶状态
-            {
-                return "RLFSMStateRLStairs";
-            }
-            else if(rl.control.mode==3)     //切换到沙石地行走状态
-            {
-                return "RLFSMStateRLSand";
-            }
-            else if(rl.control.mode==5)     //切换到限高杆状态
-            {
-                return "RLFSMStateRLBar";
-            }
-            else if(rl.control.mode==6)     //切换到斜坡状态
-            {
-                return "RLFSMStateRLSlope";
-            }
-            else if(rl.control.mode==7)     //切换到木桥状态
-            {
-                return "RLFSMStateRLBridge";
-            }
-            else if(rl.control.mode==8)     //切换到木桥状态
-            {
-                return "RLFSMStateCrosswall";
-            }
+            return ResolveRemoteModeState(rl.control.mode, state_name_);
         }
         
         return state_name_;
@@ -194,11 +197,7 @@ public:
             return "RLFSMStateGetUp";
         }
 
-        if (rl.control.mode==1)
-        {
-            return "RLFSMStateGetUp";
-        }
-        return state_name_;
+        return ResolveRemoteModeState(rl.control.mode, state_name_);
     }
 };
 
@@ -383,36 +382,7 @@ public:
             return "RLFSMStateCrosswall";
         }
 
-        //遥控器切换
-        if(rl.control.mode==1)   //转到位控站立状态
-        {
-            return "RLFSMStateGetUp";
-        }
-        else if(rl.control.mode==3)     //切换到爬台阶状态
-        {
-            return "RLFSMStateRLStairs";
-        }
-        else if(rl.control.mode==4)     //切换到沙石地行走状态
-        {
-            return "RLFSMStateRLSand";
-        }
-        else if(rl.control.mode==5)     //切换到限高杆状态
-        {
-            return "RLFSMStateRLBar";
-        }
-        else if(rl.control.mode==6)     //切换到斜坡状态
-        {
-            return "RLFSMStateRLSlope";
-        }
-        else if(rl.control.mode==7)     //切换到木桥状态
-        {
-            return "RLFSMStateRLBridge";
-        }
-        else if(rl.control.mode==8)     //切换到木桥状态
-        {
-            return "RLFSMStateCrosswall";
-        }
-        return state_name_;
+        return ResolveRemoteModeState(rl.control.mode, state_name_);
     }
 };
 
@@ -480,36 +450,7 @@ public:
             return "RLFSMStateRLLocomotion";
         }
 
-        //遥控器切换
-        if(rl.control.mode==1)   //转到位控站立状态
-        {
-            return "RLFSMStateGetUp";
-        }
-        else if(rl.control.mode==2)     //切换到普通行走模式
-        {
-            return "RLFSMStateRLLocomotion";
-        }
-        else if(rl.control.mode==4)     //切换到沙石地行走状态
-        {
-            return "RLFSMStateRLSand";
-        }
-        else if(rl.control.mode==5)     //切换到限高杆状态
-        {
-            return "RLFSMStateRLBar";
-        }
-        else if(rl.control.mode==6)     //切换到斜坡状态
-        {
-            return "RLFSMStateRLSlope";
-        }
-        else if(rl.control.mode==7)     //切换到木桥状态
-        {
-            return "RLFSMStateRLBridge";
-        }
-        else if(rl.control.mode==8)     //切换到木桥状态
-        {
-            return "RLFSMStateCrosswall";
-        }
-        return state_name_;
+        return ResolveRemoteModeState(rl.control.mode, state_name_);
     }
 };
 
@@ -576,36 +517,7 @@ public:
             return "RLFSMStateRLLocomotion";
         }
 
-        //遥控器切换
-        if(rl.control.mode==1)   //转到位控站立状态
-        {
-            return "RLFSMStateGetUp";
-        }
-        else if(rl.control.mode==2)     //切换到普通行走模式
-        {
-            return "RLFSMStateRLLocomotion";
-        }
-        else if(rl.control.mode==3)     //切换到爬台阶状态
-        {
-            return "RLFSMStateRLStairs";
-        }
-        else if(rl.control.mode==5)     //切换到限高杆状态
-        {
-            return "RLFSMStateRLBar";
-        }
-        else if(rl.control.mode==6)     //切换到斜坡状态
-        {
-            return "RLFSMStateRLSlope";
-        }
-        else if(rl.control.mode==7)     //切换到木桥状态
-        {
-            return "RLFSMStateRLBridge";
-        }
-        else if(rl.control.mode==8)     //切换到木桥状态
-        {
-            return "RLFSMStateCrosswall";
-        }
-        return state_name_;
+        return ResolveRemoteModeState(rl.control.mode, state_name_);
     }
 };
 
@@ -670,36 +582,7 @@ public:
             return "RLFSMStateRLLocomotion";
         }
 
-        //遥控器切换
-        if(rl.control.mode==1)   //转到位控站立状态
-        {
-            return "RLFSMStateGetUp";
-        }
-        else if(rl.control.mode==2)     //切换到普通行走模式
-        {
-            return "RLFSMStateRLLocomotion";
-        }
-        else if(rl.control.mode==3)     //切换到爬台阶状态
-        {
-            return "RLFSMStateRLStairs";
-        }
-        else if(rl.control.mode==4)     //切换到沙石地行走状态
-        {
-            return "RLFSMStateRLSand";
-        }
-        else if(rl.control.mode==6)     //切换到斜坡状态
-        {
-            return "RLFSMStateRLSlope";
-        }
-        else if(rl.control.mode==7)     //切换到木桥状态
-        {
-            return "RLFSMStateRLBridge";
-        }
-        else if(rl.control.mode==8)     //切换到木桥状态
-        {
-            return "RLFSMStateCrosswall";
-        }
-        return state_name_;
+        return ResolveRemoteModeState(rl.control.mode, state_name_);
     }
 };
 
@@ -763,35 +646,7 @@ public:
             return "RLFSMStateRLLocomotion";
         }
 
-        if(rl.control.mode==1)   //转到位控站立状态
-        {
-            return "RLFSMStateGetUp";
-        }
-        else if(rl.control.mode==2)     //切换到普通行走模式
-        {
-            return "RLFSMStateRLLocomotion";
-        }
-        else if(rl.control.mode==3)     //切换到爬台阶状态
-        {
-            return "RLFSMStateRLStairs";
-        }
-        else if(rl.control.mode==4)     //切换到沙石地行走状态
-        {
-            return "RLFSMStateRLSand";
-        }
-        else if(rl.control.mode==5)     //切换到限高杆状态
-        {
-            return "RLFSMStateRLBar";
-        }
-        else if(rl.control.mode==7)     //切换到木桥状态
-        {
-            return "RLFSMStateRLBridge";
-        }
-        else if(rl.control.mode==8)     //切换到木桥状态
-        {
-            return "RLFSMStateCrosswall";
-        }
-        return state_name_;
+        return ResolveRemoteModeState(rl.control.mode, state_name_);
     }
 };
 
@@ -855,35 +710,7 @@ public:
             return "RLFSMStateRLLocomotion";
         }
 
-        if(rl.control.mode==1)   //转到位控站立状态
-        {
-            return "RLFSMStateGetUp";
-        }
-        else if(rl.control.mode==2)     //切换到普通行走模式
-        {
-            return "RLFSMStateRLLocomotion";
-        }
-        else if(rl.control.mode==3)     //切换到爬台阶状态
-        {
-            return "RLFSMStateRLStairs";
-        }
-        else if(rl.control.mode==4)     //切换到沙石地行走状态
-        {
-            return "RLFSMStateRLSand";
-        }
-        else if(rl.control.mode==5)     //切换到限高杆状态
-        {
-            return "RLFSMStateRLBar";
-        }
-        else if(rl.control.mode==6)     //切换到斜坡状态
-        {
-            return "RLFSMStateRLSlope";
-        }
-        else if(rl.control.mode==8)     //切换到木桥状态
-        {
-            return "RLFSMStateCrosswall";
-        }
-        return state_name_;
+        return ResolveRemoteModeState(rl.control.mode, state_name_);
     }
 };
 

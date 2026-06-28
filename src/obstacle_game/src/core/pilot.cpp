@@ -273,6 +273,16 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
             policy_done_pending_ = false;
             done_policy_id_ = 0;
             finish_current_target(time);
+
+            if (state_ == PilotState::Finished || current_path_index_ >= paths_.size()) {
+                return stand_command();
+            }
+            if (state_ == PilotState::Standing) {
+                return stand_command();
+            }
+
+            PathPoint& next_path = paths_[current_path_index_];
+            cmd.mode = policy_id_to_cmd_mode(next_path.policy_id);
         }
         return cmd;
     }
@@ -722,12 +732,6 @@ bool Pilot::is_external_action_policy(const PathPoint& path)
 
 int32_t Pilot::policy_id_to_cmd_mode(int32_t policy_id)
 {
-    if (policy_id == 5) {
-        return 6;
-    }
-    if (policy_id == 6) {
-        return 5;
-    }
     return policy_id;
 }
 

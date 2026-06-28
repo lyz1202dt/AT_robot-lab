@@ -131,35 +131,35 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             if (check_key_trigger(msg.key,4)) {         //模式控制
                 cmd.mode = 1; // 位控站立
                 current_record_policy_id = 1;
-                RCLCPP_INFO(node_->get_logger(), "位控站立模式");
+                RCLCPP_INFO(node_->get_logger(), "getup/位控站立模式");
             } else if (check_key_trigger(msg.key,5)) {
                 cmd.mode = 2; // 普通行走策略
                 current_record_policy_id = 2;
-                RCLCPP_INFO(node_->get_logger(), "普通行走模式");
+                RCLCPP_INFO(node_->get_logger(), "walk/普通行走模式");
             } else if (check_key_trigger(msg.key,6)) {
-                cmd.mode = 3; // 过沙地策略
+                cmd.mode = 3; // 台阶策略
                 current_record_policy_id = 3;
-                RCLCPP_INFO(node_->get_logger(), "沙地模式");
+                RCLCPP_INFO(node_->get_logger(), "stairs/台阶模式");
             } else if (check_key_trigger(msg.key,3)) {
-                cmd.mode = 4; // 上台阶策略
+                cmd.mode = 4; // 沙地策略
                 current_record_policy_id = 4;
-                RCLCPP_INFO(node_->get_logger(), "台阶模式");
-            } else if (check_key_trigger(msg.key,12)) {
-                cmd.mode = 5; // 限高杆策略
-                current_record_policy_id = 6;
-                RCLCPP_INFO(node_->get_logger(), "限高杆模式");
+                RCLCPP_INFO(node_->get_logger(), "sand/沙地模式");
             } else if (check_key_trigger(msg.key,11)) {
-                cmd.mode = 6; // 斜坡策略
+                cmd.mode = 5; // 斜坡策略
                 current_record_policy_id = 5;
-                RCLCPP_INFO(node_->get_logger(), "斜坡模式");
+                RCLCPP_INFO(node_->get_logger(), "slope/斜坡模式");
+            } else if (check_key_trigger(msg.key,12)) {
+                cmd.mode = 6; // 限高杆策略
+                current_record_policy_id = 6;
+                RCLCPP_INFO(node_->get_logger(), "bar/限高杆模式");
             } else if (check_key_trigger(msg.key,13)) {
                 cmd.mode = 7; // 木桥策略
                 current_record_policy_id = 7;
-                RCLCPP_INFO(node_->get_logger(), "木桥模式");
+                RCLCPP_INFO(node_->get_logger(), "bridge/木桥模式");
             } else if (check_key_trigger(msg.key,10)) {
                 cmd.mode = 8; // 翻墙状态
                 current_record_policy_id = 8;
-                RCLCPP_INFO(node_->get_logger(), "翻墙模式");
+                RCLCPP_INFO(node_->get_logger(), "cross_wall/翻墙模式");
             }
 
             //摇杆赋值
