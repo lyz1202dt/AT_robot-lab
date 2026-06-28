@@ -117,6 +117,10 @@ public:
             {
                 return "RLFSMStateGetDown";
             }
+            else if (rl.control.current_keyboard == Input::Keyboard::Num7 || rl.control.current_gamepad == Input::Gamepad::Y)
+            {
+                return "RLFSMStateCheck";
+            }
 
             //std::cout<<"检查切换\n";
             if(rl.control.mode==2)   //转到位控站立状态
@@ -136,7 +140,67 @@ public:
             {
                 return "RLFSMStateRLBar";
             }
+            else if(rl.control.mode==9)     
+            {
+                return "RLFSMStateCheck";
+            }
         }
+        return state_name_;
+    }
+};
+
+class RLFSMStateCheck : public RLFSMState
+{
+public:
+    RLFSMStateCheck(RL *rl) : RLFSMState(*rl, "RLFSMStateCheck") {}
+
+
+    float percent_pre_getup = 0.0f;
+    std::vector<float> pre_running_pos = {
+        0.00, -0.8, 0.0,
+        0.00, 0.8, 0.0,
+        0.00, 0.8, -3.28,
+        0.00, -0.8, 3.28,
+        0.00, 0.00, 0.00, 0.00
+    };
+
+    void Enter() override
+    {
+        percent_pre_getup = 0.0f;
+        rl.now_state = *fsm_state;
+        rl.start_state = rl.now_state;
+        std::cout<<"当前关节角:"<<rl.now_state.motor_state.q<<std::endl;
+    }
+
+    void Run() override
+    {
+            if (Interpolate(percent_pre_getup, rl.now_state.motor_state.q, pre_running_pos, 3.0f, "RLFSMStateCheck", true)) return;
+    }
+
+    void Exit() override {}
+
+    std::string CheckChange() override
+    {
+
+        if (percent_pre_getup >= 1.0f)
+        {
+            if (rl.control.current_keyboard == Input::Keyboard::Num9 || rl.control.current_gamepad == Input::Gamepad::B)
+            {
+                return "RLFSMStateGetDown";
+            }
+            else if (rl.control.current_keyboard == Input::Keyboard::Num0 || rl.control.current_gamepad == Input::Gamepad::A)
+            {
+                return "RLFSMStateGetUp";
+            }
+
+            //std::cout<<"检查切换\n";
+            if(rl.control.mode==1)   //转到位控站立状态
+            {
+                return "RLFSMStateGetUp";
+            }
+
+        }
+        
         return state_name_;
     }
 };
@@ -568,6 +632,8 @@ public:
             return std::make_shared<atdog2_fsm::RLFSMStateCrosswall>(rl);
         else if (state_name == "RLFSMStateRLBar")
             return std::make_shared<atdog2_fsm::RLFSMStateRLBar>(rl);
+        else if (state_name == "RLFSMStateCheck")
+            return std::make_shared<atdog2_fsm::RLFSMStateCheck>(rl);
         return nullptr;
     }
     std::string GetType() const override { return "atdog2"; }
@@ -581,7 +647,8 @@ public:
             "RLFSMStateRLStairs",
             "RLFSMStateRLSand",
             "RLFSMStateCrosswall",
-            "RLFSMStateRLBar"
+            "RLFSMStateRLBar",
+            "RLFSMStateCheck"
         };
     }
     std::string GetInitialState() const override { return initial_state_; }
