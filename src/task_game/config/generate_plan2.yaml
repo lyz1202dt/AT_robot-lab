@@ -21,12 +21,12 @@ start_to_a1_target_point: &start_to_a1_target_point
   max_velocity: 0.6
   max_accelation: 0.4
   max_omega: 1.2
-  kp: [2.0, 0.5, 1.2]
+  kp: [2.0, 0.5, 1.5]
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.1
   allow_final_pos_allow: 0.05
   adjust_min_vel: 0.25
-  adjust_min_omega: 0.35
+  adjust_min_omega: 0.4
   allow_y_vel: true
   trajectory_connection_radius: 0.0
 
@@ -36,12 +36,12 @@ a1_to_box0_target_point: &a1_to_box0_target_point
   max_velocity: 0.8
   max_accelation: 0.4
   max_omega: 1.2
-  kp: [2.0, 0.5, 1.2]
+  kp: [2.0, 0.5, 1.5]
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
-  adjust_min_omega: 0.35
+  adjust_min_omega: 0.4
   allow_y_vel: true
   trajectory_connection_radius: 0.0
 
@@ -51,12 +51,12 @@ box0_to_box1_target_point: &box0_to_box1_target_point
   max_velocity: 0.8
   max_accelation: 0.4
   max_omega: 1.2
-  kp: [2.0, 0.5, 1.2]
+  kp: [2.0, 0.5, 1.5]
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
-  adjust_min_omega: 0.35
+  adjust_min_omega: 0.4
   allow_y_vel: false
   trajectory_connection_radius: 0.0
 
@@ -66,12 +66,12 @@ box1_to_a2_target_point: &box1_to_a2_target_point
   max_velocity: 0.8
   max_accelation: 0.4
   max_omega: 1.2
-  kp: [2.5, 0.5, 1.2]
+  kp: [2.5, 0.5, 1.5]
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
-  adjust_min_omega: 0.35
+  adjust_min_omega: 0.4
   allow_y_vel: false
   trajectory_connection_radius: 0.0
 
@@ -81,12 +81,12 @@ a2_to_dst1_target_point: &a2_to_dst1_target_point #第一轮放
   max_velocity: 2.0
   max_accelation: 0.9
   max_omega: 2.0
-  kp: [2.5, 0.5, 1.2]
+  kp: [2.5, 0.5, 1.5]
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
-  adjust_min_omega: 0.35
+  adjust_min_omega: 0.4
   allow_y_vel: false
   trajectory_connection_radius: 0.0
 
@@ -96,12 +96,12 @@ box1_to_dst1_target_point: &box1_to_dst1_target_point   #去
   max_velocity: 2.0
   max_accelation: 0.9
   max_omega: 2.0
-  kp: [2.5, 0.5, 1.2]
+  kp: [2.5, 0.5, 1.5]
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
-  adjust_min_omega: 0.35
+  adjust_min_omega: 0.4
   allow_y_vel: false
   trajectory_connection_radius: 0.0
 
@@ -111,12 +111,12 @@ dst1_to_dst0_target_point: &dst1_to_dst0_target_point
   max_velocity: 0.65
   max_accelation: 0.4
   max_omega: 2.0
-  kp: [2.0, 0.5, 1.2]
+  kp: [2.0, 0.5, 1.5]
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
-  adjust_min_omega: 0.35
+  adjust_min_omega: 0.4
   allow_y_vel: true
   trajectory_connection_radius: 0.0
 
@@ -126,12 +126,12 @@ dst0_to_dst2_target_point: &dst0_to_dst2_target_point
   max_velocity: 1.5
   max_accelation: 0.75
   max_omega: 2.0
-  kp: [2.0, 0.5, 1.2]
+  kp: [2.0, 0.5, 1.5]
   allow_start_dir_error: 3.2
   allow_final_dir_error: 0.15
   allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
-  adjust_min_omega: 0.35
+  adjust_min_omega: 0.4
   allow_y_vel: true
   trajectory_connection_radius: 0.0
 
@@ -141,12 +141,12 @@ dst2_to_box0_target_point: &dst2_to_box0_target_point #回
   max_velocity: 2.0
   max_accelation: 0.9
   max_omega: 2.0
-  kp: [2.5, 0.5, 1.2]
+  kp: [2.5, 0.5, 1.5]
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.15
   adjust_min_vel: 0.25
-  adjust_min_omega: 0.35
+  adjust_min_omega: 0.4
   allow_y_vel: false
   trajectory_connection_radius: 0.25
 
@@ -171,10 +171,10 @@ arm_box_positions:
 # 机器狗导航到的箱子抓取/放置姿态，格式为 [x, y, yaw]
 box_positions:
   place:
-    - [4.5611294642237737, -0.9843012418535253, 0.04020275343126236]
-    - [4.566775076718437, -1.7501032092566753, 0.00091779440512888572]
-    - [4.5514292125949897, -2.5977334591961858, 0.016418700182858133]
-    - [4.5501936226738605, -3.3671492415754631, -0.013295672041067306]
+    - [4.5011294642237737, -0.9843012418535253, 0.04020275343126236]
+    - [4.506775076718437, -1.7501032092566753, 0.00091779440512888572]
+    - [4.5014292125949897, -2.5977334591961858, 0.016418700182858133]
+    - [4.5001936226738605, -3.3671492415754631, -0.013295672041067306]
   pick_line_0:
     - [1.788, -0.810, 0.0]
     - [3.0312381778653731, -1.6116394874108346, 3.1284906482644561]
