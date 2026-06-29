@@ -16,7 +16,7 @@ arm_task:
       place_level_2: [0.0, 1.7, 2.8, 3.3]
       look_for: [0.0, 1.2, 2.3, 2.8]
       grasp_finish: [0.0, 0.1, 0.1, -0.8]
-      release_box: [0.0, 1.8, 3.8, 0.6]
+      release_box: [0.0, 1.2, 3.1416, 0.5]
       re_grasp_box: [0.0, 0.8, 3.3, -1.2]
       finished_release_box: [0.0, 1.8, 2.0, 0.6]
 
