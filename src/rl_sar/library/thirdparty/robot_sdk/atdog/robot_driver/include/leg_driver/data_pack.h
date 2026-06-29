@@ -95,6 +95,10 @@ typedef struct {
     uint32_t time;
 } DogTargetPack_t;
 
+typedef struct{
+    int pack_type;  //pack_type=10
+    uint8_t data;
+}ResetPack;
 
 
 #pragma pack()
