@@ -25,8 +25,8 @@ arm_task:
       grasp_z: -0.16
       rady_grasp_z: 0.07
       place_level_1_z: 0.10
-      place_level_2_z: 0.15
-      pitch_offset: -0.25
+      place_level_2_z: 0.2
+      pitch_offset: -0.2
 
     vision:
       grasp_threshold_variance: 0.1
