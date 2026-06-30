@@ -19,8 +19,6 @@ using namespace std::chrono_literals;
 
 namespace {
 
-constexpr int kArmboxid = 7;
-
 const auto box_id_kSemaphoreTimeout = std::chrono::hours(24 * 365 * 100);
 constexpr const char* kGeneratePlanConfigParam = "generate_plan_config";
 
@@ -376,11 +374,8 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
             return BT::FAILED;
         }
 
-        std_msgs::msg::Int32 msg;
-        msg.data = kArmboxid;
-        arm_cmd_pub_->publish(msg);
-        RCLCPP_INFO(node_->get_logger(), "发送arm_cmd 消息 %d", msg.data);
-
+        // 注意：新流程不再发送 arm_cmd=7。box_id_grid 仅作为默认 ID 来源，
+        // 真正每个箱子的放置区 ID 在抓取时由 pnp_box_index 话题给出。
         if (!wait_semaphore_with_timeout(&box_id_grid_sem_, box_id_kSemaphoreTimeout)) {
             RCLCPP_ERROR(context->node_->get_logger(), "等待 box_id_grid 超时");
             return BT::FAILED;
@@ -438,8 +433,6 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    std::array<int, 4> placed_count{};
-    std::array<float, 3> last_dst2 = a1;
     std::vector<MoveBoxPlan> move_plan;
     move_plan.reserve(4);
     bool first_plan = true;
@@ -456,20 +449,24 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         fill_box_task(plan.box0, plan_config, box_info, box0_selected);
         fill_box_task(plan.box1, plan_config, box_info, box1_selected);
 
+        // 放置导航位与机械臂放置位先按 box_id_grid 的默认 ID 预填；
+        // 抓取时若收到 pnp_box_index 会在运行期覆盖这些值。
         const auto box0_dst = pose_from_grid(plan_config.positions, 0, plan.box0.box_id);
         const auto box1_dst = pose_from_grid(plan_config.positions, 0, plan.box1.box_id);
 
         const bool is_first_plan = first_plan;
+        // 去除跨轮耦合：非首轮 box0 不再以上一轮 dst2 作为途经点，
+        // 直接由 Pilot 从当前位置导航到 box0_src（每轮独立退让到 dst2）。
         if (is_first_plan) {
             plan.box0.to_box.trajectory.push_back(a1);
             plan.box0.to_box.target_points.push_back(plan_config.start_to_a1);
             first_plan = false;
+            plan.box0.to_box.trajectory.push_back(box0_src);
+            plan.box0.to_box.target_points.push_back(plan_config.a1_to_box0);
         } else {
-            plan.box0.to_box.trajectory.push_back(last_dst2);
-            plan.box0.to_box.target_points.push_back(plan_config.dst0_to_dst2);
+            plan.box0.to_box.trajectory.push_back(box0_src);
+            plan.box0.to_box.target_points.push_back(plan_config.dst2_to_box0);
         }
-        plan.box0.to_box.trajectory.push_back(box0_src);
-        plan.box0.to_box.target_points.push_back(is_first_plan ? plan_config.a1_to_box0 : plan_config.dst2_to_box0);
 
         plan.box1.to_box.trajectory.push_back(box1_src);
         plan.box1.to_box.target_points.push_back(plan_config.box0_to_box1);
@@ -483,30 +480,37 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         plan.box0.to_dst.trajectory.push_back(box0_dst);
         plan.box0.to_dst.target_points.push_back(plan_config.dst1_to_dst0);
 
-        // 放置顺序是 box1 再 box0，因此二层计数也按这个顺序更新。
-        plan.box1.place_at_second_floor = placed_count[plan.box1.box_id] > 0;
-        ++placed_count[plan.box1.box_id];
-        plan.box0.place_at_second_floor = placed_count[plan.box0.box_id] > 0;
-        ++placed_count[plan.box0.box_id];
-
+        // 二层判定（place_at_second_floor）改为运行期在放置时计算，这里不再预先计算。
+        // dst2 退让点先按默认 box0 id 预填，运行期会用真实 id 重算。
         plan.dst2_pos = {box0_dst[0] - 0.1f, box0_dst[1], 3.14};
         plan.dst0_to_dst2 = plan_config.dst0_to_dst2;
-        last_dst2 = plan.dst2_pos;
 
         RCLCPP_INFO(
             context->node_->get_logger(),
-            "生成双箱计划: box0(line=%d,col=%d,id=%d,second=%s), box1(line=%d,col=%d,id=%d,second=%s)",
+            "生成双箱计划: box0(line=%d,col=%d,默认id=%d), box1(line=%d,col=%d,默认id=%d)",
             plan.box0.line,
             plan.box0.col,
             plan.box0.box_id,
-            plan.box0.place_at_second_floor ? "true" : "false",
             plan.box1.line,
             plan.box1.col,
-            plan.box1.box_id,
-            plan.box1.place_at_second_floor ? "true" : "false");
+            plan.box1.box_id);
 
         move_plan.push_back(plan);
     }
+
+    // 放置区查表存到行为树黑板，供抓取时按运行期 ID 查放置位：
+    // place_table[id] = 放置点机器狗导航位 [x,y,yaw]；
+    // arm_place_table[id] = 机械臂放置位 [x,y]；
+    // placed_count[id] = 运行期已成功放置计数，用于二层判定。
+    std::array<std::array<float, 3>, 4> place_table{};
+    std::array<std::array<float, 2>, 4> arm_place_table{};
+    for (int id = 0; id < 4; ++id) {
+        place_table[id] = pose_from_grid(plan_config.positions, 0, id);
+        arm_place_table[id] = plan_config.arm_box_positions[0][id];
+    }
+    tree.write_msg("place_table", place_table);
+    tree.write_msg("arm_place_table", arm_place_table);
+    tree.write_msg("placed_count", std::array<int, 4>{});
 
     tree.write_msg("move_plan", move_plan);
     tree.write_msg<int>("plan_index", 0);

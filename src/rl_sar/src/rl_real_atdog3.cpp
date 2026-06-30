@@ -15,7 +15,7 @@ RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
 
     this->node_ = node;
     this->robot_name = "atdog3";
-    this->ReadYaml("atdog3", "base.yaml");
+    this->ReadYaml("atdog3", "base.yaml");  // 读取 atdog3 配置（关节映射、限幅、默认姿态等）
 
     // 创建状态机
     this->fsm = *FSMManager::GetInstance().CreateFSM("atdog3", this);
@@ -24,7 +24,9 @@ RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
     this->InitJointNum(this->params.Get<int>("num_of_dofs"));
     // Shut down motion control-related service
 
+    // dog3 不单独建 IMUDriver，IMU 由 leg_driver 的 pack0 解析提供
     leg_driver = std::make_unique<LegDriver>();
+    // 电机异常回调：只触发一次关闭，避免多次 shutdown
     std::weak_ptr<rclcpp::Node> weak_node = node_;
     leg_driver->set_motor_error_callback([weak_node](uint16_t motor_state) {
         static std::atomic_bool motor_error_shutdown_requested{false};
@@ -39,11 +41,13 @@ RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
         rclcpp::shutdown();
     });
 
+    // 订阅上层运动指令（task_game/obstacle_game 发布的 robot_move_cmd）
     cmd_sub =
         node_->create_subscription<robot_msgs::msg::Cmd>("robot_move_cmd", 10, [this](const robot_msgs::msg::Cmd& msg) {
             remote_cmd = msg;
             std::cout << "mode=" << msg.mode << std::endl;
         });
+    plane_dst_pub = node_->create_publisher<robot_msgs::msg::Int>("plane_dst", 10);
 
 
     // 键盘控制、底层控制、策略推理循环
@@ -55,7 +59,7 @@ RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
     this->loop_control->start();
     this->loop_rl->start();
 
-    leg_driver->enable_control(true);
+    leg_driver->enable_control(true);  // 使能电机控制
 }
 
 RL_Real::~RL_Real() {
@@ -77,6 +81,7 @@ void RL_Real::GetState(RobotState<float>* state) {
 
     std::array<float, 4> q{};
     std::array<float, 3> w{};
+    // dog3：IMU 来自 leg_driver（pack0）；读取失败时用单位四元数兜底
     const bool has_imu_state = this->leg_driver != nullptr && this->leg_driver->get_imu_state(q, w);
     if (has_imu_state) {
         state->imu.quaternion[0] = static_cast<float>(q[0]);
@@ -102,6 +107,14 @@ void RL_Real::GetState(RobotState<float>* state) {
         return;
     }
 
+    // 发布平板激光测距值（task_game 用其判断 box0 是否成功放上平板）
+    uint16_t plane_dst = 0;
+    if (plane_dst_pub && this->leg_driver->get_plane_dst(plane_dst)) {
+        robot_msgs::msg::Int msg;
+        msg.data = static_cast<int32_t>(plane_dst);
+        plane_dst_pub->publish(msg);
+    }
+
     std::array<LegState_t, 4> legs_state{};
     if (!this->leg_driver->get_leg_state(legs_state)) {
         return;
@@ -109,6 +122,7 @@ void RL_Real::GetState(RobotState<float>* state) {
 
     const auto joint_mapping = this->params.Get<std::vector<int>>("joint_mapping");
     for (int i = 0; i < dof_count; ++i) {
+        // joint_mapping 把策略的逻辑关节序映射到硬件腿/关节序（hw=leg*3+joint）
         const int hw_index    = (i < static_cast<int>(joint_mapping.size())) ? joint_mapping[i] : i;
         const int leg_index   = hw_index / 3;
         const int joint_index = hw_index % 3;
@@ -125,11 +139,13 @@ void RL_Real::GetState(RobotState<float>* state) {
 }
 
 void RL_Real::RobotControl() {
+    // 底层控制循环：取状态 -> 解析遥控/上层指令 -> 状态机 -> 下发电机
     // 获取各个传感器数据，遥控器期望，填写到robot_state中
     this->GetState(&this->robot_state);
 
     if (remote_cmd.mode != 0) {     //由ROS2上层接管控制
         this->control.setMode(remote_cmd.mode);
+        // dog3 速度限幅：vx/vz ±1.5，vy ±1.0（比 dog2 更保守）
         const float vx = std::clamp(remote_cmd.vx, -1.5f, 1.5f);
         const float vy = std::clamp(remote_cmd.vy, -1.0f, 1.0f);
         const float vz = std::clamp(remote_cmd.vz, -1.5f, 1.5f);
@@ -170,12 +186,14 @@ void RL_Real::SetCommand(const RobotCommand<float>* command) {
     const int dof_count      = this->params.Get<int>("num_of_dofs");
     const auto joint_mapping = this->params.Get<std::vector<int>>("joint_mapping");
 
+    // dog3 为轮足构型：dof<12 是 4 条腿的 12 个关节，dof>=12 是 4 个轮子（速度/力矩控制）
     for (int dof = 0; dof < dof_count; ++dof) {
         const int hw_index       = (dof < static_cast<int>(joint_mapping.size())) ? joint_mapping[dof] : dof;
         const int leg_index      = hw_index / 3;
         const int actuator_index = hw_index % 3;
 
         if (dof >= 12) {
+            // 轮子：第 dof-12 条腿的轮子，只给角速度与力矩
             legs_target[dof - 12].wheel.omega  = command->motor_command.dq[dof];
             legs_target[dof - 12].wheel.torque = command->motor_command.tau[dof];
         } else {
@@ -203,6 +221,7 @@ void RL_Real::SetCommand(const RobotCommand<float>* command) {
 }
 
 void RL_Real::RunModel() {
+    // 策略推理循环：组织观测 -> 网络前向 -> 计算关节目标，压入输出队列供控制循环消费
     if (this->rl_init_done) {
         this->episode_length_buf += 1;
         this->obs.ang_vel  = this->robot_state.imu.gyroscope;

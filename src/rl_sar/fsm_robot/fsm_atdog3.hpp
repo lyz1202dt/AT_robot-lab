@@ -6,6 +6,17 @@
 #ifndef ATDOG3_FSM_HPP
 #define ATDOG3_FSM_HPP
 
+// atdog3（dog3）状态机定义。
+// 状态总览：
+//   Passive    阻尼/被动（kp=0,kd=8），上电默认状态
+//   GetUp      位控站立（插值到默认关节角）；从 Passive 进入会先经过预备姿态
+//   GetDown    趴下（插值回起始姿态）
+//   RLLocomotion / RLStairs / RLSand / RLBar  四套 RL 策略：平地/台阶/沙石/限高杆
+//   Crosswall  翻越障碍（占位，未实现具体动作）
+// 切换来源：键盘(current_keyboard)、手柄(current_gamepad)、上层遥控 mode：
+//   mode==1 位控站立, 2 普通行走, 3 沙石, 4 台阶, 5 限高杆。
+// 与 dog2 的状态机基本一致，但 dog3 没有 Check 状态。
+
 #include "fsm.hpp"
 #include "rl_sdk.hpp"
 #include <Eigen/Dense>
@@ -13,6 +24,7 @@
 namespace atdog3_fsm
 {
 
+// 被动/阻尼状态：电机仅给阻尼 kd，等待切到 GetUp
 class RLFSMStatePassive : public RLFSMState
 {
 public:
@@ -51,6 +63,7 @@ public:
     }
 };
 
+// 站立状态：从 Passive 进入先到预备姿态再到默认姿态；其它状态进入则直接插值到默认姿态
 class RLFSMStateGetUp : public RLFSMState
 {
 public:
@@ -141,6 +154,7 @@ public:
     }
 };
 
+// 趴下状态：插值回起始姿态后转入 Passive
 class RLFSMStateGetDown : public RLFSMState
 {
 public:
@@ -180,6 +194,7 @@ public:
     }
 };
 
+// 翻墙/越障状态：当前为占位，Run 未实现具体动作
 class RLFSMStateCrosswall : public RLFSMState
 {
 
@@ -212,6 +227,7 @@ public:
 
 };
 
+// 平地 RL 行走：加载 robot_lab 策略，每帧 RLControl() 推理控制
 class RLFSMStateRLLocomotion : public RLFSMState
 {
 public:
@@ -293,6 +309,7 @@ public:
 };
 
 
+// 爬台阶 RL：加载 robot_lab_stairs 策略
 class RLFSMStateRLStairs : public RLFSMState
 {
 public:
@@ -377,6 +394,7 @@ public:
     }
 };
 
+// 沙石地 RL：加载 robot_lab_sand 策略
 class RLFSMStateRLSand : public RLFSMState
 {
 public:
@@ -461,7 +479,7 @@ public:
     }
 };
 
-//限高杆状态
+//限高杆状态：加载 robot_lab_bar 策略（钻限高杆）
 class RLFSMStateRLBar : public RLFSMState
 {
 public:
@@ -545,6 +563,7 @@ public:
 
 } // namespace atdog2_fsm
 
+// dog3 状态机工厂：按名字创建状态实例，并向 FSMManager 注册（类型 "atdog3"）
 class ATDog3FSMFactory : public FSMFactory
 {
 public:
@@ -589,6 +608,7 @@ private:
     std::string initial_state_;
 };
 
+// 注册 dog3 工厂，初始状态为 Passive（被动）
 REGISTER_FSM_FACTORY(ATDog3FSMFactory, "RLFSMStatePassive")
 
 #endif // ATDOG3_FSM_HPP

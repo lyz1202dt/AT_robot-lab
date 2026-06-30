@@ -22,6 +22,7 @@ LegDriver::LegDriver(uint16_t vid, uint16_t pid) {
         int pack_type = -1;
         std::memcpy(&pack_type, data, sizeof(pack_type));
 
+        // dog2 上报 pack3（无 IMU），dog3 上报 pack0（含 IMU）；按包长校验防止错配
         const bool is_pack3 = pack_type == 3 && size == static_cast<int>(sizeof(DogStatePack3_t));
         const bool is_pack0 = pack_type == 0 && size == static_cast<int>(sizeof(DogStatePack0_t));
 
@@ -31,11 +32,15 @@ LegDriver::LegDriver(uint16_t vid, uint16_t pid) {
         LegState_t* legs_state;
 
         if (is_pack3) {
+            // dog2：仅腿部状态 + 平板激光测距，无 IMU
             legs_state = state_pack.pack3.leg;
             std::memcpy(&state_pack.pack3, data, size);
             this->last_time = state_pack.pack3.time;
+            plane_dst_ = state_pack.pack3.plane_dst;
+            plane_dst_updated_ = true;
         }
         else if (is_pack0) {
+            // dog3：腿部状态 + IMU + 平板激光测距
             legs_state = state_pack.pack0.leg;
             std::memcpy(&state_pack.pack0, data, size);
             // TODO:复制IMU信息
@@ -43,6 +48,8 @@ LegDriver::LegDriver(uint16_t vid, uint16_t pid) {
             imu_updated = true;
 
             this->last_time = state_pack.pack0.time;
+            plane_dst_ = state_pack.pack0.plane_dst;
+            plane_dst_updated_ = true;
         }
 
         const bool need_reset_filter = first_update;
@@ -125,6 +132,15 @@ bool LegDriver::get_imu_state(std::array<float,4> &q,std::array<float,3> &w) {
     w[0]=imu.wx;
     w[1]=imu.wy;
     w[2]=imu.wz;
+    return true;
+}
+
+bool LegDriver::get_plane_dst(uint16_t &plane_dst) {
+    // 读取最近一次平板激光测距；尚未收到任何状态包时返回 false
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    if (!plane_dst_updated_)
+        return false;
+    plane_dst = plane_dst_;
     return true;
 }
 

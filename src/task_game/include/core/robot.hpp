@@ -7,6 +7,7 @@
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <robot_msgs/msg/cmd.hpp>
+#include <robot_msgs/msg/int.hpp>
 #include <robot_msgs/msg/remote.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -47,6 +48,14 @@ public:
     std::atomic_bool auto_pilot_enabled{false};
     std::atomic_int32_t tree_start_key{kTreeIdle};
     std::atomic_bool tree_debug_mode{false};
+    // 激光测距结果缓存：plane_dst_buffer_ 为最近一次 plane_dst 话题值，
+    // plane_dst_received_ 表示是否至少收到过一次。
+    std::atomic_int32_t plane_dst_buffer_{0};
+    std::atomic_bool plane_dst_received_{false};
+    // enable_plane_dst_replan_：是否启用基于激光测距的失败重规划（真机用）。
+    std::atomic_bool enable_plane_dst_replan_{true};
+    // debug_force_replan_：调试用，一次性强制触发一次重规划，触发后自动复位。
+    std::atomic_bool debug_force_replan_{false};
 private:
     bool is_position_out_of_bounds(const geometry_msgs::msg::TransformStamped& transfer) const;
     void stop_rl_real_nodes();
@@ -56,6 +65,7 @@ private:
     std::shared_ptr<tf2_ros::TransformBroadcaster> target_box_tf_broadcaster_;
     rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_server_;
     rclcpp::Subscription<robot_msgs::msg::Remote>::SharedPtr remote_sub_;
+    rclcpp::Subscription<robot_msgs::msg::Int>::SharedPtr plane_dst_sub_;
     rclcpp::Publisher<robot_msgs::msg::Cmd>::SharedPtr cmd_pub_;
 
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;

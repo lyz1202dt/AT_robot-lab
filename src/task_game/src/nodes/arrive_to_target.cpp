@@ -89,6 +89,18 @@ BT::Status ArriveToTargetAction::execute(BT& tree) {
     }
 
     const auto& current_plan = move_plan[plan_index];
+    // 激光重规划计划的阶段跳过：
+    // - 单吸计划(hand_only)的 box0 到放置点阶段跳过（真实箱走 box1 链）；
+    // - 末轮平板重试(plate_retry)只走 box0，box1 到放置点阶段跳过。
+    if ((slot_ == BoxSlot::Box0 && current_plan.hand_only_plan && !current_plan.plate_retry_plan) ||
+        (slot_ == BoxSlot::Box1 && current_plan.plate_retry_plan)) {
+        if (!context->is_tree_debug_mode() && context->auto_pilot_enabled.load()) {
+            context->advance_tree_stage();
+        }
+        RCLCPP_INFO(context->node_->get_logger(), "ArriveToTargetAction: 重规划计划跳过 %s 放置点阶段", slot_name(slot_));
+        return BT::SUCCESS;
+    }
+
     const auto& current_task = task_for_slot(current_plan, slot_);
     const auto& trajectory_plan = current_task.to_dst;
 

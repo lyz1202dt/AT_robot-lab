@@ -78,6 +78,7 @@ typedef struct {
     IMU_t imu;
     uint16_t motor_state;
     uint32_t time;
+    uint16_t plane_dst;  // 平板激光测距值，用于判断 box0 是否成功放到平板
 } DogStatePack0_t;//dog3
 
 
@@ -87,6 +88,7 @@ typedef struct {
     LegState_t leg[4];
     uint16_t motor_state;
     uint32_t time;
+    uint16_t plane_dst;  // 平板激光测距值，用于判断 box0 是否成功放到平板
 } DogStatePack3_t;//dog2
 
 typedef struct {
