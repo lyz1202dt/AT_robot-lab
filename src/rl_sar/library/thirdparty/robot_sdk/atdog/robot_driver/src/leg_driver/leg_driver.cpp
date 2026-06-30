@@ -135,14 +135,14 @@ bool LegDriver::get_imu_state(std::array<float,4> &q,std::array<float,3> &w) {
     return true;
 }
 
-bool LegDriver::get_plane_dst(uint16_t &plane_dst) {
-    // 读取最近一次平板激光测距；尚未收到任何状态包时返回 false
+bool LegDriver::get_plane_dst(float &plane_dst) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     if (!plane_dst_updated_)
         return false;
     plane_dst = plane_dst_;
     return true;
 }
+
 
 void LegDriver::set_motor_error_callback(std::function<void(uint16_t)> callback) {
     std::lock_guard<std::mutex> lock(state_mutex_);

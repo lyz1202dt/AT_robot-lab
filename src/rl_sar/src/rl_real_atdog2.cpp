@@ -49,7 +49,6 @@ RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
             remote_cmd = msg;
             std::cout << "mode=" << msg.mode << std::endl;
         });
-    plane_dst_pub = node_->create_publisher<robot_msgs::msg::Int>("plane_dst", 10);
 
 
     // 键盘控制、底层控制、策略推理循环
@@ -108,13 +107,7 @@ void RL_Real::GetState(RobotState<float>* state) {
         return;
     }
 
-    // 发布平板激光测距值（task_game 用其判断 box0 是否成功放上平板）
-    uint16_t plane_dst = 0;
-    if (plane_dst_pub && this->leg_driver->get_plane_dst(plane_dst)) {
-        robot_msgs::msg::Int msg;
-        msg.data = static_cast<int32_t>(plane_dst);
-        plane_dst_pub->publish(msg);
-    }
+
 
     std::array<LegState_t, 4> legs_state{};
     if (!this->leg_driver->get_leg_state(legs_state)) {

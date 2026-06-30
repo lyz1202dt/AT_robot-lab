@@ -19,7 +19,7 @@ using namespace std::chrono_literals;
 namespace {
 
 // 激光传感器判断 box0 是否成功放置的距离阈值（<= 视为未放置成功，平板被卡死）。
-constexpr int plane_limit_dst = 2;
+constexpr float plane_limit_dst = 2.0f;
 
 // 机械臂协议：box1 从手上放，box0 从平板放；二层命令保留独立编号。
 constexpr int kArmPlaceHandFirstFloor = 5;

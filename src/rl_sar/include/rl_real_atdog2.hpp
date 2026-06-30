@@ -28,7 +28,6 @@
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
 #include <robot_msgs/msg/cmd.hpp>
-#include <robot_msgs/msg/int.hpp>
 
 
 class RL_Real : public RL
@@ -40,7 +39,6 @@ public:
 private:
     rclcpp::Node::SharedPtr node_;      //用于ROS2订阅通信的节点
     rclcpp::Subscription<robot_msgs::msg::Cmd>::SharedPtr cmd_sub;
-    rclcpp::Publisher<robot_msgs::msg::Int>::SharedPtr plane_dst_pub;  // 平板激光测距发布
     robot_msgs::msg::Cmd remote_cmd;
     // rl functions
     std::vector<float> Forward() override;            // 策略网络前向推理，输出动作

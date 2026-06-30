@@ -1,13 +1,14 @@
 #include "serialnode.hpp"
 #include "cdc_trans.hpp"
 #include "data_pack.h"
+#include <algorithm>
 #include <chrono>
 #include <memory>
 #include <rclcpp/logging.hpp>
 #include <robot_msgs/msg/arm.hpp>
 #include <robot_msgs/msg/arm4.hpp>
 #include <robot_msgs/msg/vis.hpp>
-#include <robot_msgs/msg/int.hpp>
+#include <std_msgs/msg/float32.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <thread>
 
@@ -23,7 +24,7 @@ ArmNode::ArmNode()
          exit_thread = false;
     
    
-    hand_distance_pub = this->create_publisher<robot_msgs::msg::Int>("red_distance", 10);
+    plane_dst_pub = this->create_publisher<std_msgs::msg::Float32>("plane_dst", 10);
 
     arm_sub = this->create_subscription<robot_msgs::msg::Arm>(
         "myjoints_target", 10, std::bind(&ArmNode::armSubscribCb, this, std::placeholders::_1));
@@ -38,15 +39,12 @@ ArmNode::ArmNode()
                              // 创建CDC传输对象
     cdc_trans->regeiser_recv_cb([this](const uint8_t* data, int size) { // 注册接收回调
         // RCLCPP_INFO(this->get_logger(), "接收到了数据包,长度%d", size);
-        if (size == sizeof(state_pack_t)) // 验证包长度，可以被视作四条腿的状态数据包
+        if (size == sizeof(plane_dst_state_pack_t)) 
         {
-            const state_pack_t* pack = reinterpret_cast<const state_pack_t*>(data);
-            if (pack->pack_type == 1)         // 确认包类型正确
-                publishredState(pack);        // 一旦接收，立即发布状态
-                
-
-            else
-                RCLCPP_ERROR(this->get_logger(), "接收到错误的数据包类型%d", pack->pack_type);
+            const plane_dst_state_pack_t* pack = reinterpret_cast<const plane_dst_state_pack_t*>(data);
+            if (pack->pack_type == 1) {       // 确认包类型正确
+                publish_plane_dst(pack);      // 同步发布机械臂 USB 上报的平板激光测距
+            }
         }
     });
       
@@ -87,18 +85,36 @@ ArmNode::~ArmNode() {
 }
 
 
-void ArmNode::publishredState(const state_pack_t *arm_state){
 
-     if (arm_state->red_distance == 0)
+
+void ArmNode::publish_plane_dst(const plane_dst_state_pack_t *arm_state){
+    if (plane_dst_pub == nullptr || arm_state == nullptr)
     {
         return;
     }
 
-    robot_msgs::msg::Int msg;
-    msg.data = arm_state->red_distance;
-    hand_distance_pub->publish(msg);
-    RCLCPP_INFO(this->get_logger(), "\033[35m发布了红外距离 %d\033[0m", arm_state->red_distance);
-       
+    plane_dst_samples[plane_dst_sample_index] = arm_state->plane_dst;
+    plane_dst_sample_index = (plane_dst_sample_index + 1) % plane_dst_samples.size();
+    if (plane_dst_sample_count < plane_dst_samples.size()) {
+        ++plane_dst_sample_count;
+    }
+    if (plane_dst_sample_count < plane_dst_samples.size()) {
+        return;
+    }
+
+    float sum = plane_dst_samples[0];
+    float min_value = plane_dst_samples[0];
+    float max_value = plane_dst_samples[0];
+    for (size_t i = 1; i < plane_dst_samples.size(); ++i) {
+        const float value = plane_dst_samples[i];
+        sum += value;
+        min_value = std::min(min_value, value);
+        max_value = std::max(max_value, value);
+    }
+
+    std_msgs::msg::Float32 msg;
+    msg.data = (sum - min_value - max_value) / static_cast<float>(plane_dst_samples.size() - 2);
+    plane_dst_pub->publish(msg);
 }
 
 

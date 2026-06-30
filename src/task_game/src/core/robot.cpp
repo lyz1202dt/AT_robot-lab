@@ -143,8 +143,8 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         record_key(msg.key);
     });
 
-    // 激光测距距离订阅：rl_real 节点按帧发布 plane_dst，用于判断 box0 平板放置是否成功。
-    plane_dst_sub_ = node_->create_subscription<robot_msgs::msg::Int>("plane_dst", 10, [this](const robot_msgs::msg::Int& msg) {
+    // 激光测距距离订阅：robot_driver 节点按帧发布 plane_dst，用于判断 box0 平板放置是否成功。
+    plane_dst_sub_ = node_->create_subscription<std_msgs::msg::Float32>("plane_dst", 10, [this](const std_msgs::msg::Float32& msg) {
         plane_dst_buffer_.store(msg.data);
         plane_dst_received_.store(true);
     });

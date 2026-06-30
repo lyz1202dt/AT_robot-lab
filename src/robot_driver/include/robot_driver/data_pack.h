@@ -43,9 +43,9 @@ typedef struct
 typedef struct
 {
 	int pack_type;
-	int red_distance;
-	
-}state_pack_t;// state_pack_t 用于表示状态数据包，包含来自下位机反馈的红外距离信息
+	float plane_dst;
+
+}plane_dst_state_pack_t;// state_pack_t 用于表示状态数据包，包含来自下位机反馈的红外距离与平板激光测距信息
 
 // target_pack_t 用于表示目标数据包，包含多个机器人控制模块的期望数据
 typedef struct
