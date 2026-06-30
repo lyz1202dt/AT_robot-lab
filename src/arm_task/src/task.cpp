@@ -581,13 +581,13 @@ void ArmTaskNode::execute_place_flow_1_on_hand() {
 
     execute_cartesian_space_trajectory(object_pose, place_hand_level_1_cartesian_duration_);
 
-    std::this_thread::sleep_for(400ms);
+    std::this_thread::sleep_for(600ms);
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
     set_air_pump(false);
 
-    std::this_thread::sleep_for(100ms);
+    std::this_thread::sleep_for(200ms);
 
     RCLCPP_INFO(this->get_logger(), "返回初始位置");
 

@@ -128,7 +128,7 @@ private:
     double release_collision_avoid_duration_{0.2};
     double release_home_duration_{0.35};
     double place_hand_level_1_prepare_duration_{2.4};
-    double place_hand_level_1_cartesian_duration_{0.4};
+    double place_hand_level_1_cartesian_duration_{0.6};
     double place_hand_level_1_home_duration_{0.3};
     double place_hand_level_2_prepare_duration_{3.0};
     double place_hand_level_2_cartesian_duration_{0.6};
