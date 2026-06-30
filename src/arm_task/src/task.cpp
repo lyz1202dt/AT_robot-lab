@@ -112,6 +112,7 @@ void ArmTaskNode::declare_config_parameters() {
     this->declare_parameter<std::vector<double>>("positions.grasp_finish", grasp_finish_position);
     this->declare_parameter<std::vector<double>>("positions.release_box", release_box_position);
     this->declare_parameter<std::vector<double>>("positions.re_grasp_box", re_graspe_box_position);
+    this->declare_parameter<std::vector<double>>("positions.place_box_collision_avoid", place_box_collision_avoid_position);
     this->declare_parameter<std::vector<double>>("positions.finished_release_box", finished_release_box_position);
 
     this->declare_parameter<double>("poses.grasp_z", grasp_z_);
@@ -140,6 +141,7 @@ void ArmTaskNode::declare_config_parameters() {
     this->declare_parameter<double>("timing.place_hand_level_2_retract_duration", place_hand_level_2_retract_duration_);
     this->declare_parameter<double>("timing.place_hand_level_2_home_duration", place_hand_level_2_home_duration_);
     this->declare_parameter<double>("timing.place_box_re_grasp_duration", place_box_re_grasp_duration_);
+    this->declare_parameter<double>("timing.place_box_collision_avoid_duration", place_box_collision_avoid_duration_);
     this->declare_parameter<double>("timing.place_box_level_1_prepare_duration", place_box_level_1_prepare_duration_);
     this->declare_parameter<double>("timing.place_box_level_1_cartesian_duration", place_box_level_1_cartesian_duration_);
     this->declare_parameter<double>("timing.place_box_level_1_home_duration", place_box_level_1_home_duration_);
@@ -166,6 +168,7 @@ void ArmTaskNode::load_config_parameters() {
     grasp_finish_position = this->get_parameter("positions.grasp_finish").as_double_array();
     release_box_position = this->get_parameter("positions.release_box").as_double_array();
     re_graspe_box_position = this->get_parameter("positions.re_grasp_box").as_double_array();
+    place_box_collision_avoid_position = this->get_parameter("positions.place_box_collision_avoid").as_double_array();
     finished_release_box_position = this->get_parameter("positions.finished_release_box").as_double_array();
 
     grasp_z_ = this->get_parameter("poses.grasp_z").as_double();
@@ -194,6 +197,7 @@ void ArmTaskNode::load_config_parameters() {
     place_hand_level_2_retract_duration_ = this->get_parameter("timing.place_hand_level_2_retract_duration").as_double();
     place_hand_level_2_home_duration_ = this->get_parameter("timing.place_hand_level_2_home_duration").as_double();
     place_box_re_grasp_duration_ = this->get_parameter("timing.place_box_re_grasp_duration").as_double();
+    place_box_collision_avoid_duration_ = this->get_parameter("timing.place_box_collision_avoid_duration").as_double();
     place_box_level_1_prepare_duration_ = this->get_parameter("timing.place_box_level_1_prepare_duration").as_double();
     place_box_level_1_cartesian_duration_ = this->get_parameter("timing.place_box_level_1_cartesian_duration").as_double();
     place_box_level_1_home_duration_ = this->get_parameter("timing.place_box_level_1_home_duration").as_double();
@@ -658,8 +662,11 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
     execute_joint_space_trajectory(re_graspe_box_position, place_box_re_grasp_duration_);
     std::this_thread::sleep_for(1500ms);
 
+    execute_joint_space_trajectory(place_box_collision_avoid_position, place_box_collision_avoid_duration_);
+    std::this_thread::sleep_for(200ms);
+
     execute_joint_space_trajectory(place_position, place_box_level_1_prepare_duration_);
-    std::this_thread::sleep_for(3600ms);
+    std::this_thread::sleep_for(3500ms);
 
     double x = 0.0;
     double y = 0.0;
@@ -705,6 +712,9 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
     execute_joint_space_trajectory(re_graspe_box_position, place_box_re_grasp_duration_);
     std::this_thread::sleep_for(1500ms);
 
+    execute_joint_space_trajectory(place_box_collision_avoid_position, place_box_collision_avoid_duration_);
+    std::this_thread::sleep_for(200ms);
+    
     execute_joint_space_trajectory(place_position_2, place_box_level_2_prepare_duration_);
     std::this_thread::sleep_for(3600ms);
 
