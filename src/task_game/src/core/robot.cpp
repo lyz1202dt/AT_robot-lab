@@ -53,13 +53,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
     node_->declare_parameter<bool>("start_game", false);
     node_->declare_parameter<bool>("tree_debug_mode", false);
-    // 激光重规划相关参数：enable_plane_dst_replan 真机启用激光判失败重规划；
-    // debug_force_replan 调试用，一次性强制触发重规划（无激光时验证流程）。
-    node_->declare_parameter<bool>("enable_plane_dst_replan", true);
-    node_->declare_parameter<bool>("debug_force_replan", false);
     set_tree_debug_mode(node_->get_parameter("tree_debug_mode").as_bool());
-    enable_plane_dst_replan_.store(node_->get_parameter("enable_plane_dst_replan").as_bool());
-    debug_force_replan_.store(node_->get_parameter("debug_force_replan").as_bool());
     node_->declare_parameter<std::vector<double>>("transfer_x_limits", {transfer_x_limits_[0], transfer_x_limits_[1]});
     node_->declare_parameter<std::vector<double>>("transfer_y_limits", {transfer_y_limits_[0], transfer_y_limits_[1]});
     node_->declare_parameter<std::vector<double>>("transfer_z_limits", {transfer_z_limits_[0], transfer_z_limits_[1]});
@@ -143,12 +137,6 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         record_key(msg.key);
     });
 
-    // 激光测距距离订阅：robot_driver 节点按帧发布 plane_dst，用于判断 box0 平板放置是否成功。
-    plane_dst_sub_ = node_->create_subscription<std_msgs::msg::Float32>("plane_dst", 10, [this](const std_msgs::msg::Float32& msg) {
-        plane_dst_buffer_.store(msg.data);
-        plane_dst_received_.store(true);
-    });
-
     param_server_ = node_->add_on_set_parameters_callback([this](const std::vector<rclcpp::Parameter>& params) {
         rcl_interfaces::msg::SetParametersResult result;
         result.successful = true;
@@ -156,18 +144,6 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         for (const auto& param : params) {
             if (param.get_name() == "tree_debug_mode") {
                 set_tree_debug_mode(param.as_bool());
-                continue;
-            }
-
-            if (param.get_name() == "enable_plane_dst_replan") {
-                enable_plane_dst_replan_.store(param.as_bool());
-                RCLCPP_INFO(node_->get_logger(), "激光测距重规划开关: %s", param.as_bool() ? "开启" : "关闭");
-                continue;
-            }
-
-            if (param.get_name() == "debug_force_replan") {
-                debug_force_replan_.store(param.as_bool());
-                RCLCPP_INFO(node_->get_logger(), "调试重规划触发开关: %s", param.as_bool() ? "开启" : "关闭");
                 continue;
             }
 

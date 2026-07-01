@@ -18,9 +18,6 @@ using namespace std::chrono_literals;
 
 namespace {
 
-// 激光传感器判断 box0 是否成功放置的距离阈值（<= 视为未放置成功，平板被卡死）。
-constexpr float plane_limit_dst = 2.0f;
-
 // 机械臂协议：box1 从手上放，box0 从平板放；二层命令保留独立编号。
 constexpr int kArmPlaceHandFirstFloor = 5;
 constexpr int kArmPlaceHandSecondFloor = 6;
@@ -264,10 +261,18 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
 
     auto start = std::chrono::steady_clock::now();
 
+    bool arm_place_failed = false;
     while (rclcpp::ok()) {
 
         if (arm_state_ == 1) {
             RCLCPP_INFO(context->node_->get_logger(), "放置 %s 完成", slot_name(slot_));
+            arm_state_ = 0;
+            break;
+        }
+
+        if (arm_state_ == -1) {
+            RCLCPP_WARN(context->node_->get_logger(), "机械臂返回 %s 放置失败", slot_name(slot_));
+            arm_place_failed = true;
             arm_state_ = 0;
             break;
         }
@@ -292,27 +297,9 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         return BT::SUCCESS;
     }
 
-    // box0 从平板放置：用激光判断是否真正放置成功。
+    // box0 从平板放置：机械臂明确返回 -1 时认为平板放置失败，需要触发重规划。
     if (slot_ == BoxSlot::Box0) {
-        bool place_failed = false;
-        if (!plan.skip_box0_place_check) {
-            const bool enable_plane_dst_replan = context->enable_plane_dst_replan_.load();
-            const bool debug_force_replan = context->debug_force_replan_.load();
-            const bool plane_dst_received = context->plane_dst_received_.load();
-
-            if (debug_force_replan) {
-                // 调试用：无激光时一次性强制触发重规划，触发后复位。
-                place_failed = true;
-                context->debug_force_replan_.store(false);
-                RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: 调试参数触发重规划");
-            } else if (enable_plane_dst_replan) {
-                if (!plane_dst_received) {
-                    RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: 尚未收到 plane_dst，跳过激光重规划判断");
-                } else {
-                    place_failed = context->plane_dst_buffer_.load() <= plane_limit_dst;
-                }
-            }
-        }
+        const bool place_failed = !plan.skip_box0_place_check && arm_place_failed;
 
         if (place_failed) {
             // 平板被卡死：重建剩余箱子为单吸手放计划 + 末轮平板重试，从下一轮重新开始。
