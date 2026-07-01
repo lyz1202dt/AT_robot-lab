@@ -38,13 +38,15 @@ ArmNode::ArmNode()
 
                              // 创建CDC传输对象
     cdc_trans->regeiser_recv_cb([this](const uint8_t* data, int size) { // 注册接收回调
-        // RCLCPP_INFO(this->get_logger(), "接收到了数据包,长度%d", size);
-        if (size == sizeof(plane_dst_state_pack_t)) 
+        if (data == nullptr || size != sizeof(plane_dst_state_pack_t)) 
         {
-            const plane_dst_state_pack_t* pack = reinterpret_cast<const plane_dst_state_pack_t*>(data);
-            if (pack->pack_type == 1) {       // 确认包类型正确
-                publish_plane_dst(pack);      // 同步发布机械臂 USB 上报的平板激光测距
-            }
+            RCLCPP_INFO(this->get_logger(), "数据包错误,size = %d",size);
+            return;
+        }
+        const auto* pack = reinterpret_cast<const plane_dst_state_pack_t*>(data);
+        RCLCPP_INFO(this->get_logger(), "接收到了数据包,包头%x,数据%f", size, pack->plane_dst);
+        if (pack->pack_type == 0x10) {       // 确认包类型正确
+            publish_plane_dst(pack);      // 同步发布机械臂 USB 上报的平板激光测距
         }
     });
       
