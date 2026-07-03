@@ -390,7 +390,7 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
                     if(std::sqrt(dx*dx+dy*dy)>0.2||std::abs(dz)>0.1)
                     {
                         vision_weight = 0.0;
-                        RCLCPP_INFO(this->get_logger(), "视觉坐标和相机坐标差距过大，水平为%f,竖直为%f,不信任视觉坐标",std::sqrt(dx*dx+dy*dy),dz);
+                        RCLCPP_WARN(this->get_logger(), "视觉坐标和相机坐标差距过大，水平为%f,竖直为%f,不信任视觉坐标",std::sqrt(dx*dx+dy*dy),dz);
                     }
                     else {
                     RCLCPP_INFO(
@@ -508,7 +508,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
                     if(std::sqrt(dx*dx+dy*dy)>0.2||std::abs(dz)>0.1)
                     {
                         vision_weight = 0.0;
-                        RCLCPP_INFO(this->get_logger(), "视觉坐标和相机坐标差距过大，水平为%f,竖直为%f,不信任视觉坐标",std::sqrt(dx*dx+dy*dy),dz);
+                        RCLCPP_WARN(this->get_logger(), "视觉坐标和相机坐标差距过大，水平为%f,竖直为%f,不信任视觉坐标",std::sqrt(dx*dx+dy*dy),dz);
                     }
                     else {
                     RCLCPP_INFO(
