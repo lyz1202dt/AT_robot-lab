@@ -109,8 +109,8 @@ LegDriver::LegDriver(uint16_t vid, uint16_t pid) {
         }
     });
 
-    ResetPack reset_pack={.pack_type=10,.data=0};
-    cdc_trans->send_struct(reset_pack);
+    // ResetPack reset_pack={.pack_type=10,.data=0};
+    // cdc_trans->send_struct(reset_pack);
 }
 
 bool LegDriver::get_imu_state(std::array<float,4> &q,std::array<float,3> &w) {
