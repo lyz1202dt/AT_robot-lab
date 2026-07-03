@@ -8,6 +8,7 @@
 #include <mutex>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/subscription.hpp>
+#include <std_msgs/msg/detail/float32__struct.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <string>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -80,13 +81,15 @@ private:
     rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr arm_cmd_sub_;
     rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr box_pos_by_vision_sub;
     rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr place_pos_by_vision_sub;
+    rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr box_to_hand_dis_sub;
 
 
     // Parameters
     std::atomic<int32_t> arm_task_mode_{0}; // 0: standby, 1: grasp, 2: place, 1x: move to position x
     std::atomic<bool> task_running_{false};
     std::atomic<bool> shutdown_requested_{false};
-    int current_mode{0};
+    int current_mode{0}; 
+    float current_box_hand_dis{0.0};
 
     std::thread task_thread_;
 
