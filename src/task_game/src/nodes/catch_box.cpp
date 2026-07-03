@@ -15,7 +15,7 @@ namespace {
 constexpr int kArmCatchToPlate = 1;
 constexpr int kArmCatchToHand = 2;
 
-constexpr const char* kUsePnpBoxIndexParam = "use_pnp_box_index";
+constexpr const char* kUsePnpBoxIndexParam = "a_use_pnp_box_index";
 
 bool wait_for_stage(Robot* context, int32_t expected_stage) {
     while (rclcpp::ok() && context->auto_pilot_enabled.load() && context->tree_start_key.load() != expected_stage) {
