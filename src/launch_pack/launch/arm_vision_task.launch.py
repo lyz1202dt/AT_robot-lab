@@ -73,22 +73,34 @@ def launch_setup(context, *args, **kwargs):
         output="screen",
     )
 
-    # Static transform from link4 to camera_link
-    # Based on robotic_arm.xml: camera at pos="0.1 0.09 -0.03" relative to link4
-    # xyaxes="0 0 1 0 1 0" means x-axis points in z direction, y-axis points in y direction
-    # This is a 90-degree rotation about y-axis
-    # Quaternion for 90-degree rotation about y-axis: (0, 0.7071, 0, 0.7071)
-    static_tf_camera = Node(
+    # Static transform from joint1 to camera_link.
+    # The orientation includes an additional -90-degree rotation about camera_link's
+    # current z-axis.
+    if model_package=="arm2":       #连杆狗（01云台）的ARM
+        static_tf_camera = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
         arguments=[
-            "0.15", "0.0", "0.0",
-            "0.7071", "0.0", "0.7071", "0.0",
+            "0.32", "-0.02", "-0.03",
+            "-1.570796", "0.0", "-2.356194",
             "joint1",
             "camera_link",
         ],
         output="screen",
-    )
+        )
+    else:       #同步带狗(05云台)的ARM
+        static_tf_camera = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        arguments=[
+            "0.232", "-0.022", "-0.03",
+            "-1.570796", "0.0", "-2.356194",
+            "joint1",
+            "camera_link",
+        ],
+        output="screen",
+        )
+    
 
     return [
         robot_state_pub,
