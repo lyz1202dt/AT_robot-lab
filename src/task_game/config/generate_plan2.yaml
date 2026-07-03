@@ -5,7 +5,8 @@
 # - box1：后抓，吸在机械臂上；到放置区后第一个放下。
 #
 # 轨迹段对应关系：
-# - start_to_a1：启动区 -> 抓取区入口 a1（仅第一轮使用）
+# - start_to_a0：启动区 -> 抓取区过渡点 a0（仅第一轮使用）
+# - a0_to_a1：a0 -> 抓取区入口 a1（仅第一轮使用）
 # - a1_to_box0：a1 -> 第一轮 box0
 # - box0_to_box1：box0 -> box1
 # - box1_to_a2：第一轮 box1 -> 出抓取区过渡点 a2
@@ -15,7 +16,22 @@
 # - dst0_to_dst2：dst0 -> dst2（后退点位）
 # - dst2_to_box0：dst2 -> 下一轮 box0
 
-start_to_a1_target_point: &start_to_a1_target_point
+start_to_a0_target_point: &start_to_a0_target_point
+  constraint_target_yaw: true
+  target_vel: 0.0
+  max_velocity: 0.6
+  max_accelation: 0.4
+  max_omega: 1.2
+  kp: [2.0, 0.5, 1.5]
+  allow_start_dir_error: 0.1
+  allow_final_dir_error: 0.1
+  allow_final_pos_allow: 0.05
+  adjust_min_vel: 0.35
+  adjust_min_omega: 0.4
+  allow_y_vel: true
+  trajectory_connection_radius: 0.0
+
+a0_to_a1_target_point: &a0_to_a1_target_point
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 0.6
@@ -187,11 +203,13 @@ box_positions:
     - [2.1819516369279833, -3.2947027090480336, -3.1193922909543348]
 
 routes:
+  a0: [0.895, -2.0, 0.0]
   a1: [0.895, -0.725, 0.0]
   a2: [2.755, -0.725, 0.0]
 
 target_points:
-  start_to_a1: *start_to_a1_target_point
+  start_to_a0: *start_to_a0_target_point
+  a0_to_a1: *a0_to_a1_target_point
   a1_to_box0: *a1_to_box0_target_point
   box0_to_box1: *box0_to_box1_target_point
   box1_to_a2: *box1_to_a2_target_point

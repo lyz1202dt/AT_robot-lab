@@ -15,6 +15,8 @@ namespace {
 constexpr int kArmCatchToPlate = 1;
 constexpr int kArmCatchToHand = 2;
 
+constexpr const char* kUsePnpBoxIndexParam = "use_pnp_box_index";
+
 bool wait_for_stage(Robot* context, int32_t expected_stage) {
     while (rclcpp::ok() && context->auto_pilot_enabled.load() && context->tree_start_key.load() != expected_stage) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -162,9 +164,10 @@ BT::Status CatchBoxAction::execute(BT& tree) {
         return BT::SUCCESS;
     }
 
-    // 解析被抓箱子的放置区 ID：优先用 pnp_box_index，识别失败回退到 box_id_grid 默认值。
+    // 解析被抓箱子的放置区 ID：可通过 use_pnp_box_index 参数切换 pnp_box_index 或 box_id_grid 默认值。
     int resolved_id = task_for_slot_id(current_plan, slot_);
-    {
+    const bool use_pnp_box_index = context->node_->get_parameter(kUsePnpBoxIndexParam).as_bool();
+    if (use_pnp_box_index) {
         std::lock_guard<std::mutex> lock(pnp_mutex_);
         if (pnp_latched_ && pnp_value_ >= 0 && pnp_value_ < 4) {
             resolved_id = pnp_value_;
@@ -172,6 +175,8 @@ BT::Status CatchBoxAction::execute(BT& tree) {
         } else {
             RCLCPP_WARN(context->node_->get_logger(), "CatchBoxAction: %s 未收到有效 pnp_box_index，回退到 grid 默认 ID=%d", slot_name(slot_), resolved_id);
         }
+    } else {
+        RCLCPP_INFO(context->node_->get_logger(), "CatchBoxAction: %s use_pnp_box_index=false，使用 grid 默认 ID=%d", slot_name(slot_), resolved_id);
     }
 
     // 用解析到的 ID 查表，patch 黑板 move_plan：放置导航位末点 + 机械臂放置位 + box_id。

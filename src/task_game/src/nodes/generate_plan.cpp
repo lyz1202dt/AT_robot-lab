@@ -84,6 +84,7 @@ using PositionGrid = std::array<std::array<std::tuple<float, float, float>, 4>, 
 using BoxPositionGrid = std::array<std::array<std::array<float, 2>, 4>, 3>;
 
 struct RoutePoints {
+    std::array<float, 3> a0{};
     std::array<float, 3> a1{};
     std::array<float, 3> a2{};
 };
@@ -92,7 +93,8 @@ struct PlanConfig {
     PositionGrid positions{};
     BoxPositionGrid arm_box_positions{};
     RoutePoints route{};
-    TargetPoint start_to_a1{};
+    TargetPoint start_to_a0{};
+    TargetPoint a0_to_a1{};
     TargetPoint a1_to_box0{};
     TargetPoint box0_to_box1{};
     TargetPoint box1_to_a2{};
@@ -206,10 +208,12 @@ PlanConfig load_plan_config(const std::string& yaml_path) {
     config.positions[1] = read_point3_row(box_positions["pick_line_0"], "box_positions.pick_line_0");
     config.positions[2] = read_point3_row(box_positions["pick_line_1"], "box_positions.pick_line_1");
 
+    config.route.a0 = read_point3(routes["a0"], "routes.a0");
     config.route.a1 = read_point3(routes["a1"], "routes.a1");
     config.route.a2 = read_point3(routes["a2"], "routes.a2");
 
-    config.start_to_a1 = read_target_point(target_points["start_to_a1"], "target_points.start_to_a1");
+    config.start_to_a0 = read_target_point(target_points["start_to_a0"], "target_points.start_to_a0");
+    config.a0_to_a1 = read_target_point(target_points["a0_to_a1"], "target_points.a0_to_a1");
     config.a1_to_box0 = read_target_point(target_points["a1_to_box0"], "target_points.a1_to_box0");
     config.box0_to_box1 = read_target_point(target_points["box0_to_box1"], "target_points.box0_to_box1");
     config.box1_to_a2 = read_target_point(target_points["box1_to_a2"], "target_points.box1_to_a2");
@@ -424,6 +428,7 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         }
     }
 
+    const std::array<float, 3> a0 = plan_config.route.a0;
     const std::array<float, 3> a1 = plan_config.route.a1;
     const std::array<float, 3> a2 = plan_config.route.a2;
     const int first_col = choose_first_col(plan_config, a1);
@@ -458,8 +463,10 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         // 去除跨轮耦合：非首轮 box0 不再以上一轮 dst2 作为途经点，
         // 直接由 Pilot 从当前位置导航到 box0_src（每轮独立退让到 dst2）。
         if (is_first_plan) {
+            plan.box0.to_box.trajectory.push_back(a0);
+            plan.box0.to_box.target_points.push_back(plan_config.start_to_a0);
             plan.box0.to_box.trajectory.push_back(a1);
-            plan.box0.to_box.target_points.push_back(plan_config.start_to_a1);
+            plan.box0.to_box.target_points.push_back(plan_config.a0_to_a1);
             first_plan = false;
             plan.box0.to_box.trajectory.push_back(box0_src);
             plan.box0.to_box.target_points.push_back(plan_config.a1_to_box0);
