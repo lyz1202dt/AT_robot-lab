@@ -30,7 +30,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     // Declare parameters
     this->declare_parameter<int32_t>("arm_task", 0);
     this->declare_parameter<bool>("air_pump", false);
-    this->declare_parameter<bool>("use_vision_grasp", false);
+    this->declare_parameter<bool>("use_vision_grasp", true);    //开启使用机械臂进行视觉抓取
     this->declare_parameter<std::string>("base_frame", "arm_base_link");
     this->declare_parameter<std::string>("camera_frame", "camera_link");
     this->declare_parameter<std::string>("object_frame", "object_frame");
@@ -366,7 +366,7 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         geometry_msgs::msg::Point vision_box_pos;
         if (use_vision_grasp_.load()) {
             // 4.触发视觉识别动作
-            RCLCPP_INFO(this->get_logger(), "启动视觉识别");
+            RCLCPP_INFO(this->get_logger(), "启动视觉识别动作");
             double vision_variance = std::numeric_limits<double>::infinity();
             bool vision_ready      = wait_for_stable_vision_target(vision_box_pos, vision_variance);
 
@@ -383,9 +383,20 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
                     // vision_weight = grasp_vision_threshold_variance_ / (grasp_vision_threshold_variance_ + vision_variance);
                     // vision_weight = std::max(0.0, std::min(1.0, vision_weight));
                     vision_weight = 0.5;      // 先写死平均数加权
+
+                    double dx=vision_box_pos.x-object_pose.pose.position.x;
+                    double dy=vision_box_pos.y-object_pose.pose.position.y;
+                    double dz=vision_box_pos.z-object_pose.pose.position.z;
+                    if(std::sqrt(dx*dx+dy*dy)>0.2||std::abs(dz)>0.1)
+                    {
+                        vision_weight = 0.0;
+                        RCLCPP_INFO(this->get_logger(), "视觉坐标和相机坐标差距过大，水平为%f,竖直为%f,不信任视觉坐标",std::sqrt(dx*dx+dy*dy),dz);
+                    }
+                    else {
                     RCLCPP_INFO(
                         this->get_logger(), "视觉坐标已从 %s 转到 %s: x=%.4f, y=%.4f, z=%.4f", camera_frame_.c_str(), base_frame_.c_str(),
                         vision_box_pos.x, vision_box_pos.y, vision_box_pos.z);
+                    }
                 } catch (const tf2::TransformException& ex) {
                     RCLCPP_WARN(
                         this->get_logger(), "视觉坐标从 %s 转到 %s 失败，使用雷达坐标抓取: %s", camera_frame_.c_str(), base_frame_.c_str(),
@@ -490,9 +501,21 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
                     // vision_weight = grasp_vision_threshold_variance_ / (grasp_vision_threshold_variance_ + vision_variance);
                     // vision_weight = std::max(0.0, std::min(1.0, vision_weight));
                     vision_weight = 0.5;      // 先写死平均数加权
+
+                    double dx=vision_box_pos.x-object_pose.pose.position.x;
+                    double dy=vision_box_pos.y-object_pose.pose.position.y;
+                    double dz=vision_box_pos.z-object_pose.pose.position.z;
+                    if(std::sqrt(dx*dx+dy*dy)>0.2||std::abs(dz)>0.1)
+                    {
+                        vision_weight = 0.0;
+                        RCLCPP_INFO(this->get_logger(), "视觉坐标和相机坐标差距过大，水平为%f,竖直为%f,不信任视觉坐标",std::sqrt(dx*dx+dy*dy),dz);
+                    }
+                    else {
                     RCLCPP_INFO(
                         this->get_logger(), "视觉坐标已从 %s 转到 %s: x=%.4f, y=%.4f, z=%.4f", camera_frame_.c_str(), base_frame_.c_str(),
                         vision_box_pos.x, vision_box_pos.y, vision_box_pos.z);
+                    }
+                    
                 } catch (const tf2::TransformException& ex) {
                     RCLCPP_WARN(
                         this->get_logger(), "视觉坐标从 %s 转到 %s 失败，使用雷达坐标抓取: %s", camera_frame_.c_str(), base_frame_.c_str(),
