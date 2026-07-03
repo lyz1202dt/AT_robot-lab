@@ -25,7 +25,6 @@ public:
     bool get_leg_state(std::array<LegState_t,4> &legs_state);
     bool enable_control(bool cmd);
     bool get_imu_state(std::array<float,4> &q,std::array<float,3> &w);
-
     void set_motor_error_callback(std::function<void(uint16_t)> callback);
 private:
     bool exit_thread{false};

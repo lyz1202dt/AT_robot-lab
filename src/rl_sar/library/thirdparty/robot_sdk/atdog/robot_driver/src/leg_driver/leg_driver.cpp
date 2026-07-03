@@ -22,7 +22,6 @@ LegDriver::LegDriver(uint16_t vid, uint16_t pid) {
         int pack_type = -1;
         std::memcpy(&pack_type, data, sizeof(pack_type));
 
-        // dog2 上报 pack3（无 IMU），dog3 上报 pack0（含 IMU）；按包长校验防止错配
         const bool is_pack3 = pack_type == 3 && size == static_cast<int>(sizeof(DogStatePack3_t));
         const bool is_pack0 = pack_type == 0 && size == static_cast<int>(sizeof(DogStatePack0_t));
 
@@ -32,13 +31,11 @@ LegDriver::LegDriver(uint16_t vid, uint16_t pid) {
         LegState_t* legs_state;
 
         if (is_pack3) {
-            // dog2：仅腿部状态 + 平板激光测距，无 IMU
             legs_state = state_pack.pack3.leg;
             std::memcpy(&state_pack.pack3, data, size);
             this->last_time = state_pack.pack3.time;
         }
         else if (is_pack0) {
-            // dog3：腿部状态 + IMU + 平板激光测距
             legs_state = state_pack.pack0.leg;
             std::memcpy(&state_pack.pack0, data, size);
             // TODO:复制IMU信息
