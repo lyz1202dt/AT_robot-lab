@@ -15,7 +15,22 @@
 # - dst0_to_dst2：dst0 -> dst2（后退点位）
 # - dst2_to_box0：dst2 -> 下一轮 box0
 
-start_to_a1_target_point: &start_to_a1_target_point
+start_to_a0_target_point: &start_to_a1_target_point
+  constraint_target_yaw: true
+  target_vel: 0.0
+  max_velocity: 0.8
+  max_accelation: 0.4
+  max_omega: 1.2
+  kp: [2.0, 0.5, 1.5]
+  allow_start_dir_error: 0.1
+  allow_final_dir_error: 0.1
+  allow_final_pos_allow: 0.05
+  adjust_min_vel: 0.35
+  adjust_min_omega: 0.4
+  allow_y_vel: true
+  trajectory_connection_radius: 0.0
+
+a0_to_a1_target_point: &start_to_a1_target_point
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 0.6
@@ -187,6 +202,7 @@ box_positions:
     - [2.1819516369279833, -3.2947027090480336, -3.1193922909543348]
 
 routes:
+  a0: [0.895, -2.0, 0.0]
   a1: [0.895, -0.725, 0.0]
   a2: [2.755, -0.725, 0.0]
 
