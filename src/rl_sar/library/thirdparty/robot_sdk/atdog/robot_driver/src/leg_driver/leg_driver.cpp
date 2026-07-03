@@ -36,8 +36,6 @@ LegDriver::LegDriver(uint16_t vid, uint16_t pid) {
             legs_state = state_pack.pack3.leg;
             std::memcpy(&state_pack.pack3, data, size);
             this->last_time = state_pack.pack3.time;
-            plane_dst_ = state_pack.pack3.plane_dst;
-            plane_dst_updated_ = true;
         }
         else if (is_pack0) {
             // dog3：腿部状态 + IMU + 平板激光测距
@@ -48,8 +46,6 @@ LegDriver::LegDriver(uint16_t vid, uint16_t pid) {
             imu_updated = true;
 
             this->last_time = state_pack.pack0.time;
-            plane_dst_ = state_pack.pack0.plane_dst;
-            plane_dst_updated_ = true;
         }
 
         const bool need_reset_filter = first_update;
@@ -116,8 +112,8 @@ LegDriver::LegDriver(uint16_t vid, uint16_t pid) {
         }
     });
 
-    ResetPack reset_pack={.pack_type=10,.data=0};
-    cdc_trans->send_struct(reset_pack);
+    // ResetPack reset_pack={.pack_type=10,.data=0};
+    // cdc_trans->send_struct(reset_pack);
 }
 
 bool LegDriver::get_imu_state(std::array<float,4> &q,std::array<float,3> &w) {
@@ -134,15 +130,6 @@ bool LegDriver::get_imu_state(std::array<float,4> &q,std::array<float,3> &w) {
     w[2]=imu.wz;
     return true;
 }
-
-bool LegDriver::get_plane_dst(float &plane_dst) {
-    std::lock_guard<std::mutex> lock(state_mutex_);
-    if (!plane_dst_updated_)
-        return false;
-    plane_dst = plane_dst_;
-    return true;
-}
-
 
 void LegDriver::set_motor_error_callback(std::function<void(uint16_t)> callback) {
     std::lock_guard<std::mutex> lock(state_mutex_);

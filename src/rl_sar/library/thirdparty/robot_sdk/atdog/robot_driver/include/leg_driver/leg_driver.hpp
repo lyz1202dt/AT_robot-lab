@@ -25,7 +25,6 @@ public:
     bool get_leg_state(std::array<LegState_t,4> &legs_state);
     bool enable_control(bool cmd);
     bool get_imu_state(std::array<float,4> &q,std::array<float,3> &w);
-    bool get_plane_dst(float &plane_dst);
 
     void set_motor_error_callback(std::function<void(uint16_t)> callback);
 private:
@@ -67,8 +66,6 @@ private:
     float wheel_default_kd{8.0};
 
     uint32_t last_time{0};
-    float plane_dst_{0.0f};
-    bool plane_dst_updated_{false};
     std::function<void(uint16_t)> motor_error_callback_;
 };
 
