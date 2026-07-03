@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 #include <future>
+#include <geometry_msgs/msg/detail/point__struct.hpp>
 #include <geometry_msgs/msg/point_stamped.hpp>
 #include <geometry_msgs/msg/detail/pose__struct.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -55,6 +56,14 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     
     // 当发1时通知视觉可以开始全场扫描，当发2时通知视觉可以开始寻找并发布物块坐标使机械臂能够去抓取物块
     vision_command_pub_ = this->create_publisher<std_msgs::msg::Int32>("arm_command", 10);
+
+    place_pos_by_vision_sub=this->create_subscription<geometry_msgs::msg::Point>("color_pnp_move", 10,[this](geometry_msgs::msg::Point::ConstSharedPtr pose) {
+            std::lock_guard<std::mutex> lock(vision_pose_mutex_);
+            latest_vision_box_pos_ = *pose;
+            latest_vision_box_pos_time_ = this->now();
+            has_vision_box_pos_ = true;
+        });
+
 
     // 结束扫描，机械臂需要回到初始位置
     box_grid_sub_ = this->create_subscription<std_msgs::msg::Int32MultiArray>(
@@ -905,6 +914,42 @@ bool ArmTaskNode::wait_for_stable_vision_target(
     vision_model_param_client_->set_parameters({rclcpp::Parameter("start_pnp", false)});
     return vision_ready;
 }
+
+bool ArmTaskNode::wait_for_stable_place_target(geometry_msgs::msg::Point& vision_box_pos, double& vision_variance)
+{
+    {
+        std::lock_guard<std::mutex> lock(vision_pose_mutex_);
+        has_vision_box_pos_ = false;
+    }
+    vision_variance = std::numeric_limits<double>::infinity();
+
+    std_msgs::msg::Int32 msg;
+    msg.data=5; //触发一次放置位置识别
+    vision_command_pub_->publish(msg);
+
+    const auto vision_start_time = std::chrono::steady_clock::now();
+    while (std::chrono::steady_clock::now() - vision_start_time < 3s) {
+        {
+            std::lock_guard<std::mutex> lock(vision_pose_mutex_);
+            if (has_vision_box_pos_) {
+                vision_box_pos = latest_vision_box_pos_;
+                vision_variance = 0.0;
+                RCLCPP_INFO(this->get_logger(),
+                            "获取到放置视觉坐标: x=%.4f, y=%.4f, z=%.4f",
+                            vision_box_pos.x,
+                            vision_box_pos.y,
+                            vision_box_pos.z);
+                return true;
+            }
+        }
+        std::this_thread::sleep_for(50ms);
+    }
+
+    RCLCPP_WARN(this->get_logger(), "放置位置识别3秒内未获取到结果");
+    return false;
+}
+
+
 
 void ArmTaskNode::set_air_pump(bool enabled) {
     std_msgs::msg::Int32 msg;

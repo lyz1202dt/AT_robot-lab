@@ -82,9 +82,9 @@ def launch_setup(context, *args, **kwargs):
         package="tf2_ros",
         executable="static_transform_publisher",
         arguments=[
-            "-0.03165", "0.0", "0.042",
+            "0.15", "0.0", "0.0",
             "0.7071", "0.0", "0.7071", "0.0",
-            "joint5",
+            "joint1",
             "camera_link",
         ],
         output="screen",

@@ -52,6 +52,7 @@ private:
     bool sample_target_xy_from_tf(double tf_timeout_sec, double& x, double& y);
     geometry_msgs::msg::PoseStamped make_fixed_pitch_pose(double x, double y, double z, double pitch_offset) const;
     bool wait_for_stable_vision_target(geometry_msgs::msg::Point& vision_box_pos, double& vision_variance);
+    bool wait_for_stable_place_target(geometry_msgs::msg::Point& vision_box_pos, double& vision_variance);
     void set_air_pump(bool enabled);
     
 
@@ -78,6 +79,7 @@ private:
     // Subscribers
     rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr arm_cmd_sub_;
     rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr box_pos_by_vision_sub;
+    rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr place_pos_by_vision_sub;
 
 
     // Parameters
