@@ -15,6 +15,7 @@
 #include <yaml-cpp/yaml.h>
 #include <vector>
 
+constexpr int kArmCheckBoxID = 7;
 using namespace std::chrono_literals;
 
 namespace {
@@ -432,6 +433,10 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         if (!wait_with_interrupt(context, 3s)) {
             return BT::FAILED;
         }
+
+        std_msgs::msg::Int32 msg;
+        msg.data = kArmCheckBoxID;
+        arm_cmd_pub_->publish(msg);
 
         // 注意：新流程不再发送 arm_cmd=7。box_id_grid 仅作为默认 ID 来源，
         // 真正每个箱子的放置区 ID 在抓取时由 pnp_box_index 话题给出。
