@@ -271,6 +271,66 @@ std::vector<SelectedBox> make_fixed_pick_order(int first_col) {
     return pick_order;
 }
 
+constexpr int kUnknownBoxId = 255;
+constexpr int kMaxBoxIdCount = 2;
+
+bool normalize_box_id_grid(const std_msgs::msg::Int32MultiArray& msg, BoxIdGrid& box_id_grid, const rclcpp::Logger& logger) {
+    std::array<int, 4> id_counts{};
+    std::vector<size_t> unknown_indices;
+    unknown_indices.reserve(8);
+
+    for (size_t i = 0; i < 8; ++i) {
+        const int value = msg.data[i];
+        if (value == kUnknownBoxId) {
+            unknown_indices.push_back(i);
+            continue;
+        }
+
+        if (value < 0 || value >= 4) {
+            RCLCPP_ERROR(logger, "box_id_grid[%zu]=%d 非法，必须是 [0,3] 或 255", i, value);
+            return false;
+        }
+
+        ++id_counts[value];
+        if (id_counts[value] > kMaxBoxIdCount) {
+            RCLCPP_ERROR(logger, "box_id_grid 中 ID=%d 的数量超过 %d", value, kMaxBoxIdCount);
+            return false;
+        }
+    }
+
+    std::array<int, 8> normalized{};
+    for (size_t i = 0; i < 8; ++i) {
+        normalized[i] = msg.data[i];
+    }
+
+    for (const size_t index : unknown_indices) {
+        bool filled = false;
+        for (int id = 0; id < 4; ++id) {
+            if (id_counts[id] < kMaxBoxIdCount) {
+                normalized[index] = id;
+                ++id_counts[id];
+                filled = true;
+                break;
+            }
+        }
+
+        if (!filled) {
+            RCLCPP_ERROR(logger, "box_id_grid 中 255 数量超过可补全数量");
+            return false;
+        }
+    }
+
+    box_id_grid[0][0] = normalized[0];
+    box_id_grid[0][1] = normalized[1];
+    box_id_grid[0][2] = normalized[2];
+    box_id_grid[0][3] = normalized[3];
+    box_id_grid[1][0] = normalized[4];
+    box_id_grid[1][1] = normalized[5];
+    box_id_grid[1][2] = normalized[6];
+    box_id_grid[1][3] = normalized[7];
+    return true;
+}
+
 void fill_box_task(BoxMoveTask& task,
                    const PlanConfig& plan_config,
                    const BoxInfo& box_info,
@@ -326,14 +386,9 @@ void GeneratePlaneAction::init_subscriptions(const rclcpp::Node::SharedPtr& node
                 return;
             }
 
-            box_id_grid_[0][0] = msg->data[0];
-            box_id_grid_[0][1] = msg->data[1];
-            box_id_grid_[0][2] = msg->data[2];
-            box_id_grid_[0][3] = msg->data[3];
-            box_id_grid_[1][0] = msg->data[4];
-            box_id_grid_[1][1] = msg->data[5];
-            box_id_grid_[1][2] = msg->data[6];
-            box_id_grid_[1][3] = msg->data[7];
+            if (!normalize_box_id_grid(*msg, box_id_grid_, node_->get_logger())) {
+                return;
+            }
             sem_post(&box_id_grid_sem_);
         });
 
