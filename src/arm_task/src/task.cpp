@@ -1,11 +1,12 @@
 #include "arm_task/task.hpp"
-#include <array>
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <future>
-#include <geometry_msgs/msg/point_stamped.hpp>
+#include <geometry_msgs/msg/detail/point__struct.hpp>
 #include <geometry_msgs/msg/detail/pose__struct.hpp>
+#include <geometry_msgs/msg/point_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <limits>
 #include <std_msgs/msg/detail/int32__struct.hpp>
@@ -23,13 +24,13 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     RCLCPP_INFO(this->get_logger(), "Initializing ArmTaskNode...");
 
     // Initialize TF2
-    tf_buffer_      = std::make_shared<tf2_ros::Buffer>(this->get_clock());
-    tf_listener_    = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+    tf_buffer_   = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+    tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
     // Declare parameters
     this->declare_parameter<int32_t>("arm_task", 0);
     this->declare_parameter<bool>("air_pump", false);
-    this->declare_parameter<bool>("use_vision_grasp", false);
+    this->declare_parameter<bool>("use_vision_grasp", true);    //开启使用机械臂进行视觉抓取
     this->declare_parameter<std::string>("base_frame", "arm_base_link");
     this->declare_parameter<std::string>("camera_frame", "camera_link");
     this->declare_parameter<std::string>("object_frame", "object_frame");
@@ -52,30 +53,44 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     // Create publishers
     visual_target_pub_      = this->create_publisher<geometry_msgs::msg::PoseStamped>("visual_target_pose", 10);
     joint_space_target_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("joint_space_target", 10);
-    
+
+    box_to_hand_dis_sub = this->create_subscription<std_msgs::msg::Float32>(
+        "plane_dst", 10, [this](std_msgs::msg::Float32::ConstSharedPtr msg) { current_box_hand_dis = msg->data; });
     // 当发1时通知视觉可以开始全场扫描，当发2时通知视觉可以开始寻找并发布物块坐标使机械臂能够去抓取物块
     vision_command_pub_ = this->create_publisher<std_msgs::msg::Int32>("arm_command", 10);
 
+    place_pos_by_vision_sub =
+        this->create_subscription<geometry_msgs::msg::Point>("color_pnp_move", 10, [this](geometry_msgs::msg::Point::ConstSharedPtr pose) {
+            std::lock_guard<std::mutex> lock(vision_pose_mutex_);
+            latest_vision_box_pos_      = *pose;
+            latest_vision_box_pos_time_ = this->now();
+            has_vision_box_pos_         = true;
+        });
+
+
     // 结束扫描，机械臂需要回到初始位置
     box_grid_sub_ = this->create_subscription<std_msgs::msg::Int32MultiArray>(
-        "box_id_grid", 10, [this](std_msgs::msg::Int32MultiArray::ConstSharedPtr /*msg*/) { scan_finished_ = 1; });     //该消息发出说明扫描结束
+        "box_id_grid", 10,
+        [this](std_msgs::msg::Int32MultiArray::ConstSharedPtr /*msg*/) { scan_finished_ = 1; }); // 该消息发出说明扫描结束
 
     // // 跟上层控制反馈当前机械臂状态，是否抓到物块了
     arm_finished_pub = this->create_publisher<std_msgs::msg::Int32>("arm_cmd_state", 10);
 
     // 上层控制命令订阅，告诉机械臂执行哪个任务
-    arm_cmd_sub_ = this->create_subscription<std_msgs::msg::Int32>(
-        "arm_cmd", 10, [this](const std_msgs::msg::Int32& msg){RCLCPP_INFO(get_logger(),"arm_task接收到命令");arm_task_mode_=msg.data;});
+    arm_cmd_sub_ = this->create_subscription<std_msgs::msg::Int32>("arm_cmd", 10, [this](const std_msgs::msg::Int32& msg) {
+        RCLCPP_INFO(get_logger(), "arm_task接收到命令");
+        arm_task_mode_ = msg.data;
+    });
 
     // 气泵的控制话题，发布机械臂需要的吸取和放置命令
     air_pub_ = this->create_publisher<std_msgs::msg::Int32>("air_pump_target", 10);
 
-    box_pos_by_vision_sub = this->create_subscription<geometry_msgs::msg::Point>(
-        "pnp_move", 10, [this](geometry_msgs::msg::Point::ConstSharedPtr pose) {
+    box_pos_by_vision_sub =
+        this->create_subscription<geometry_msgs::msg::Point>("pnp_move", 10, [this](geometry_msgs::msg::Point::ConstSharedPtr pose) {
             std::lock_guard<std::mutex> lock(vision_pose_mutex_);
-            latest_vision_box_pos_ = *pose;
+            latest_vision_box_pos_      = *pose;
             latest_vision_box_pos_time_ = this->now();
-            has_vision_box_pos_ = true;
+            has_vision_box_pos_         = true;
         });
 
     // 参数服务的回调
@@ -96,7 +111,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
 
 ArmTaskNode::~ArmTaskNode() {
     RCLCPP_INFO(this->get_logger(), "Shutting down ArmTaskNode...");
-    shutdown_requested_  = true;
+    shutdown_requested_ = true;
 
     if (task_thread_.joinable()) {
         task_thread_.join();
@@ -160,59 +175,59 @@ void ArmTaskNode::declare_config_parameters() {
 }
 
 void ArmTaskNode::load_config_parameters() {
-    ready_position = this->get_parameter("positions.ready").as_double_array();
-    home_position_ = this->get_parameter("positions.home").as_double_array();
-    place_position = this->get_parameter("positions.place_level_1").as_double_array();
-    place_position_2 = this->get_parameter("positions.place_level_2").as_double_array();
-    look_for_position_ = this->get_parameter("positions.look_for").as_double_array();
-    grasp_finish_position = this->get_parameter("positions.grasp_finish").as_double_array();
-    release_box_position = this->get_parameter("positions.release_box").as_double_array();
-    re_graspe_box_position = this->get_parameter("positions.re_grasp_box").as_double_array();
+    ready_position                     = this->get_parameter("positions.ready").as_double_array();
+    home_position_                     = this->get_parameter("positions.home").as_double_array();
+    place_position                     = this->get_parameter("positions.place_level_1").as_double_array();
+    place_position_2                   = this->get_parameter("positions.place_level_2").as_double_array();
+    look_for_position_                 = this->get_parameter("positions.look_for").as_double_array();
+    grasp_finish_position              = this->get_parameter("positions.grasp_finish").as_double_array();
+    release_box_position               = this->get_parameter("positions.release_box").as_double_array();
+    re_graspe_box_position             = this->get_parameter("positions.re_grasp_box").as_double_array();
     place_box_collision_avoid_position = this->get_parameter("positions.place_box_collision_avoid").as_double_array();
-    finished_release_box_position = this->get_parameter("positions.finished_release_box").as_double_array();
+    finished_release_box_position      = this->get_parameter("positions.finished_release_box").as_double_array();
 
-    grasp_z_ = this->get_parameter("poses.grasp_z").as_double();
-    rady_grasp_z_ = this->get_parameter("poses.rady_grasp_z").as_double();
+    grasp_z_         = this->get_parameter("poses.grasp_z").as_double();
+    rady_grasp_z_    = this->get_parameter("poses.rady_grasp_z").as_double();
     place_level_1_z_ = this->get_parameter("poses.place_level_1_z").as_double();
     place_level_2_z_ = this->get_parameter("poses.place_level_2_z").as_double();
-    pitch_offset_ = this->get_parameter("poses.pitch_offset").as_double();
+    pitch_offset_    = this->get_parameter("poses.pitch_offset").as_double();
 
     grasp_vision_threshold_variance_ = this->get_parameter("vision.grasp_threshold_variance").as_double();
 
-    pump_on_wait_ms_ = this->get_parameter("timing.pump_on_wait_ms").as_int();
-    record_ready_duration_ = this->get_parameter("timing.record_ready_duration").as_double();
-    grasp_ready_duration_ = this->get_parameter("timing.grasp_ready_duration").as_double();
-    grasp_pregrasp_duration_ = this->get_parameter("timing.grasp_pregrasp_duration").as_double();
-    grasp_descend_duration_ = this->get_parameter("timing.grasp_descend_duration").as_double();
-    grasp_lift_duration_ = this->get_parameter("timing.grasp_lift_duration").as_double();
-    grasp_finish_duration_ = this->get_parameter("timing.grasp_finish_duration").as_double();
-    release_box_duration_ = this->get_parameter("timing.release_box_duration").as_double();
-    release_collision_avoid_duration_ = this->get_parameter("timing.release_collision_avoid_duration").as_double();
-    release_home_duration_ = this->get_parameter("timing.release_home_duration").as_double();
-    place_hand_level_1_prepare_duration_ = this->get_parameter("timing.place_hand_level_1_prepare_duration").as_double();
+    pump_on_wait_ms_                       = this->get_parameter("timing.pump_on_wait_ms").as_int();
+    record_ready_duration_                 = this->get_parameter("timing.record_ready_duration").as_double();
+    grasp_ready_duration_                  = this->get_parameter("timing.grasp_ready_duration").as_double();
+    grasp_pregrasp_duration_               = this->get_parameter("timing.grasp_pregrasp_duration").as_double();
+    grasp_descend_duration_                = this->get_parameter("timing.grasp_descend_duration").as_double();
+    grasp_lift_duration_                   = this->get_parameter("timing.grasp_lift_duration").as_double();
+    grasp_finish_duration_                 = this->get_parameter("timing.grasp_finish_duration").as_double();
+    release_box_duration_                  = this->get_parameter("timing.release_box_duration").as_double();
+    release_collision_avoid_duration_      = this->get_parameter("timing.release_collision_avoid_duration").as_double();
+    release_home_duration_                 = this->get_parameter("timing.release_home_duration").as_double();
+    place_hand_level_1_prepare_duration_   = this->get_parameter("timing.place_hand_level_1_prepare_duration").as_double();
     place_hand_level_1_cartesian_duration_ = this->get_parameter("timing.place_hand_level_1_cartesian_duration").as_double();
-    place_hand_level_1_home_duration_ = this->get_parameter("timing.place_hand_level_1_home_duration").as_double();
-    place_hand_level_2_prepare_duration_ = this->get_parameter("timing.place_hand_level_2_prepare_duration").as_double();
+    place_hand_level_1_home_duration_      = this->get_parameter("timing.place_hand_level_1_home_duration").as_double();
+    place_hand_level_2_prepare_duration_   = this->get_parameter("timing.place_hand_level_2_prepare_duration").as_double();
     place_hand_level_2_cartesian_duration_ = this->get_parameter("timing.place_hand_level_2_cartesian_duration").as_double();
-    place_hand_level_2_retract_duration_ = this->get_parameter("timing.place_hand_level_2_retract_duration").as_double();
-    place_hand_level_2_home_duration_ = this->get_parameter("timing.place_hand_level_2_home_duration").as_double();
-    place_box_re_grasp_duration_ = this->get_parameter("timing.place_box_re_grasp_duration").as_double();
-    place_box_collision_avoid_duration_ = this->get_parameter("timing.place_box_collision_avoid_duration").as_double();
-    place_box_level_1_prepare_duration_ = this->get_parameter("timing.place_box_level_1_prepare_duration").as_double();
-    place_box_level_1_cartesian_duration_ = this->get_parameter("timing.place_box_level_1_cartesian_duration").as_double();
-    place_box_level_1_home_duration_ = this->get_parameter("timing.place_box_level_1_home_duration").as_double();
-    place_box_level_2_prepare_duration_ = this->get_parameter("timing.place_box_level_2_prepare_duration").as_double();
-    place_box_level_2_cartesian_duration_ = this->get_parameter("timing.place_box_level_2_cartesian_duration").as_double();
-    place_box_level_2_retract_duration_ = this->get_parameter("timing.place_box_level_2_retract_duration").as_double();
-    place_box_level_2_home_duration_ = this->get_parameter("timing.place_box_level_2_home_duration").as_double();
-    look_for_prepare_duration_ = this->get_parameter("timing.look_for_prepare_duration").as_double();
-    scan_start_duration_ = this->get_parameter("timing.scan_start_duration").as_double();
-    scan_home_duration_ = this->get_parameter("timing.scan_home_duration").as_double();
+    place_hand_level_2_retract_duration_   = this->get_parameter("timing.place_hand_level_2_retract_duration").as_double();
+    place_hand_level_2_home_duration_      = this->get_parameter("timing.place_hand_level_2_home_duration").as_double();
+    place_box_re_grasp_duration_           = this->get_parameter("timing.place_box_re_grasp_duration").as_double();
+    place_box_collision_avoid_duration_    = this->get_parameter("timing.place_box_collision_avoid_duration").as_double();
+    place_box_level_1_prepare_duration_    = this->get_parameter("timing.place_box_level_1_prepare_duration").as_double();
+    place_box_level_1_cartesian_duration_  = this->get_parameter("timing.place_box_level_1_cartesian_duration").as_double();
+    place_box_level_1_home_duration_       = this->get_parameter("timing.place_box_level_1_home_duration").as_double();
+    place_box_level_2_prepare_duration_    = this->get_parameter("timing.place_box_level_2_prepare_duration").as_double();
+    place_box_level_2_cartesian_duration_  = this->get_parameter("timing.place_box_level_2_cartesian_duration").as_double();
+    place_box_level_2_retract_duration_    = this->get_parameter("timing.place_box_level_2_retract_duration").as_double();
+    place_box_level_2_home_duration_       = this->get_parameter("timing.place_box_level_2_home_duration").as_double();
+    look_for_prepare_duration_             = this->get_parameter("timing.look_for_prepare_duration").as_double();
+    scan_start_duration_                   = this->get_parameter("timing.scan_start_duration").as_double();
+    scan_home_duration_                    = this->get_parameter("timing.scan_home_duration").as_double();
 
-    scan_start_joint_0_ = this->get_parameter("scan.start_joint_0").as_double();
-    scan_stop_joint_0_ = this->get_parameter("scan.stop_joint_0").as_double();
+    scan_start_joint_0_    = this->get_parameter("scan.start_joint_0").as_double();
+    scan_stop_joint_0_     = this->get_parameter("scan.stop_joint_0").as_double();
     scan_initial_wait_sec_ = this->get_parameter("scan.initial_wait_sec").as_double();
-    scan_sweep_duration_ = this->get_parameter("scan.sweep_duration").as_double();
+    scan_sweep_duration_   = this->get_parameter("scan.sweep_duration").as_double();
 }
 
 rcl_interfaces::msg::SetParametersResult ArmTaskNode::on_parameters_changed(const std::vector<rclcpp::Parameter>& params) {
@@ -247,8 +262,7 @@ void ArmTaskNode::task_execution_thread() {
     RCLCPP_INFO(this->get_logger(), "线程结束");
 }
 
-void ArmTaskNode::execut_pos_record()
-{
+void ArmTaskNode::execut_pos_record() {
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     execute_joint_space_trajectory(ready_position, record_ready_duration_);
     std::this_thread::sleep_for(750ms);
@@ -275,7 +289,6 @@ void ArmTaskNode::execute_task_state_machine() {
             // 执行抓块流程
             RCLCPP_INFO(this->get_logger(), "开始抓取到框中的任务");
             execute_grasp_flow_on_box();
-
         }
         if (current_mode == 2) {
             // 执行抓块流程
@@ -286,40 +299,32 @@ void ArmTaskNode::execute_task_state_machine() {
             // 执行第一层放置流程
             RCLCPP_INFO(this->get_logger(), "开始第一层从框里的放置任务");
             execute_place_flow_1_on_box();
-        } 
-        else if (current_mode == 4) {
+        } else if (current_mode == 4) {
             // 执行第二层放置流程
             RCLCPP_INFO(this->get_logger(), "开始第二层从框里的放置任务");
             execute_place_flow_2_on_box();
-        } 
-        else if (current_mode == 5) {
+        } else if (current_mode == 5) {
             // 执行第一层放置流程
             RCLCPP_INFO(this->get_logger(), "开始第一层从手上的放置任务");
             execute_place_flow_1_on_hand();
-        } 
-        else if (current_mode == 6) {
+        } else if (current_mode == 6) {
             // 执行第二层放置流程
             RCLCPP_INFO(this->get_logger(), "开始第二层从手上的放置任务");
             execute_place_flow_2_on_hand();
-        } 
-        else if (current_mode == 7) {
+        } else if (current_mode == 7) {
             // 在比赛开始时，机械臂需要先巡视扫描场地上的物块，确定狗的巡线流程
             RCLCPP_INFO(this->get_logger(), "巡视扫描物块");
             execute_look_for();
-        }
-        else if(current_mode==10)
-        {
+        } else if (current_mode == 10) {
             RCLCPP_INFO(this->get_logger(), "调试录点模式");
             execut_pos_record();
         }
-        if(current_mode)
-        {
+        if (current_mode) {
             current_mode   = 0;
             arm_task_mode_ = 0;
             this->set_parameter(rclcpp::Parameter("arm_task", 0));
-        }
-        else {
-        std::this_thread::sleep_for(100ms);
+        } else {
+            std::this_thread::sleep_for(100ms);
         }
         // Reset mode to standby after completion
     } catch (const std::exception& e) {
@@ -334,227 +339,249 @@ void ArmTaskNode::execute_task_state_machine() {
 
 // 抓块函数
 void ArmTaskNode::execute_grasp_flow_on_hand() {
+    constexpr const int kRetrycnt = 1;
+    int max_ryretry               = kRetrycnt;
+    do {
+        // 机械臂先预摆到一个合适的位置，方便相机观察和后续运动
+        RCLCPP_INFO(this->get_logger(), "移动到准备位置");
+        execute_joint_space_trajectory(ready_position, grasp_ready_duration_);
+        std::this_thread::sleep_for(250ms);
 
-    // 机械臂先预摆到一个合适的位置，方便相机观察和后续运动
-    RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(ready_position, grasp_ready_duration_);
-    std::this_thread::sleep_for(250ms);
+        double x = 0.0;
+        double y = 0.0;
+        if (!sample_target_xy_from_tf(0.02, x, y)) {
+            return;
+        }
 
-    double x = 0.0;
-    double y = 0.0;
-    if (!sample_target_xy_from_tf(0.02, x, y)) {
-        return ;
-    }
-
-    //移动到预抓取位置，等待相机识别
-    geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
+        // 移动到预抓取位置，等待相机识别
+        geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
 
 
-    // 3.笛卡尔轨迹规划使机械臂运动到开启视觉识别的位置
-    RCLCPP_INFO(this->get_logger(), "移动到块的预抓取位置");
-    execute_cartesian_space_trajectory(object_pose, grasp_pregrasp_duration_);
-    std::this_thread::sleep_for(350ms);
+        // 3.笛卡尔轨迹规划使机械臂运动到开启视觉识别的位置
+        RCLCPP_INFO(this->get_logger(), "移动到块的预抓取位置");
+        execute_cartesian_space_trajectory(object_pose, grasp_pregrasp_duration_);
+        std::this_thread::sleep_for(350ms);
 
-    double vision_weight = 0.0;
-    geometry_msgs::msg::Point vision_box_pos;
-    if (use_vision_grasp_.load()) {
-        //4.触发视觉识别动作
-        RCLCPP_INFO(this->get_logger(), "启动视觉识别");
-        double vision_variance = std::numeric_limits<double>::infinity();
-        bool vision_ready = wait_for_stable_vision_target(vision_box_pos, vision_variance);
+        double vision_weight = 0.0;
+        geometry_msgs::msg::Point vision_box_pos;
+        if (use_vision_grasp_.load()) {
+            // 4.触发视觉识别动作
+            RCLCPP_INFO(this->get_logger(), "启动视觉识别动作");
+            double vision_variance = std::numeric_limits<double>::infinity();
+            bool vision_ready      = wait_for_stable_vision_target(vision_box_pos, vision_variance);
 
-        if (vision_ready) {
-            geometry_msgs::msg::PointStamped vision_point_camera;
-            vision_point_camera.header.stamp.sec = 0;
-            vision_point_camera.header.stamp.nanosec = 0;
-            vision_point_camera.header.frame_id = camera_frame_;
-            vision_point_camera.point = vision_box_pos;
+            if (vision_ready) {
+                geometry_msgs::msg::PointStamped vision_point_camera;
+                vision_point_camera.header.stamp.sec     = 0;
+                vision_point_camera.header.stamp.nanosec = 0;
+                vision_point_camera.header.frame_id      = camera_frame_;
+                vision_point_camera.point                = vision_box_pos;
 
-            try {
-                const auto vision_point_base =
-                    tf_buffer_->transform(vision_point_camera, base_frame_, tf2::durationFromSec(0.1));
-                vision_box_pos = vision_point_base.point;
-                //vision_weight = grasp_vision_threshold_variance_ / (grasp_vision_threshold_variance_ + vision_variance);
-                //vision_weight = std::max(0.0, std::min(1.0, vision_weight));
-                vision_weight=0.5;  //先写死平均数加权
-                RCLCPP_INFO(this->get_logger(),
-                            "视觉坐标已从 %s 转到 %s: x=%.4f, y=%.4f, z=%.4f",
-                            camera_frame_.c_str(),
-                            base_frame_.c_str(),
-                            vision_box_pos.x,
-                            vision_box_pos.y,
-                            vision_box_pos.z);
-            } catch (const tf2::TransformException& ex) {
-                RCLCPP_WARN(this->get_logger(),
-                            "视觉坐标从 %s 转到 %s 失败，使用雷达坐标抓取: %s",
-                            camera_frame_.c_str(),
-                            base_frame_.c_str(),
-                            ex.what());
+                try {
+                    const auto vision_point_base = tf_buffer_->transform(vision_point_camera, base_frame_, tf2::durationFromSec(0.1));
+                    vision_box_pos               = vision_point_base.point;
+                    // vision_weight = grasp_vision_threshold_variance_ / (grasp_vision_threshold_variance_ + vision_variance);
+                    // vision_weight = std::max(0.0, std::min(1.0, vision_weight));
+                    vision_weight = 0.5;      // 先写死平均数加权
+
+                    double dx=vision_box_pos.x-object_pose.pose.position.x;
+                    double dy=vision_box_pos.y-object_pose.pose.position.y;
+                    double dz=vision_box_pos.z-object_pose.pose.position.z;
+                    if(std::sqrt(dx*dx+dy*dy)>0.2||std::abs(dz)>0.1)
+                    {
+                        vision_weight = 0.0;
+                        RCLCPP_WARN(this->get_logger(), "视觉坐标和相机坐标差距过大，水平为%f,竖直为%f,不信任视觉坐标",std::sqrt(dx*dx+dy*dy),dz);
+                    }
+                    else {
+                    RCLCPP_INFO(
+                        this->get_logger(), "视觉坐标已从 %s 转到 %s: x=%.4f, y=%.4f, z=%.4f", camera_frame_.c_str(), base_frame_.c_str(),
+                        vision_box_pos.x, vision_box_pos.y, vision_box_pos.z);
+                    }
+                } catch (const tf2::TransformException& ex) {
+                    RCLCPP_WARN(
+                        this->get_logger(), "视觉坐标从 %s 转到 %s 失败，使用雷达坐标抓取: %s", camera_frame_.c_str(), base_frame_.c_str(),
+                        ex.what());
+                }
+            } else {
+                RCLCPP_WARN(this->get_logger(), "视觉识别未在超时时间内稳定，使用雷达坐标抓取");
             }
         } else {
-            RCLCPP_WARN(this->get_logger(), "视觉识别未在超时时间内稳定，使用雷达坐标抓取");
+            RCLCPP_INFO(this->get_logger(), "未启用视觉辅助抓取，使用雷达坐标抓取");
         }
-    } else {
-        RCLCPP_INFO(this->get_logger(), "未启用视觉辅助抓取，使用雷达坐标抓取");
-    }
 
-    sample_target_xy_from_tf(0.02, x, y);   //拿到最新的稳定TF
-    object_pose.pose.position.x=x;
-    object_pose.pose.position.y=y;
+        sample_target_xy_from_tf(0.02, x, y); // 拿到最新的稳定TF
+        object_pose.pose.position.x = x;
+        object_pose.pose.position.y = y;
 
-    if (vision_weight > 0.0) {
-        object_pose.pose.position.x =
-            object_pose.pose.position.x * (1.0 - vision_weight) + vision_box_pos.x * vision_weight;
-        object_pose.pose.position.y =
-            object_pose.pose.position.y * (1.0 - vision_weight) + vision_box_pos.y * vision_weight;
-    }
-    object_pose.pose.position.z = grasp_z_;
+        if (vision_weight > 0.0) {
+            object_pose.pose.position.x = object_pose.pose.position.x * (1.0 - vision_weight) + vision_box_pos.x * vision_weight;
+            object_pose.pose.position.y = object_pose.pose.position.y * (1.0 - vision_weight) + vision_box_pos.y * vision_weight;
+        }
+        object_pose.pose.position.z = grasp_z_;
 
-    RCLCPP_INFO(this->get_logger(),
-                "抓取坐标: x=%.4f, y=%.4f, z=%.4f, vision_weight=%.3f",
-                object_pose.pose.position.x,
-                object_pose.pose.position.y,
-                object_pose.pose.position.z,
-                vision_weight);
+        if (max_ryretry != kRetrycnt)         // 重试时抓得更靠下一点
+            object_pose.pose.position.z -= 0.05;
 
-    execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
-    std::this_thread::sleep_for(200ms);
+        RCLCPP_INFO(
+            this->get_logger(), "抓取坐标: x=%.4f, y=%.4f, z=%.4f, vision_weight=%.3f", object_pose.pose.position.x,
+            object_pose.pose.position.y, object_pose.pose.position.z, vision_weight);
 
-    // 通知气泵开始吸了
-    RCLCPP_INFO(this->get_logger(), "启动气泵");
-    set_air_pump(true);
+        execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
+        std::this_thread::sleep_for(200ms);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(pump_on_wait_ms_));
+        // 通知气泵开始吸了
+        RCLCPP_INFO(this->get_logger(), "启动气泵");
+        set_air_pump(true);
 
-    object_pose.pose.position.z = rady_grasp_z_;
-    execute_cartesian_space_trajectory(object_pose, grasp_lift_duration_);
-    std::this_thread::sleep_for(std::chrono::milliseconds(pump_on_wait_ms_));
+        std::this_thread::sleep_for(std::chrono::milliseconds(pump_on_wait_ms_));
+        if (max_ryretry != kRetrycnt) // 重试时抓的时间长一些
+            std::this_thread::sleep_for(500ms);
 
-    RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(grasp_finish_position, grasp_finish_duration_);
+        object_pose.pose.position.z = rady_grasp_z_;
+        execute_cartesian_space_trajectory(object_pose, grasp_lift_duration_);
+        std::this_thread::sleep_for(std::chrono::milliseconds(pump_on_wait_ms_));
 
-    std::this_thread::sleep_for(800ms);
+        RCLCPP_INFO(this->get_logger(), "移动到准备位置");
+        execute_joint_space_trajectory(grasp_finish_position, grasp_finish_duration_);
+
+        std::this_thread::sleep_for(800ms);
+
+        max_ryretry--;
+    } while (current_box_hand_dis > 0.1f && max_ryretry);
 
     std_msgs::msg::Int32 ret;
-    ret.data=1;
+    ret.data = 1;
     arm_finished_pub->publish(ret);
-    
+
     std::this_thread::sleep_for(900ms);
 
     RCLCPP_INFO(this->get_logger(), "抓取流程完成");
 }
 
 void ArmTaskNode::execute_grasp_flow_on_box() {
-    RCLCPP_INFO(this->get_logger(), "移动到准备位置");
-    execute_joint_space_trajectory(ready_position, grasp_ready_duration_);
-    std::this_thread::sleep_for(250ms);
-    
+    constexpr const int kRetrycnt = 1;
+    int max_ryretry               = kRetrycnt;
 
-    double x = 0.0;
-    double y = 0.0;
-    if (!sample_target_xy_from_tf(0.02, x, y)) {
-        return ;
-    }
+    do {
+        RCLCPP_INFO(this->get_logger(), "移动到准备位置");
+        execute_joint_space_trajectory(ready_position, grasp_ready_duration_);
+        std::this_thread::sleep_for(250ms);
 
-    //移动到预抓取位置，等待相机识别
-    RCLCPP_INFO(this->get_logger(), "移动到预抓取位置");
-    geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
-    execute_cartesian_space_trajectory(object_pose, grasp_pregrasp_duration_);
-    std::this_thread::sleep_for(350ms);
 
-    double vision_weight = 0.0;
-    geometry_msgs::msg::Point vision_box_pos;
-    if (use_vision_grasp_.load()) {
-        //4.触发视觉识别动作
-        RCLCPP_INFO(this->get_logger(), "启动视觉识别");
-        double vision_variance = std::numeric_limits<double>::infinity();
-        bool vision_ready = wait_for_stable_vision_target(vision_box_pos, vision_variance);
+        double x = 0.0;
+        double y = 0.0;
+        if (!sample_target_xy_from_tf(0.02, x, y)) {
+            return;
+        }
 
-        if (vision_ready) {
-            geometry_msgs::msg::PointStamped vision_point_camera;
-            vision_point_camera.header.stamp.sec = 0;
-            vision_point_camera.header.stamp.nanosec = 0;
-            vision_point_camera.header.frame_id = camera_frame_;
-            vision_point_camera.point = vision_box_pos;
+        // 移动到预抓取位置，等待相机识别
+        RCLCPP_INFO(this->get_logger(), "移动到预抓取位置");
+        geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
+        execute_cartesian_space_trajectory(object_pose, grasp_pregrasp_duration_);
+        std::this_thread::sleep_for(350ms);
 
-            try {
-                const auto vision_point_base =
-                    tf_buffer_->transform(vision_point_camera, base_frame_, tf2::durationFromSec(0.1));
-                vision_box_pos = vision_point_base.point;
-                //vision_weight = grasp_vision_threshold_variance_ / (grasp_vision_threshold_variance_ + vision_variance);
-                //vision_weight = std::max(0.0, std::min(1.0, vision_weight));
-                vision_weight=0.5;  //先写死平均数加权
-                RCLCPP_INFO(this->get_logger(),
-                            "视觉坐标已从 %s 转到 %s: x=%.4f, y=%.4f, z=%.4f",
-                            camera_frame_.c_str(),
-                            base_frame_.c_str(),
-                            vision_box_pos.x,
-                            vision_box_pos.y,
-                            vision_box_pos.z);
-            } catch (const tf2::TransformException& ex) {
-                RCLCPP_WARN(this->get_logger(),
-                            "视觉坐标从 %s 转到 %s 失败，使用雷达坐标抓取: %s",
-                            camera_frame_.c_str(),
-                            base_frame_.c_str(),
-                            ex.what());
+        double vision_weight = 0.0;
+        geometry_msgs::msg::Point vision_box_pos;
+        if (use_vision_grasp_.load()) {
+            // 4.触发视觉识别动作
+            RCLCPP_INFO(this->get_logger(), "启动视觉识别");
+            double vision_variance = std::numeric_limits<double>::infinity();
+            bool vision_ready      = wait_for_stable_vision_target(vision_box_pos, vision_variance);
+
+            if (vision_ready) {
+                geometry_msgs::msg::PointStamped vision_point_camera;
+                vision_point_camera.header.stamp.sec     = 0;
+                vision_point_camera.header.stamp.nanosec = 0;
+                vision_point_camera.header.frame_id      = camera_frame_;
+                vision_point_camera.point                = vision_box_pos;
+
+                try {
+                    const auto vision_point_base = tf_buffer_->transform(vision_point_camera, base_frame_, tf2::durationFromSec(0.1));
+                    vision_box_pos               = vision_point_base.point;
+                    // vision_weight = grasp_vision_threshold_variance_ / (grasp_vision_threshold_variance_ + vision_variance);
+                    // vision_weight = std::max(0.0, std::min(1.0, vision_weight));
+                    vision_weight = 0.5;      // 先写死平均数加权
+
+                    double dx=vision_box_pos.x-object_pose.pose.position.x;
+                    double dy=vision_box_pos.y-object_pose.pose.position.y;
+                    double dz=vision_box_pos.z-object_pose.pose.position.z;
+                    if(std::sqrt(dx*dx+dy*dy)>0.2||std::abs(dz)>0.1)
+                    {
+                        vision_weight = 0.0;
+                        RCLCPP_WARN(this->get_logger(), "视觉坐标和相机坐标差距过大，水平为%f,竖直为%f,不信任视觉坐标",std::sqrt(dx*dx+dy*dy),dz);
+                    }
+                    else {
+                    RCLCPP_INFO(
+                        this->get_logger(), "视觉坐标已从 %s 转到 %s: x=%.4f, y=%.4f, z=%.4f", camera_frame_.c_str(), base_frame_.c_str(),
+                        vision_box_pos.x, vision_box_pos.y, vision_box_pos.z);
+                    }
+                    
+                } catch (const tf2::TransformException& ex) {
+                    RCLCPP_WARN(
+                        this->get_logger(), "视觉坐标从 %s 转到 %s 失败，使用雷达坐标抓取: %s", camera_frame_.c_str(), base_frame_.c_str(),
+                        ex.what());
+                }
+            } else {
+                RCLCPP_WARN(this->get_logger(), "视觉识别未在超时时间内稳定，使用雷达坐标抓取");
             }
         } else {
-            RCLCPP_WARN(this->get_logger(), "视觉识别未在超时时间内稳定，使用雷达坐标抓取");
+            RCLCPP_INFO(this->get_logger(), "未启用视觉辅助抓取，使用雷达坐标抓取");
         }
-    } else {
-        RCLCPP_INFO(this->get_logger(), "未启用视觉辅助抓取，使用雷达坐标抓取");
-    }
 
-    sample_target_xy_from_tf(0.02, x, y);   //拿到最新的稳定TF
-    object_pose.pose.position.x=x;
-    object_pose.pose.position.y=y;
+        sample_target_xy_from_tf(0.02, x, y); // 拿到最新的稳定TF
+        object_pose.pose.position.x = x;
+        object_pose.pose.position.y = y;
 
-    if (vision_weight > 0.0) {
-        object_pose.pose.position.x =
-            object_pose.pose.position.x * (1.0 - vision_weight) + vision_box_pos.x * vision_weight;
-        object_pose.pose.position.y =
-            object_pose.pose.position.y * (1.0 - vision_weight) + vision_box_pos.y * vision_weight;
-    }
-    object_pose.pose.position.z = grasp_z_;
+        if (vision_weight > 0.0) {
+            object_pose.pose.position.x = object_pose.pose.position.x * (1.0 - vision_weight) + vision_box_pos.x * vision_weight;
+            object_pose.pose.position.y = object_pose.pose.position.y * (1.0 - vision_weight) + vision_box_pos.y * vision_weight;
+        }
+        object_pose.pose.position.z = grasp_z_;
 
-    RCLCPP_INFO(this->get_logger(),
-                "抓取坐标: x=%.4f, y=%.4f, z=%.4f, vision_weight=%.3f",
-                object_pose.pose.position.x,
-                object_pose.pose.position.y,
-                object_pose.pose.position.z,
-                vision_weight);
+        if (max_ryretry != kRetrycnt)
+            object_pose.pose.position.z -= 0.05f;
 
-    execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
-    std::this_thread::sleep_for(200ms);
+        RCLCPP_INFO(
+            this->get_logger(), "抓取坐标: x=%.4f, y=%.4f, z=%.4f, vision_weight=%.3f", object_pose.pose.position.x,
+            object_pose.pose.position.y, object_pose.pose.position.z, vision_weight);
 
-    // 通知气泵开始吸了
-    RCLCPP_INFO(this->get_logger(), "启动气泵");
-    set_air_pump(true);
+        execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
+        std::this_thread::sleep_for(200ms);
 
-    std::this_thread::sleep_for(500ms);
+        // 通知气泵开始吸了
+        RCLCPP_INFO(this->get_logger(), "启动气泵");
+        set_air_pump(true);
 
-    object_pose.pose.position.z = rady_grasp_z_;
-    execute_cartesian_space_trajectory(object_pose, grasp_lift_duration_);
-    std::this_thread::sleep_for(500ms);
+        std::this_thread::sleep_for(500ms);
+        if (max_ryretry != kRetrycnt)
+            std::this_thread::sleep_for(500ms);
 
-    RCLCPP_INFO(this->get_logger(), "移动到框的位置");
-    execute_joint_space_trajectory(release_box_position, release_box_duration_);
+        object_pose.pose.position.z = rady_grasp_z_;
+        execute_cartesian_space_trajectory(object_pose, grasp_lift_duration_);
+        std::this_thread::sleep_for(500ms);
 
-    std::this_thread::sleep_for(2400ms);
+        RCLCPP_INFO(this->get_logger(), "移动到框的位置");
+        execute_joint_space_trajectory(release_box_position, release_box_duration_);
 
-    //设置气泵松开，
+        std::this_thread::sleep_for(2400ms);
+
+        max_ryretry--;
+    } while (current_box_hand_dis > 0.1f && max_ryretry);
+
+
+    // 设置气泵松开，
     set_air_pump(false);
 
-    std::this_thread::sleep_for(100ms);     //等待箱子落下
+    std::this_thread::sleep_for(100ms); // 等待箱子落下
 
 
-    //回退到中间位置防止动作干涉
+    // 回退到中间位置防止动作干涉
     execute_joint_space_trajectory(finished_release_box_position, release_collision_avoid_duration_);
     std::this_thread::sleep_for(250ms);
 
-    //通知抓取流程完成
+    // 通知抓取流程完成
     std_msgs::msg::Int32 ret;
-    ret.data=1;
+    ret.data = 1;
     arm_finished_pub->publish(ret);
 
     execute_joint_space_trajectory(home_position_, release_home_duration_);
@@ -572,8 +599,8 @@ void ArmTaskNode::execute_place_flow_1_on_hand() {
     double x = 0.0;
     double y = 0.0;
     if (!sample_target_xy_from_tf(0.08, x, y)) {
-        RCLCPP_INFO(get_logger(),"找不到要放置的目标");
-        return ;
+        RCLCPP_INFO(get_logger(), "找不到要放置的目标");
+        return;
     }
 
     // 强制规定姿态
@@ -598,7 +625,7 @@ void ArmTaskNode::execute_place_flow_1_on_hand() {
     execute_joint_space_trajectory(home_position_, place_hand_level_1_home_duration_);
 
     std_msgs::msg::Int32 ret;
-    ret.data=1;
+    ret.data = 1;
     arm_finished_pub->publish(ret);
 
     std::this_thread::sleep_for(300ms);
@@ -615,8 +642,8 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
     double x = 0.0;
     double y = 0.0;
     if (!sample_target_xy_from_tf(0.08, x, y)) {
-        RCLCPP_INFO(get_logger(),"找不到要放置的目标");
-        return ;
+        RCLCPP_INFO(get_logger(), "找不到要放置的目标");
+        return;
     }
 
     // 强制规定姿态
@@ -643,10 +670,10 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
     std::this_thread::sleep_for(200ms);
 
     std_msgs::msg::Int32 ret;
-    ret.data=1;
+    ret.data = 1;
     arm_finished_pub->publish(ret);
 
-    std::this_thread::sleep_for(500ms);     //等待狗子离开
+    std::this_thread::sleep_for(500ms); // 等待狗子离开
 
     execute_joint_space_trajectory(home_position_, place_hand_level_2_home_duration_);
 
@@ -657,22 +684,36 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
 
 void ArmTaskNode::execute_place_flow_1_on_box() {
 
-    RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
-    set_air_pump(true);
-    execute_joint_space_trajectory(re_graspe_box_position, place_box_re_grasp_duration_);
-    std::this_thread::sleep_for(1500ms);
+    constexpr const int kRetrycnt = 1;
+    int max_ryretry               = kRetrycnt;
 
-    execute_joint_space_trajectory(place_box_collision_avoid_position, place_box_collision_avoid_duration_);
-    std::this_thread::sleep_for(200ms);
+    do {
+        RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
+        set_air_pump(true);
+        execute_joint_space_trajectory(re_graspe_box_position, place_box_re_grasp_duration_);
+        std::this_thread::sleep_for(1500ms);
 
-    execute_joint_space_trajectory(place_position, place_box_level_1_prepare_duration_);
-    std::this_thread::sleep_for(3500ms);
+        execute_joint_space_trajectory(place_box_collision_avoid_position, place_box_collision_avoid_duration_);
+        std::this_thread::sleep_for(200ms);
+
+        execute_joint_space_trajectory(place_position, place_box_level_1_prepare_duration_);
+        std::this_thread::sleep_for(3500ms);
+
+    } while (max_ryretry && current_box_hand_dis > 0.1f);
+    if (current_box_hand_dis > 0.1f) {
+        std_msgs::msg::Int32 ret;
+        ret.data = -1;
+        arm_finished_pub->publish(ret);
+        execute_joint_space_trajectory(home_position_, 0.3);
+        std::this_thread::sleep_for(300ms);
+        return;
+    }
 
     double x = 0.0;
     double y = 0.0;
     if (!sample_target_xy_from_tf(0.08, x, y)) {
-        RCLCPP_INFO(get_logger(),"找不到要放置的目标");
-        return ;
+        RCLCPP_INFO(get_logger(), "找不到要放置的目标");
+        return;
     }
 
     // 强制规定姿态
@@ -697,7 +738,7 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
     execute_joint_space_trajectory(home_position_, place_box_level_1_home_duration_);
 
     std_msgs::msg::Int32 ret;
-    ret.data=1;
+    ret.data = 1;
     arm_finished_pub->publish(ret);
 
     std::this_thread::sleep_for(300ms);
@@ -707,22 +748,36 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
 
 void ArmTaskNode::execute_place_flow_2_on_box() {
 
-    RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
-    set_air_pump(true);
-    execute_joint_space_trajectory(re_graspe_box_position, place_box_re_grasp_duration_);
-    std::this_thread::sleep_for(1500ms);
+    constexpr const int kRetrycnt = 1;
+    int max_ryretry               = kRetrycnt;
 
-    execute_joint_space_trajectory(place_box_collision_avoid_position, place_box_collision_avoid_duration_);
-    std::this_thread::sleep_for(200ms);
-    
-    execute_joint_space_trajectory(place_position_2, place_box_level_2_prepare_duration_);
-    std::this_thread::sleep_for(3600ms);
+    do {
+        RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
+        set_air_pump(true);
+        execute_joint_space_trajectory(re_graspe_box_position, place_box_re_grasp_duration_);
+        std::this_thread::sleep_for(1500ms);
+
+        execute_joint_space_trajectory(place_box_collision_avoid_position, place_box_collision_avoid_duration_);
+        std::this_thread::sleep_for(200ms);
+
+        execute_joint_space_trajectory(place_position_2, place_box_level_2_prepare_duration_);
+        std::this_thread::sleep_for(3600ms);
+
+    } while (max_ryretry && current_box_hand_dis > 0.1f);
+    if (current_box_hand_dis > 0.1f) {
+        std_msgs::msg::Int32 ret;
+        ret.data = -1;
+        arm_finished_pub->publish(ret);
+        execute_joint_space_trajectory(home_position_, 0.3);
+        std::this_thread::sleep_for(300ms);
+        return;
+    }
 
     double x = 0.0;
     double y = 0.0;
     if (!sample_target_xy_from_tf(0.08, x, y)) {
-        RCLCPP_INFO(get_logger(),"找不到要放置的目标");
-        return ;
+        RCLCPP_INFO(get_logger(), "找不到要放置的目标");
+        return;
     }
 
     // 强制规定姿态
@@ -749,10 +804,10 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
     std::this_thread::sleep_for(200ms);
 
     std_msgs::msg::Int32 ret;
-    ret.data=1;
+    ret.data = 1;
     arm_finished_pub->publish(ret);
 
-    std::this_thread::sleep_for(500ms);     //等待狗子离开
+    std::this_thread::sleep_for(500ms); // 等待狗子离开
 
     execute_joint_space_trajectory(home_position_, place_box_level_2_home_duration_);
 
@@ -775,25 +830,25 @@ void ArmTaskNode::execute_look_for() {
 
     auto start_time = std::chrono::steady_clock::now();
 
-    auto start_joint_pos=look_for_position_;
-    auto stop_joint_pos=look_for_position_;
-    start_joint_pos[0]=scan_start_joint_0_;
-    stop_joint_pos[0]=scan_stop_joint_0_;
+    auto start_joint_pos = look_for_position_;
+    auto stop_joint_pos  = look_for_position_;
+    start_joint_pos[0]   = scan_start_joint_0_;
+    stop_joint_pos[0]    = scan_stop_joint_0_;
 
     // 在这里会阻塞等待视觉发布会扫描完成的消息（scan_finished_被置1），告诉机械臂可以结束等待了
     while (scan_finished_ == 0) {
         if (std::chrono::steady_clock::now() - start_time > std::chrono::duration<double>(scan_initial_wait_sec_)) {
-           execute_joint_space_trajectory(start_joint_pos, scan_start_duration_);    //机械臂旋转，执行扫描
-           std::this_thread::sleep_for(200ms);
-           execute_joint_space_trajectory(stop_joint_pos, scan_sweep_duration_);
-           std::this_thread::sleep_for(std::chrono::duration<double>(scan_sweep_duration_));
-           RCLCPP_INFO(get_logger(),"搜索箱子...");
+            execute_joint_space_trajectory(start_joint_pos, scan_start_duration_); // 机械臂旋转，执行扫描
+            std::this_thread::sleep_for(200ms);
+            execute_joint_space_trajectory(stop_joint_pos, scan_sweep_duration_);
+            std::this_thread::sleep_for(std::chrono::duration<double>(scan_sweep_duration_));
+            RCLCPP_INFO(get_logger(), "搜索箱子...");
         }
 
         std::this_thread::sleep_for(100ms);
     }
 
-    scan_finished_ = 0; // 清状态
+    scan_finished_ = 0;                                                            // 清状态
 
     // 机械臂回到初始位置，准备接受后续的抓取指令
     execute_joint_space_trajectory(home_position_, scan_home_duration_);
@@ -810,8 +865,8 @@ void ArmTaskNode::execute_lift_search() {
 
 bool ArmTaskNode::sample_target_xy_from_tf(double tf_timeout_sec, double& x, double& y) {
     constexpr int sample_count = 4;
-    int successful_samples = 0;
-    int remaining_retries = 100;
+    int successful_samples     = 0;
+    int remaining_retries      = 100;
     std::array<geometry_msgs::msg::TransformStamped, sample_count> transfer_array;
 
     while (remaining_retries != 0 && successful_samples < sample_count) {
@@ -843,8 +898,7 @@ bool ArmTaskNode::sample_target_xy_from_tf(double tf_timeout_sec, double& x, dou
     return true;
 }
 
-geometry_msgs::msg::PoseStamped ArmTaskNode::make_fixed_pitch_pose(
-    double x, double y, double z, double pitch_offset) const {
+geometry_msgs::msg::PoseStamped ArmTaskNode::make_fixed_pitch_pose(double x, double y, double z, double pitch_offset) const {
     geometry_msgs::msg::PoseStamped object_pose;
     object_pose.pose.position.x = x;
     object_pose.pose.position.y = y;
@@ -860,8 +914,7 @@ geometry_msgs::msg::PoseStamped ArmTaskNode::make_fixed_pitch_pose(
     return object_pose;
 }
 
-bool ArmTaskNode::wait_for_stable_vision_target(
-    geometry_msgs::msg::Point& vision_box_pos, double& vision_variance) {
+bool ArmTaskNode::wait_for_stable_vision_target(geometry_msgs::msg::Point& vision_box_pos, double& vision_variance) {
     {
         std::lock_guard<std::mutex> lock(vision_pose_mutex_);
         has_vision_box_pos_ = false;
@@ -890,7 +943,7 @@ bool ArmTaskNode::wait_for_stable_vision_target(
                     std::lock_guard<std::mutex> lock(vision_pose_mutex_);
                     if (has_vision_box_pos_) {
                         vision_box_pos = latest_vision_box_pos_;
-                        vision_ready = true;
+                        vision_ready   = true;
                         break;
                     }
                 }
@@ -906,6 +959,38 @@ bool ArmTaskNode::wait_for_stable_vision_target(
     return vision_ready;
 }
 
+bool ArmTaskNode::wait_for_stable_place_target(geometry_msgs::msg::Point& vision_box_pos, double& vision_variance) {
+    {
+        std::lock_guard<std::mutex> lock(vision_pose_mutex_);
+        has_vision_box_pos_ = false;
+    }
+    vision_variance = std::numeric_limits<double>::infinity();
+
+    std_msgs::msg::Int32 msg;
+    msg.data = 5; // 触发一次放置位置识别
+    vision_command_pub_->publish(msg);
+
+    const auto vision_start_time = std::chrono::steady_clock::now();
+    while (std::chrono::steady_clock::now() - vision_start_time < 3s) {
+        {
+            std::lock_guard<std::mutex> lock(vision_pose_mutex_);
+            if (has_vision_box_pos_) {
+                vision_box_pos  = latest_vision_box_pos_;
+                vision_variance = 0.0;
+                RCLCPP_INFO(
+                    this->get_logger(), "获取到放置视觉坐标: x=%.4f, y=%.4f, z=%.4f", vision_box_pos.x, vision_box_pos.y, vision_box_pos.z);
+                return true;
+            }
+        }
+        std::this_thread::sleep_for(50ms);
+    }
+
+    RCLCPP_WARN(this->get_logger(), "放置位置识别3秒内未获取到结果");
+    return false;
+}
+
+
+
 void ArmTaskNode::set_air_pump(bool enabled) {
     std_msgs::msg::Int32 msg;
     msg.data = enabled ? 1 : 0;
@@ -914,8 +999,8 @@ void ArmTaskNode::set_air_pump(bool enabled) {
 
 void ArmTaskNode::set_initial_arm_state(const std::vector<double>& joint_angles) {
     if (!arm_calc_param_client_->wait_for_service(5s)) {
-        RCLCPP_ERROR(this->get_logger(), "Parameter service for %s not available, failed to set initial arm state",
-                     arm_calc_node_name_.c_str());
+        RCLCPP_ERROR(
+            this->get_logger(), "Parameter service for %s not available, failed to set initial arm state", arm_calc_node_name_.c_str());
         return;
     }
 
@@ -968,4 +1053,4 @@ void ArmTaskNode::execute_cartesian_space_trajectory(const geometry_msgs::msg::P
     }
 }
 
-}//namespace
+} // namespace arm_task
