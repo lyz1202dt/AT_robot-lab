@@ -35,7 +35,7 @@ ArmNode::ArmNode()
 
                              // 创建CDC传输对象
     cdc_trans->regeiser_recv_cb([this](const uint8_t* data, int size) { // 注册接收回调
-        RCLCPP_INFO(this->get_logger(), "接受数据包size = %d",size);
+        //RCLCPP_INFO(this->get_logger(), "接受数据包size = %d",size);
         if (data == nullptr || size != sizeof(plane_dst_state_pack_t)) 
         {
            // RCLCPP_INFO(this->get_logger(), "数据包错误,size = %d",size);

@@ -340,7 +340,7 @@ void ArmTaskNode::execute_task_state_machine() {
 
 // 抓块函数
 void ArmTaskNode::execute_grasp_flow_on_hand() {
-    constexpr const int kRetrycnt = 1;
+    constexpr const int kRetrycnt = 2;
     int max_ryretry               = kRetrycnt;
     do {
         // 机械臂先预摆到一个合适的位置，方便相机观察和后续运动
@@ -460,7 +460,7 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
 }
 
 void ArmTaskNode::execute_grasp_flow_on_box() {
-    constexpr const int kRetrycnt = 1;
+    constexpr const int kRetrycnt = 2;
     int max_ryretry               = kRetrycnt;
 
     do {
@@ -697,7 +697,7 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
 
 void ArmTaskNode::execute_place_flow_1_on_box() {
 
-    constexpr const int kRetrycnt = 1;
+    constexpr const int kRetrycnt = 2;
     int max_ryretry               = kRetrycnt;
 
     do {
@@ -775,7 +775,7 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
 
 void ArmTaskNode::execute_place_flow_2_on_box() {
 
-    constexpr const int kRetrycnt = 1;
+    constexpr const int kRetrycnt = 2;
     int max_ryretry               = kRetrycnt;
 
     do {
