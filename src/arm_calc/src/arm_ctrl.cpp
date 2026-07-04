@@ -521,8 +521,6 @@ JointTrajectoryPoint ArmCtrlNode::build_preview_target() const {
 
     case MotionMode::kCartesianSpace: {                                         // 笛卡尔空间模式：需逆运动学（IK）求解
         int result = -1;                                                        // IK 求解结果标志
-        // 使用当前关节状态或空闲保持点作为 IK 初始种子（提高求解成功率）
-        const JointVector seed = has_joint_state_ ? current_joint_state_.position : idle_hold_point_.position;
         // 调用机械臂正运动学库求解笛卡尔目标对应的关节角度
         const JointVector preview_position = arm_calc_->joint_pos_as(cartesian_target_);
 
@@ -536,7 +534,6 @@ JointTrajectoryPoint ArmCtrlNode::build_preview_target() const {
 
     case MotionMode::kVisualServo: {                                // 视觉伺服模式：同样需要 IK 求解视觉目标
         int result                         = -1;
-        const JointVector seed             = has_joint_state_ ? current_joint_state_.position : idle_hold_point_.position;
         const JointVector preview_position = arm_calc_->joint_pos_as(visual_target_);
         if (result < 0) {
             RCLCPP_WARN(this->get_logger(), "\033[1;31mFailed to solve IK for visual target preview, keeping current display\033[0m");
