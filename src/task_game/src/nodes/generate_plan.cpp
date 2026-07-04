@@ -1,6 +1,7 @@
 #include "nodes/generate_plan.hpp"
 #include "nodes/msg.hpp"
 #include "core/robot.hpp"
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cerrno>
@@ -247,26 +248,86 @@ int choose_first_col(const PlanConfig& plan_config, const std::array<float, 3>& 
     return first_col;
 }
 
-std::vector<SelectedBox> make_fixed_pick_order(int first_col) {
+bool same_box(const SelectedBox& lhs, const SelectedBox& rhs) {
+    return lhs.line == rhs.line && lhs.col == rhs.col;
+}
+
+float box_y(const PlanConfig& plan_config, const SelectedBox& selected) {
+    return pose_from_grid(plan_config.positions, selected.line + 1, selected.col)[1];
+}
+
+std::vector<SelectedBox> make_all_boxes() {
+    std::vector<SelectedBox> boxes;
+    boxes.reserve(8);
+    for (int col = 0; col < 4; ++col) {
+        boxes.push_back({0, col});
+        boxes.push_back({1, col});
+    }
+    return boxes;
+}
+
+void remove_selected_box(std::vector<SelectedBox>& boxes, const SelectedBox& selected) {
+    boxes.erase(
+        std::remove_if(boxes.begin(), boxes.end(), [&](const SelectedBox& box) {
+            return same_box(box, selected);
+        }),
+        boxes.end());
+}
+
+SelectedBox choose_nearest_box_by_y(const PlanConfig& plan_config, const std::vector<SelectedBox>& boxes, float target_y) {
+    if (boxes.empty()) {
+        throw std::runtime_error("没有可选箱子");
+    }
+
+    auto best = boxes.front();
+    float best_error = std::numeric_limits<float>::max();
+    for (const auto& box : boxes) {
+        const float y_error = std::abs(box_y(plan_config, box) - target_y);
+        if (y_error < best_error) {
+            best = box;
+            best_error = y_error;
+        }
+    }
+    return best;
+}
+
+SelectedBox choose_pair_box(const PlanConfig& plan_config, const std::vector<SelectedBox>& boxes, const SelectedBox& box0) {
+    const SelectedBox same_col_pair{1 - box0.line, box0.col};
+    for (const auto& box : boxes) {
+        if (same_box(box, same_col_pair)) {
+            return box;
+        }
+    }
+
+    return choose_nearest_box_by_y(plan_config, boxes, box_y(plan_config, box0));
+}
+
+std::vector<SelectedBox> make_dst2_nearest_pick_order(const PlanConfig& plan_config,
+                                                      int first_col,
+                                                      float& current_dst2_y,
+                                                      const BoxInfo& box_info) {
     std::vector<SelectedBox> pick_order;
     pick_order.reserve(8);
 
-    // 第一轮先清出一列通道：先抓近排放平板，再抓远排留在机械臂上。
-    pick_order.push_back({1, first_col});
-    pick_order.push_back({0, first_col});
+    auto remaining_boxes = make_all_boxes();
+    SelectedBox box0{1, first_col};
+    SelectedBox box1{0, first_col};
 
-    for (int offset = 1; offset < 4; ++offset) {
-        const int lower_col = first_col + offset;
-        if (lower_col < 4) {
-            pick_order.push_back({0, lower_col});
-            pick_order.push_back({1, lower_col});
+    while (!remaining_boxes.empty()) {
+        if (!pick_order.empty()) {
+            box0 = choose_nearest_box_by_y(plan_config, remaining_boxes, current_dst2_y);
+            remove_selected_box(remaining_boxes, box0);
+            box1 = choose_pair_box(plan_config, remaining_boxes, box0);
+        } else {
+            remove_selected_box(remaining_boxes, box0);
         }
 
-        const int upper_col = first_col - offset;
-        if (upper_col >= 0) {
-            pick_order.push_back({0, upper_col});
-            pick_order.push_back({1, upper_col});
-        }
+        remove_selected_box(remaining_boxes, box1);
+        pick_order.push_back(box0);
+        pick_order.push_back(box1);
+
+        const int box0_id = box_info.box_ids[box0.line][box0.col];
+        current_dst2_y = pose_from_grid(plan_config.positions, 0, box0_id)[1];
     }
 
     return pick_order;
@@ -492,7 +553,8 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     const std::array<float, 3> a1 = plan_config.route.a1;
     const std::array<float, 3> a2 = plan_config.route.a2;
     const int first_col = choose_first_col(plan_config, a1);
-    const auto pick_order = make_fixed_pick_order(first_col);
+    float current_dst2_y = a1[1];
+    const auto pick_order = make_dst2_nearest_pick_order(plan_config, first_col, current_dst2_y, box_info);
     if (pick_order.size() != 8) {
         RCLCPP_ERROR(context->node_->get_logger(), "固定抓取顺序数量错误，当前为 %zu", pick_order.size());
         return BT::FAILED;
@@ -554,13 +616,14 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
 
         RCLCPP_INFO(
             context->node_->get_logger(),
-            "生成双箱计划: box0(line=%d,col=%d,默认id=%d), box1(line=%d,col=%d,默认id=%d)",
+            "生成双箱计划: box0(line=%d,col=%d,默认id=%d), box1(line=%d,col=%d,默认id=%d), dst2.y=%.3f",
             plan.box0.line,
             plan.box0.col,
             plan.box0.box_id,
             plan.box1.line,
             plan.box1.col,
-            plan.box1.box_id);
+            plan.box1.box_id,
+            plan.dst2_pos[1]);
 
         move_plan.push_back(plan);
     }

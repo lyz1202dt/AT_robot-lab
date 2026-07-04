@@ -65,7 +65,7 @@ box0_to_box1_target_point: &box0_to_box1_target_point
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 0.8
-  max_accelation: 0.4
+  max_accelation: 0.5
   max_omega: 1.2
   kp: [2.0, 0.5, 1.5]
   allow_start_dir_error: 0.1
