@@ -699,6 +699,14 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
         execute_joint_space_trajectory(place_position, place_box_level_1_prepare_duration_);
         std::this_thread::sleep_for(3500ms);
 
+        max_ryretry--;
+
+        if(current_box_hand_dis > 0.1f)
+        {
+            execute_joint_space_trajectory(home_position_, 0.2);
+            std::this_thread::sleep_for(250ms);
+        }
+        
     } while (max_ryretry && current_box_hand_dis > 0.1f);
     if (current_box_hand_dis > 0.1f) {
         std_msgs::msg::Int32 ret;
@@ -762,6 +770,14 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
 
         execute_joint_space_trajectory(place_position_2, place_box_level_2_prepare_duration_);
         std::this_thread::sleep_for(3600ms);
+
+        max_ryretry--;
+
+        if(current_box_hand_dis > 0.1f)
+        {
+            execute_joint_space_trajectory(home_position_, 0.2);
+            std::this_thread::sleep_for(250ms);
+        }
 
     } while (max_ryretry && current_box_hand_dis > 0.1f);
     if (current_box_hand_dis > 0.1f) {
