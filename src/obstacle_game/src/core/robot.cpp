@@ -219,17 +219,17 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 target.target_vel=0.01;
                 target.max_accelation=0.3;
                 target.max_velocity=1.0;
-                target.max_omega=1.0;
-                target.adjust_min_vel=0.3;
+                target.max_omega=1.2;
+                target.adjust_min_vel=0.5;
                 target.adjust_min_omega=0.4;
-                target.allow_start_dir_error=0.1;
-                target.allow_final_dir_error=0.2;
+                target.allow_start_dir_error=0.05;
+                target.allow_final_dir_error=0.05;
                 target.allow_final_pos_allow=0.05;
                 target.allow_y_vel=false;
                 target.trajectory_connection_radius=0.0;
                 target.stand_at_target=false;
                 target.stand_duration=0.0;
-                target.kp={2.0,2.0,1.5};
+                target.kp={3.0,2.5,2.0};
                 target.policy_id=current_record_policy_id;
 
                 record->record_pos(target);
