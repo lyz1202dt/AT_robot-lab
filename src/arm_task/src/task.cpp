@@ -611,10 +611,10 @@ void ArmTaskNode::execute_place_flow_1_on_hand() {
         this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
         object_pose.pose.position.z);
 
-    execute_cartesian_space_trajectory(object_pose, 6.0);
+    execute_cartesian_space_trajectory(object_pose, 0.6);
 
     auto now=get_clock()->now();
-    while(get_clock()->now()-now<rclcpp::Duration(6000ms)){  //不断更新位置
+    while(get_clock()->now()-now<rclcpp::Duration(600ms)){  //不断更新位置
         sample_target_xy_from_tf(0.08, x, y);
         object_pose.pose.position.x=x;
         object_pose.pose.position.y=y;
@@ -662,7 +662,13 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
 
     execute_cartesian_space_trajectory(object_pose, place_hand_level_2_cartesian_duration_);
 
-    std::this_thread::sleep_for(600ms);
+    auto now=get_clock()->now();
+    while(get_clock()->now()-now<rclcpp::Duration(600ms)){  //不断更新位置
+        sample_target_xy_from_tf(0.08, x, y);
+        object_pose.pose.position.x=x;
+        object_pose.pose.position.y=y;
+        visual_target_pub_->publish(object_pose);
+    }
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
@@ -740,7 +746,13 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
 
     execute_cartesian_space_trajectory(object_pose, place_box_level_1_cartesian_duration_);
 
-    std::this_thread::sleep_for(600ms);
+    auto now=get_clock()->now();
+    while(get_clock()->now()-now<rclcpp::Duration(600ms)){  //不断更新位置
+        sample_target_xy_from_tf(0.08, x, y);
+        object_pose.pose.position.x=x;
+        object_pose.pose.position.y=y;
+        visual_target_pub_->publish(object_pose);
+    }
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
@@ -812,7 +824,13 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
 
     execute_cartesian_space_trajectory(object_pose, place_box_level_2_cartesian_duration_);
 
-    std::this_thread::sleep_for(1000ms);
+    auto now=get_clock()->now();
+    while(get_clock()->now()-now<rclcpp::Duration(1000ms)){  //不断更新位置
+        sample_target_xy_from_tf(0.08, x, y);
+        object_pose.pose.position.x=x;
+        object_pose.pose.position.y=y;
+        visual_target_pub_->publish(object_pose);
+    }
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 

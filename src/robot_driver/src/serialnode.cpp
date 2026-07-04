@@ -126,7 +126,6 @@ void ArmNode::armSubscribCb(const robot_msgs::msg::Arm& msg) {
     arm_target.servo1.down=msg.motor[1].rad;
     arm_target.rob01.except_pos=msg.motor[0].rad;
     first_update = false;
-    RCLCPP_INFO(get_logger(),"rad=%f",arm_target.servo1.up);
 }
 
 void ArmNode::airSubscribCb(const std_msgs::msg::Int32& msg) {
