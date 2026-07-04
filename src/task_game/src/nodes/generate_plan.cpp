@@ -291,6 +291,21 @@ SelectedBox choose_nearest_box_by_y(const PlanConfig& plan_config, const std::ve
     return best;
 }
 
+SelectedBox choose_nearest_box_on_line_by_y(const PlanConfig& plan_config,
+                                            const std::vector<SelectedBox>& boxes,
+                                            int line,
+                                            float target_y) {
+    std::vector<SelectedBox> line_boxes;
+    line_boxes.reserve(boxes.size());
+    for (const auto& box : boxes) {
+        if (box.line == line) {
+            line_boxes.push_back(box);
+        }
+    }
+
+    return choose_nearest_box_by_y(plan_config, line_boxes, target_y);
+}
+
 SelectedBox choose_pair_box(const PlanConfig& plan_config, const std::vector<SelectedBox>& boxes, const SelectedBox& box0) {
     const SelectedBox same_col_pair{1 - box0.line, box0.col};
     for (const auto& box : boxes) {
@@ -312,15 +327,17 @@ std::vector<SelectedBox> make_dst2_nearest_pick_order(const PlanConfig& plan_con
     auto remaining_boxes = make_all_boxes();
     SelectedBox box0{1, first_col};
     SelectedBox box1{0, first_col};
+    bool first_pair = true;
 
     while (!remaining_boxes.empty()) {
-        if (!pick_order.empty()) {
-            box0 = choose_nearest_box_by_y(plan_config, remaining_boxes, current_dst2_y);
+        if (!first_pair) {
+            box0 = choose_nearest_box_on_line_by_y(plan_config, remaining_boxes, 0, current_dst2_y);
             remove_selected_box(remaining_boxes, box0);
             box1 = choose_pair_box(plan_config, remaining_boxes, box0);
         } else {
             remove_selected_box(remaining_boxes, box0);
         }
+        first_pair = false;
 
         remove_selected_box(remaining_boxes, box1);
         pick_order.push_back(box0);

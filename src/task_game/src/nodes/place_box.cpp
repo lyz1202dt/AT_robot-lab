@@ -109,8 +109,37 @@ int choose_nearest_replan_task(const std::vector<ReplanTask>& tasks, float curre
     return best_index;
 }
 
+int choose_nearest_replan_task_on_line(const std::vector<ReplanTask>& tasks, int line, float current_dst2_y)
+{
+    int best_index = -1;
+    float best_error = std::numeric_limits<float>::max();
+    for (int index = 0; index < static_cast<int>(tasks.size()); ++index) {
+        if (tasks[index].task.line != line) {
+            continue;
+        }
+        const float y_error = std::abs(pick_y(tasks[index].task) - current_dst2_y);
+        if (y_error < best_error) {
+            best_index = index;
+            best_error = y_error;
+        }
+    }
+    return best_index;
+}
+
+int choose_pair_replan_task(const std::vector<ReplanTask>& tasks, const BoxMoveTask& first_task)
+{
+    const int pair_line = 1 - first_task.line;
+    for (int index = 0; index < static_cast<int>(tasks.size()); ++index) {
+        const auto& task = tasks[index].task;
+        if (task.line == pair_line && task.col == first_task.col) {
+            return index;
+        }
+    }
+    return choose_nearest_replan_task(tasks, pick_y(first_task));
+}
+
 // box0 平板放置失败后重建计划：
-// 1) 失败轮之后的每个剩余箱子（box0、box1）按 dst2.y 最近优先改为单吸手放计划；
+// 1) 失败轮之后的剩余箱子改为单吸手放计划，按 pick_line_0 -> pick_line_1 成对排序；
 // 2) 末尾追加一轮“回头重试卡住的平板箱”计划（plate_retry）。
 // 注意：二层判定不在这里计算，统一由放置时读取黑板 placed_count 决定，
 // 这样卡住未成功的箱子不会把同 ID 的后续箱子错误抬到第二层。
@@ -130,11 +159,24 @@ std::vector<MoveBoxPlan> make_replan_after_plate_blocked(const std::vector<MoveB
 
     float current_dst2_y = move_plan[blocked_plan_index].dst2_pos[1];
     while (!remaining_tasks.empty()) {
-        const int selected_index = choose_nearest_replan_task(remaining_tasks, current_dst2_y);
-        const auto selected_task = remaining_tasks[selected_index];
-        replan.push_back(make_single_hand_place_plan(*selected_task.previous_plan, selected_task.task));
-        current_dst2_y = place_y(selected_task.task, current_dst2_y);
-        remaining_tasks.erase(remaining_tasks.begin() + selected_index);
+        int first_index = choose_nearest_replan_task_on_line(remaining_tasks, 0, current_dst2_y);
+        if (first_index < 0) {
+            first_index = choose_nearest_replan_task(remaining_tasks, current_dst2_y);
+        }
+        const auto first_task = remaining_tasks[first_index];
+        replan.push_back(make_single_hand_place_plan(*first_task.previous_plan, first_task.task));
+        current_dst2_y = place_y(first_task.task, current_dst2_y);
+        remaining_tasks.erase(remaining_tasks.begin() + first_index);
+
+        if (remaining_tasks.empty()) {
+            break;
+        }
+
+        const int pair_index = choose_pair_replan_task(remaining_tasks, first_task.task);
+        const auto pair_task = remaining_tasks[pair_index];
+        replan.push_back(make_single_hand_place_plan(*pair_task.previous_plan, pair_task.task));
+        current_dst2_y = place_y(pair_task.task, current_dst2_y);
+        remaining_tasks.erase(remaining_tasks.begin() + pair_index);
     }
 
     // 末轮重试：直接复用卡住轮计划，box0 用卡住的箱子；只走 box0 平板放置，放完结束。
