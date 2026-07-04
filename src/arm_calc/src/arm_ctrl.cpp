@@ -329,6 +329,61 @@ void ArmCtrlNode::refresh_plan(double now_sec) {
     planners_ready_ = true;                                                                     // 标记规划器已准备好
 }
 
+bool ArmCtrlNode::replan_running_trajectory_from_visual_target(double now_sec) {
+    if (!execute_trajectory_ || !has_joint_state_ || !arm_calc_) {
+        return false;
+    }
+
+    JointTrajectoryPoint replanned_point;
+    bool replanned = false;
+
+    switch (active_motion_mode_) {
+    case MotionMode::kJointSpace: {
+        if (!joint_space_move_ || !joint_space_move_->started() || !joint_space_move_->active(now_sec)) {
+            break;
+        }
+
+        JointState visual_goal;
+        visual_goal.position = arm_calc_->joint_pos_as(visual_target_);
+        joint_target_state_ = visual_goal;
+
+        joint_space_move_->replan_goal_state(visual_goal, trajectory_duration_sec_);
+        replanned_point = joint_space_move_->sample(now_sec);
+        replanned = true;
+        break;
+    }
+
+    case MotionMode::kCartesianSpace:
+        if (!cartesian_space_move_ || !cartesian_space_move_->started() || !cartesian_space_move_->active(now_sec)) {
+            break;
+        }
+
+        cartesian_space_move_->replan_goal_state(visual_target_, trajectory_duration_sec_);
+        replanned_point = cartesian_space_move_->sample(now_sec);
+        replanned = true;
+        break;
+
+    case MotionMode::kIdle:
+    case MotionMode::kVisualServo:
+    default:
+        break;
+    }
+
+    if (!replanned) {
+        return false;
+    }
+
+    current_joint_state_ = from_arm_message(replanned_point);
+    publish_joint_target(replanned_point);
+
+    const rclcpp::Time stamp = this->get_clock()->now();
+    rviz_joint_pub_->publish(to_joint_state_msg(replanned_point, stamp));
+    publish_visualization(replanned_point);
+
+    RCLCPP_INFO(get_logger(), "收到新的visual_target_pose，已基于原轨迹起点和当前时间重新规划轨迹");
+    return true;
+}
+
 void ArmCtrlNode::capture_idle_hold_from_current_state() {
     idle_hold_point_.position = current_joint_state_.position;                                  // 设置位置为当前关节位置
     idle_hold_initialized_ = true; // 标记空闲保持点已初始化
@@ -716,12 +771,12 @@ void ArmCtrlNode::on_visual_target(const geometry_msgs::msg::PoseStamped& msg) {
         visual_servo_move_->set_target_pose(visual_target_); // 更新视觉伺服控制器目标
     }
 
-    // 如果当前请求的是笛卡尔模式且正在执行，则立即重新规划
-    if (requested_motion_mode_ == MotionMode::kCartesianSpace && has_joint_state_) {
-        planners_ready_ = false;
-        if (active_motion_mode_ == MotionMode::kCartesianSpace && execute_trajectory_) {
-            refresh_plan(this->get_clock()->now().seconds());
-        }
+    const double now_sec = this->get_clock()->now().seconds();
+
+    // 关节/笛卡尔轨迹执行中收到新的视觉目标时，保留原轨迹起点和起始时间，只替换终点重建多项式。
+    if (replan_running_trajectory_from_visual_target(now_sec)) {
+        planners_ready_ = true;
+        return;
     }
 
     // 视觉伺服模式下直接标记规划器就绪

@@ -22,6 +22,7 @@ public:
     void set_start_state(const JointState& state);
     void set_goal_state(const JointState& state, double duration);
     void start(double start_time_sec);
+    void replan_goal_state(const JointState& state, double duration);
     JointTrajectoryPoint sample(double current_time_sec) const;
     bool active(double current_time_sec) const;
     bool started() const;
@@ -42,6 +43,7 @@ public:
     void set_start_state(const JointState& state);
     void set_goal_state(const CartesianPose& pose, double duration);
     void start(double start_time_sec);
+    void replan_goal_state(const CartesianPose& pose, double duration);
     JointTrajectoryPoint sample(double current_time_sec);
     bool active(double current_time_sec) const;
     bool started() const;

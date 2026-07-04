@@ -58,7 +58,6 @@ JointTrajectoryPoint BuildJointPoint(const std::shared_ptr<ArmCalc>& arm_calc,
                                      const CartesianTrajectoryPoint& cartesian_target) {
     JointTrajectoryPoint point;
     if (arm_calc) {
-        int result     = -1;
         point.position = arm_calc->joint_pos_as(cartesian_target.pose);
     }
     return point;
@@ -82,6 +81,10 @@ void JointSpaceMove::set_goal_state(const JointState& state, double duration) {
 void JointSpaceMove::start(double start_time_sec) {
     start_time_sec_ = start_time_sec;
     started_ = true;
+}
+
+void JointSpaceMove::replan_goal_state(const JointState& state, double duration) {
+    set_goal_state(state, duration);
 }
 
 JointTrajectoryPoint JointSpaceMove::sample(double current_time_sec) const {
@@ -133,6 +136,10 @@ void JCartesianSpaceMove::set_goal_state(const CartesianPose& pose, double durat
 void JCartesianSpaceMove::start(double start_time_sec) {
     start_time_sec_ = start_time_sec;
     started_ = true;
+}
+
+void JCartesianSpaceMove::replan_goal_state(const CartesianPose& pose, double duration) {
+    set_goal_state(pose, duration);
 }
 
 JointTrajectoryPoint JCartesianSpaceMove::sample(double current_time_sec) {

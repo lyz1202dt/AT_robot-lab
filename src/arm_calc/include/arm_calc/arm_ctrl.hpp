@@ -35,6 +35,7 @@ private:
     std::string fetch_robot_description() const;
     std::string load_local_urdf() const;
     void refresh_plan(double now_sec);
+    bool replan_running_trajectory_from_visual_target(double now_sec);
     void apply_requested_mode(double now_sec);
     void capture_idle_hold_from_current_state();
     void set_idle_hold_point(const JointTrajectoryPoint& point);
