@@ -53,7 +53,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
     node_->declare_parameter<bool>("start_game", false);
     node_->declare_parameter<bool>("tree_debug_mode", false);
-    node_->declare_parameter<bool>("a_use_pnp_box_index", true);
+    node_->declare_parameter<bool>("a_use_pnp_box_index", false);
     set_tree_debug_mode(node_->get_parameter("tree_debug_mode").as_bool());
     node_->declare_parameter<std::vector<double>>("transfer_x_limits", {transfer_x_limits_[0], transfer_x_limits_[1]});
     node_->declare_parameter<std::vector<double>>("transfer_y_limits", {transfer_y_limits_[0], transfer_y_limits_[1]});
