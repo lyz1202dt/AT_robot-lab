@@ -347,9 +347,11 @@ bool ArmCtrlNode::replan_running_trajectory_from_visual_target(double now_sec) {
         visual_goal.position = arm_calc_->joint_pos_as(visual_target_);
         joint_target_state_ = visual_goal;
 
-        joint_space_move_->replan_goal_state(visual_goal, trajectory_duration_sec_);
+        joint_space_move_->replan_goal_state(visual_goal);
         replanned_point = joint_space_move_->sample(now_sec);
         replanned = true;
+        RCLCPP_INFO(get_logger(), "关节轨迹目标更新: elapsed=%.3f / %.3f",
+                    joint_space_move_->elapsed(now_sec), joint_space_move_->duration());
         break;
     }
 
@@ -358,9 +360,11 @@ bool ArmCtrlNode::replan_running_trajectory_from_visual_target(double now_sec) {
             break;
         }
 
-        cartesian_space_move_->replan_goal_state(visual_target_, trajectory_duration_sec_);
+        cartesian_space_move_->replan_goal_state(visual_target_);
         replanned_point = cartesian_space_move_->sample(now_sec);
         replanned = true;
+        RCLCPP_INFO(get_logger(), "笛卡尔轨迹目标更新: elapsed=%.3f / %.3f",
+                    cartesian_space_move_->elapsed(now_sec), cartesian_space_move_->duration());
         break;
 
     case MotionMode::kIdle:

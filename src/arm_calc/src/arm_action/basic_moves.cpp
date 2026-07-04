@@ -83,8 +83,8 @@ void JointSpaceMove::start(double start_time_sec) {
     started_ = true;
 }
 
-void JointSpaceMove::replan_goal_state(const JointState& state, double duration) {
-    set_goal_state(state, duration);
+void JointSpaceMove::replan_goal_state(const JointState& state) {
+    set_goal_state(state, duration_sec_);
 }
 
 JointTrajectoryPoint JointSpaceMove::sample(double current_time_sec) const {
@@ -102,6 +102,14 @@ bool JointSpaceMove::active(double current_time_sec) const {
 
 bool JointSpaceMove::started() const {
     return started_;
+}
+
+double JointSpaceMove::elapsed(double current_time_sec) const {
+    return current_time_sec - start_time_sec_;
+}
+
+double JointSpaceMove::duration() const {
+    return duration_sec_;
 }
 
 JCartesianSpaceMove::JCartesianSpaceMove(std::shared_ptr<ArmCalc> arm_calc)
@@ -138,8 +146,8 @@ void JCartesianSpaceMove::start(double start_time_sec) {
     started_ = true;
 }
 
-void JCartesianSpaceMove::replan_goal_state(const CartesianPose& pose, double duration) {
-    set_goal_state(pose, duration);
+void JCartesianSpaceMove::replan_goal_state(const CartesianPose& pose) {
+    set_goal_state(pose, duration_sec_);
 }
 
 JointTrajectoryPoint JCartesianSpaceMove::sample(double current_time_sec) {
@@ -155,6 +163,14 @@ bool JCartesianSpaceMove::active(double current_time_sec) const {
 
 bool JCartesianSpaceMove::started() const {
     return started_;
+}
+
+double JCartesianSpaceMove::elapsed(double current_time_sec) const {
+    return current_time_sec - start_time_sec_;
+}
+
+double JCartesianSpaceMove::duration() const {
+    return duration_sec_;
 }
 
 CartesianTrajectoryPoint JCartesianSpaceMove::build_cartesian_target(double current_time_sec) const {
