@@ -10,6 +10,7 @@
 #include "rl_sdk.hpp"
 #include <Eigen/Dense>
 #include <cmath>  // for std::isnan, std::isinf
+#include "bridge_B_atdog3.hpp"
 #include "cross_wall_atdog3.hpp"
 namespace atdog3_fsm
 {
@@ -158,6 +159,10 @@ public:
             {
                 return "RLFSMStateCrosswall";
             }
+            else if (rl.control.current_keyboard == Input::Keyboard::Num4)
+            {
+                return "RLFSMStateBridgeB";
+            }
 
             return ResolveRemoteModeState(rl.control.mode, state_name_);
         }
@@ -301,6 +306,83 @@ public:
     }
 };
 
+class RLFSMStateBridgeB : public RLFSMState {
+public:
+    int num_dofs;
+    std::shared_ptr<BridgeBStateAtdog3> bridge_b_state;
+
+    RLFSMStateBridgeB(RL *rl) : RLFSMState(*rl, "RLFSMStateBridgeB") {
+        std::string urdf_path = "src/rl_sar_zoo/" + rl->robot_name + "_description/urdf/dog3.urdf";
+        bridge_b_state = std::make_shared<BridgeBStateAtdog3>(urdf_path);
+    }
+
+    void Enter() override
+    {
+        rl.now_state = *fsm_state;
+        num_dofs = rl.params.Get<int>("num_of_dofs");
+        bridge_b_state->enter();
+    }
+
+    void Run() override
+    {
+        for (int i = 0; i < num_dofs; ++i)
+        {
+            int leg_index = i / 3;
+            int joint_index = i % 3;
+            switch (leg_index)
+            {
+                case 0:
+                    bridge_b_state->robot->rf_joint_pos[joint_index] = fsm_state->motor_state.q[i];
+                    bridge_b_state->robot->rf_joint_vel[joint_index] = fsm_state->motor_state.dq[i];
+                    break;
+                case 1:
+                    bridge_b_state->robot->lf_joint_pos[joint_index] = fsm_state->motor_state.q[i];
+                    bridge_b_state->robot->lf_joint_vel[joint_index] = fsm_state->motor_state.dq[i];
+                    break;
+                case 2:
+                    bridge_b_state->robot->rb_joint_pos[joint_index] = fsm_state->motor_state.q[i];
+                    bridge_b_state->robot->rb_joint_vel[joint_index] = fsm_state->motor_state.dq[i];
+                    break;
+                case 3:
+                    bridge_b_state->robot->lb_joint_pos[joint_index] = fsm_state->motor_state.q[i];
+                    bridge_b_state->robot->lb_joint_vel[joint_index] = fsm_state->motor_state.dq[i];
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        RobotTarget joints_target = bridge_b_state->update();
+        for (int i = 0; i < num_dofs; ++i)
+        {
+            int leg_index = i / 3;
+            int joint_index = i % 3;
+            fsm_command->motor_command.q[i] = joints_target.legs[leg_index].joints[joint_index].rad;
+            fsm_command->motor_command.dq[i] = joints_target.legs[leg_index].joints[joint_index].omega;
+            fsm_command->motor_command.kp[i] = joints_target.legs[leg_index].joints[joint_index].kp;
+            fsm_command->motor_command.kd[i] = joints_target.legs[leg_index].joints[joint_index].kd;
+            fsm_command->motor_command.tau[i] = joints_target.legs[leg_index].joints[joint_index].torque;
+        }
+    }
+
+    void Exit() override {}
+
+    std::string CheckChange() override
+    {
+        if (bridge_b_state->bridge_over == true)
+        {
+            bridge_b_state->bridge_over = false;
+            bridge_b_state->bridge_stage = -1;
+            return "RLFSMStateGetUp";
+        }
+        if (rl.control.current_keyboard == Input::Keyboard::P || rl.control.current_gamepad == Input::Gamepad::LB_X)
+        {
+            return "RLFSMStatePassive";
+        }
+        return state_name_;
+    }
+};
+
 class RLFSMStateRLLocomotion : public RLFSMState
 {
 public:
@@ -380,6 +462,10 @@ public:
         else if (rl.control.current_keyboard == Input::Keyboard::Num5 || rl.control.current_gamepad == Input::Gamepad::RB_DPadDown)
         {
             return "RLFSMStateCrosswall";
+        }
+        else if (rl.control.current_keyboard == Input::Keyboard::Num4)
+        {
+            return "RLFSMStateBridgeB";
         }
 
         return ResolveRemoteModeState(rl.control.mode, state_name_);
@@ -736,6 +822,8 @@ public:
             return std::make_shared<atdog3_fsm::RLFSMStateRLSand>(rl);
         else if (state_name == "RLFSMStateCrosswall")
             return std::make_shared<atdog3_fsm::RLFSMStateCrosswall>(rl);
+        else if (state_name == "RLFSMStateBridgeB")
+            return std::make_shared<atdog3_fsm::RLFSMStateBridgeB>(rl);
         else if (state_name == "RLFSMStateRLSlope")
             return std::make_shared<atdog3_fsm::RLFSMStateRLSlope>(rl);
         else if (state_name == "RLFSMStateRLBar")
@@ -755,6 +843,7 @@ public:
             "RLFSMStateRLStairs",
             "RLFSMStateRLSand",
             "RLFSMStateCrosswall",
+            "RLFSMStateBridgeB",
             "RLFSMStateRLSlope",
             "RLFSMStateRLBar",
             "RLFSMStateRLBridge"
