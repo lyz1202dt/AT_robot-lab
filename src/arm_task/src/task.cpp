@@ -54,7 +54,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     visual_target_pub_      = this->create_publisher<geometry_msgs::msg::PoseStamped>("visual_target_pose", 10);
     joint_space_target_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("joint_space_target", 10);
 
-    this->create_subscription<std_msgs::msg::Float32>(
+    box_to_hand_dis_sub = this->create_subscription<std_msgs::msg::Float32>(
         "plane_dst", 10, [this](std_msgs::msg::Float32::ConstSharedPtr msg) { current_box_hand_dis = msg->data; });
     // 当发1时通知视觉可以开始全场扫描，当发2时通知视觉可以开始寻找并发布物块坐标使机械臂能够去抓取物块
     vision_command_pub_ = this->create_publisher<std_msgs::msg::Int32>("arm_command", 10);
