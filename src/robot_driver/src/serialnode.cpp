@@ -12,11 +12,7 @@
 #include <std_msgs/msg/int32.hpp>
 #include <thread>
 
-
-
 using namespace std::chrono_literals;
-
-
 
 ArmNode::ArmNode()
     : Node("arm_driver_node") {   
