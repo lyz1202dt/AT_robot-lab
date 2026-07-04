@@ -9,6 +9,7 @@
 #include <geometry_msgs/msg/point_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <limits>
+#include <rclcpp/duration.hpp>
 #include <std_msgs/msg/detail/int32__struct.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
@@ -612,7 +613,13 @@ void ArmTaskNode::execute_place_flow_1_on_hand() {
 
     execute_cartesian_space_trajectory(object_pose, place_hand_level_1_cartesian_duration_);
 
-    std::this_thread::sleep_for(600ms);
+    auto now=get_clock()->now();
+    while(get_clock()->now()-now<rclcpp::Duration(600ms)){  //不断更新位置
+        sample_target_xy_from_tf(0.08, x, y);
+        object_pose.pose.position.x=x;
+        object_pose.pose.position.y=y;
+        visual_target_pub_->publish(object_pose);
+    }
 
     RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
