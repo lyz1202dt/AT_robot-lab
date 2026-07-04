@@ -89,7 +89,7 @@ std::tuple<Vector3D, double> CrossWallStateAtdog3::get_robot_mass_info(
 CrossWallStateAtdog3::CrossWallStateAtdog3(const std::string& urdf_file_path)
 {
         robot = std::make_shared<Robot_t>(urdf_file_path);
-        diagonal_walk.configure(0.6, 0.08, 0.6, 0.6, 0.0, 0.0, 0.8, -0.06);
+        diagonal_walk.configure(0.6, 0.08, 0.6, 0.6, 0.0, 0.0, 0.9, -0.06);
     
         Vector3D com_3d;
         std::tie(com_3d, mass) = get_robot_mass_info(robot->lf_joint_pos, robot->rf_joint_pos, robot->lb_joint_pos, robot->rb_joint_pos);
@@ -185,10 +185,10 @@ RobotTarget CrossWallStateAtdog3::update() {
             use_limit_rb = false;
             use_limit_rf = false;               
 
-            lf_step.update_support_trajectory(lf_cart_pos, Vector3D(0.0,0.1,0.0), 1.0);
-            rf_step.update_support_trajectory(rf_cart_pos, Vector3D(0.0,0.1,0.0), 1.0);
-            lb_step.update_support_trajectory(lb_cart_pos, Vector3D(0.0,0.1,0.0), 1.0);
-            rb_step.update_support_trajectory(rb_cart_pos, Vector3D(0.0,0.1,0.0), 1.0);
+            lf_step.update_support_trajectory(lf_cart_pos, Vector3D(0.0,0.07,0.0), 1.0);
+            rf_step.update_support_trajectory(rf_cart_pos, Vector3D(0.0,0.07,0.0), 1.0);
+            lb_step.update_support_trajectory(lb_cart_pos, Vector3D(0.0,0.07,0.0), 1.0);
+            rb_step.update_support_trajectory(rb_cart_pos, Vector3D(0.0,0.07,0.0), 1.0);
 
             //change_flag=false;
             cross_wall_stage = 1;       
@@ -260,9 +260,9 @@ RobotTarget CrossWallStateAtdog3::update() {
             {
                 lf_step.update_support_trajectory(lf_cart_pos,lf_cart_pos,1.0);
                 rf_step.update_support_trajectory(rf_cart_pos,rf_cart_pos,1.0);
-                rb_step.update_support_trajectory(rb_cart_pos,rb_cart_pos,1.0);
-                lb_step.update_flight_trajectory(lb_cart_pos,Vector3D(0.0,0.0,0.0), Vector3D(0.2,0.08,-0.03), Vector3D(0.0,0.0,0.0),1.0, 0.2);
-                //change_flag=false;
+                rb_step.update_support_trajectory(rb_cart_pos,Vector3D(0.0,0.07,-0.03),1.0);
+                lb_step.update_flight_trajectory(lb_cart_pos,Vector3D(0.0,0.0,0.0), Vector3D(0.2,0.07,-0.03), Vector3D(0.0,0.0,0.0),1.0, 0.2);
+                // change_flag=false;
                 cross_wall_stage=2;     
             }
         }//1:其它保持不变,迈左后腿
@@ -370,7 +370,7 @@ RobotTarget CrossWallStateAtdog3::update() {
 
             if(!success)
             {
-                lf_step.update_support_trajectory(robot->lf_joint_pos,Vector3D(1.2,-0.7,-1.0),2.0);
+                lf_step.update_support_trajectory(robot->lf_joint_pos,Vector3D(1.5,-0.7,-1.0),2.0);
                 rf_step.update_support_trajectory(rf_cart_pos,rf_cart_pos,2.0);
                 lb_step.update_support_trajectory(lb_cart_pos,lb_cart_pos,2.0);
                 rb_step.update_support_trajectory(rb_cart_pos,rb_cart_pos,2.0); 
@@ -472,7 +472,7 @@ RobotTarget CrossWallStateAtdog3::update() {
             if(!success)
             {
                 lf_step.update_support_trajectory(robot->lf_joint_pos,robot->lf_joint_pos,2.0);
-                rf_step.update_support_trajectory(robot->rf_joint_pos,Vector3D(-1.3, -0.871, 0.1),2.0);
+                rf_step.update_support_trajectory(robot->rf_joint_pos,Vector3D(-1.5, -0.871, 0.1),2.0);
                 lb_step.update_support_trajectory(lb_cart_pos,lb_cart_pos,2.0);
                 rb_step.update_support_trajectory(rb_cart_pos,rb_cart_pos,2.0);
                 // change_flag=false;
@@ -524,7 +524,7 @@ RobotTarget CrossWallStateAtdog3::update() {
                 // rf_joint_exp_pos_ = robot->rf_leg_calc->joint_pos(rf_foot_exp_pos,&result);
 
                 lf_step.update_support_trajectory(robot->lf_joint_pos,robot->lf_joint_pos,1.0);
-                rf_step.update_support_trajectory(robot->rf_joint_pos,Vector3D(-1.3, 1.0, 0.0),1.0);
+                rf_step.update_support_trajectory(robot->rf_joint_pos,Vector3D(-1.5, 1.0, 0.0),1.0);
                 lb_step.update_support_trajectory(lb_cart_pos,Vector3D(0.0,0.0,-0.03),1.0);
                 rb_step.update_support_trajectory(rb_cart_pos,Vector3D(0.0,0.0,-0.06),1.0);
 
@@ -712,8 +712,8 @@ RobotTarget CrossWallStateAtdog3::update() {
             {
                 lf_step.update_support_trajectory(lf_cart_pos,Vector3D(0.0,0.0,0.0),2.0); 
                 rf_step.update_support_trajectory(rf_cart_pos,Vector3D(0.0,0.0,0.0),2.0); 
-                lb_step.update_support_trajectory(lb_cart_pos,Vector3D(-0.15, 0.25,0.45),2.0);
-                rb_step.update_support_trajectory(rb_cart_pos,Vector3D(-0.15,-0.25,0.45),2.0);
+                lb_step.update_support_trajectory(lb_cart_pos,Vector3D(-0.15, 0.23,0.52),2.0);
+                rb_step.update_support_trajectory(rb_cart_pos,Vector3D(-0.15,-0.23,0.52),2.0);
                 
                 // change_flag=false;
                 cross_wall_stage=12;
@@ -744,8 +744,8 @@ RobotTarget CrossWallStateAtdog3::update() {
             {
                 lf_step.update_support_trajectory(lf_cart_pos,Vector3D(0.0,0.0,0.0),2.0); 
                 rf_step.update_support_trajectory(rf_cart_pos,Vector3D(0.0,0.0,0.0),2.0); 
-                lb_step.update_support_trajectory(lb_cart_pos,Vector3D(0.2, 0.25,0.4),2.0);
-                rb_step.update_support_trajectory(rb_cart_pos,Vector3D(0.2,-0.25,0.4),2.0);
+                lb_step.update_support_trajectory(lb_cart_pos,Vector3D(0.2, 0.23,0.50),2.0);
+                rb_step.update_support_trajectory(rb_cart_pos,Vector3D(0.2,-0.23,0.50),2.0);
                 
                 // change_flag=false;
                 cross_wall_stage=13;
