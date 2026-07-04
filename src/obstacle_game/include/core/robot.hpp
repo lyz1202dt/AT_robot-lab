@@ -39,6 +39,8 @@ private:
     int32_t current_record_policy_id{2};
     bool autopilot_available{true};
     bool record_yaml_opened{false};
+    bool pending_record_stand_option_{false};
+    bool pending_record_yaw_lock_option_{false};
 
     geometry_msgs::msg::TransformStamped robot_pos_transfer;
 };

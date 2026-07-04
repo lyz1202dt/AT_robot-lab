@@ -105,6 +105,10 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
     // 机器人遥控器指令订阅
     remote_sub_ = node_->create_subscription<robot_msgs::msg::Remote>("remote", 10, [this](const robot_msgs::msg::Remote& msg) {
+        const bool record_mode_active = check_key_pressed(msg.key, 2);
+        const bool record_option_modifier_active = check_key_pressed(msg.key, 9);
+        const bool reuse_record_option_keys = record_mode_active && record_option_modifier_active;
+
         // TODO:处理并发布遥控器数据
         if (!check_key_pressed(msg.key,1)) // 拨杆处于中间位置或向下位置，即手动控制
         {
@@ -145,17 +149,21 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 current_record_policy_id = 4;
                 RCLCPP_INFO(node_->get_logger(), "sand/沙地模式");
             } else if (check_key_trigger(msg.key,11)) {
-                cmd.mode = 5; // 斜坡策略
-                current_record_policy_id = 5;
-                RCLCPP_INFO(node_->get_logger(), "slope/斜坡模式");
+                if (!reuse_record_option_keys) {
+                    cmd.mode = 5; // 斜坡策略
+                    current_record_policy_id = 5;
+                    RCLCPP_INFO(node_->get_logger(), "slope/斜坡模式");
+                }
             } else if (check_key_trigger(msg.key,12)) {
                 cmd.mode = 6; // 限高杆策略
                 current_record_policy_id = 6;
                 RCLCPP_INFO(node_->get_logger(), "bar/限高杆模式");
             } else if (check_key_trigger(msg.key,13)) {
-                cmd.mode = 7; // 木桥策略
-                current_record_policy_id = 7;
-                RCLCPP_INFO(node_->get_logger(), "bridge/木桥模式");
+                if (!reuse_record_option_keys) {
+                    cmd.mode = 7; // 木桥策略
+                    current_record_policy_id = 7;
+                    RCLCPP_INFO(node_->get_logger(), "bridge/木桥模式");
+                }
             } else if (check_key_trigger(msg.key,10)) {
                 cmd.mode = 8; // 翻墙状态
                 current_record_policy_id = 8;
@@ -182,11 +190,13 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         }
 
         
-        if(check_key_pressed(msg.key, 2))   //表示开始记录周期
+        if(record_mode_active)   //表示开始记录周期
         {
             if(!record_yaml_opened)
             {
                 record_yaml_opened=true;
+                pending_record_stand_option_ = false;
+                pending_record_yaw_lock_option_ = false;
                 const auto now = std::chrono::system_clock::now();
                 const std::time_t now_time = std::chrono::system_clock::to_time_t(now);
                 std::tm local_tm{};
@@ -198,6 +208,16 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 record->set_output_yaml(oss.str());
 
                 RCLCPP_INFO(node_->get_logger(),"开始记录");
+            }
+
+            if (reuse_record_option_keys && check_key_trigger(msg.key, 13)) {
+                pending_record_stand_option_ = true;
+                RCLCPP_INFO(node_->get_logger(), "下一录制点将写入 stand_at_target=true, stand_duration=2");
+            }
+
+            if (reuse_record_option_keys && check_key_trigger(msg.key, 11)) {
+                pending_record_yaw_lock_option_ = true;
+                RCLCPP_INFO(node_->get_logger(), "下一录制点将写入 constraint_target_yaw=true, allow_y_vel=true");
             }
 
             if(check_key_trigger(msg.key, 14))      //按键按下后记录一次点位
@@ -232,6 +252,18 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 target.kp={3.0,2.5,2.0};
                 target.policy_id=current_record_policy_id;
 
+                if (pending_record_stand_option_) {
+                    target.stand_at_target = true;
+                    target.stand_duration = 2.0;
+                    pending_record_stand_option_ = false;
+                }
+
+                if (pending_record_yaw_lock_option_) {
+                    target.constraint_target_yaw = true;
+                    target.allow_y_vel = true;
+                    pending_record_yaw_lock_option_ = false;
+                }
+
                 record->record_pos(target);
                 RCLCPP_INFO(node_->get_logger(),"记录点位, policy_id=%d", target.policy_id);
             }
@@ -240,6 +272,8 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             if(record_yaml_opened)
             {
                 record_yaml_opened=false;
+                pending_record_stand_option_ = false;
+                pending_record_yaw_lock_option_ = false;
                 record->finishe_record();
                 RCLCPP_INFO(node_->get_logger(),"完成记录");
             }

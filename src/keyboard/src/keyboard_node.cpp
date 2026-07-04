@@ -113,7 +113,7 @@ private:
     {
         RCLCPP_INFO(get_logger(), "Keyboard remote publisher started.");
         RCLCPP_INFO(get_logger(), "Move: w/s forward/back, a/d left/right, q/e spin.");
-        RCLCPP_INFO(get_logger(), "Modes: 1 manual, 2 auto, 3 record.");
+        RCLCPP_INFO(get_logger(), "Modes: 2 manual, 3 auto, 1 record.");
         RCLCPP_INFO(get_logger(), "Policy keys: z stand, x walk, c stairs, v sand, g cross_wall(bit 10), n robot_lab_slope(bit 11), b robot_lab_bar(bit 12), h robot_lab_bridge(bit 13), m record point.");
         RCLCPP_INFO(get_logger(), "Use Ctrl-C to exit.");
     }
