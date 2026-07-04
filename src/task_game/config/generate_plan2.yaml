@@ -95,7 +95,7 @@ a2_to_dst1_target_point: &a2_to_dst1_target_point #第一轮放
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 2.0
-  max_accelation: 0.6
+  max_accelation: 0.8
   max_omega: 2.0
   kp: [2.5, 0.5, 1.5]
   allow_start_dir_error: 0.1
@@ -110,7 +110,7 @@ box1_to_dst1_target_point: &box1_to_dst1_target_point   #去
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 2.0
-  max_accelation: 0.6
+  max_accelation: 0.8
   max_omega: 2.0
   kp: [2.5, 0.5, 1.5]
   allow_start_dir_error: 0.1
@@ -155,7 +155,7 @@ dst2_to_box0_target_point: &dst2_to_box0_target_point #回
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 2.0
-  max_accelation: 0.6
+  max_accelation: 0.8
   max_omega: 2.0
   kp: [2.5, 0.5, 1.5]
   allow_start_dir_error: 0.1
@@ -193,9 +193,9 @@ box_positions:
     - [4.4501936226738605, -3.3671492415754631, -0.013295672041067306]
   pick_line_0:
     - [1.708, -0.810, 0.0]
-    - [3.0012381778653731, -1.6116394874108346, 3.1284906482644561]
-    - [3.0061148222899482, -2.4372288330604324, -3.112081493277739]
-    - [3.0077117988662979, -3.3032856257276642, -3.1271719800303472]
+    - [3.0512381778653731, -1.6116394874108346, 3.1284906482644561]
+    - [3.0561148222899482, -2.4372288330604324, -3.112081493277739]
+    - [3.0577117988662979, -3.3032856257276642, -3.1271719800303472]
   pick_line_1:
     - [0.895, -0.810, 0.0]
     - [2.1854874380278018, -1.5741184319666135, -3.1233058745481661]
