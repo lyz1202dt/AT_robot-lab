@@ -166,6 +166,8 @@ bool Pilot::start()
         state_ = resume_state_ == PilotState::Finished ? PilotState::Running : resume_state_;
         if (state_ == PilotState::Running) {
             begin_current_segment(now, 0.0);
+        } else if (state_ == PilotState::ExternalAction) {
+            transition_ = CubicTransition{};
         } else if (state_ == PilotState::Standing) {
             stand_start_time_ = now;
         }
@@ -176,15 +178,23 @@ bool Pilot::start()
         current_path_index_ = 0;
     }
 
-    state_ = PilotState::Running;
-    begin_current_segment(now, 0.0);
+    if (is_external_action_policy(paths_[current_path_index_])) {
+        state_ = PilotState::ExternalAction;
+        transition_ = CubicTransition{};
+        policy_done_pending_ = false;
+        done_policy_id_ = 0;
+    } else {
+        state_ = PilotState::Running;
+        begin_current_segment(now, 0.0);
+    }
     return true;
 }
 
 bool Pilot::stop()
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (state_ == PilotState::Running || state_ == PilotState::Standing || state_ == PilotState::Adjusting) {
+    if (state_ == PilotState::Running || state_ == PilotState::Standing || state_ == PilotState::Adjusting ||
+        state_ == PilotState::ExternalAction) {
         resume_state_ = state_;
         state_ = PilotState::Paused;
     } else if (state_ != PilotState::Finished) {
@@ -268,16 +278,24 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
     PathPoint& path = paths_[current_path_index_];
     cmd.mode = policy_id_to_cmd_mode(path.policy_id);
 
-    if (is_external_action_policy(path)) {
+    if (is_external_action_policy(path) && state_ != PilotState::ExternalAction) {
+        state_ = PilotState::ExternalAction;
+        transition_ = CubicTransition{};
+    }
+
+    if (state_ == PilotState::ExternalAction) {
         if (policy_done_pending_ && done_policy_id_ == path.policy_id) {
             policy_done_pending_ = false;
             done_policy_id_ = 0;
-            finish_current_target(time);
+            RCLCPP_INFO(
+                node_->get_logger(),
+                "外部固定动作完成，切换下一段: target=(%.3f, %.3f), policy_id=%d",
+                path.target_pos.x(),
+                path.target_pos.y(),
+                path.policy_id);
+            advance_after_stand(time);
 
             if (state_ == PilotState::Finished || current_path_index_ >= paths_.size()) {
-                return stand_command();
-            }
-            if (state_ == PilotState::Standing) {
                 return stand_command();
             }
 
@@ -293,7 +311,7 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
             return stand_command();
         }
         advance_after_stand(time);
-        if (current_path_index_ >= paths_.size() || state_ == PilotState::Running) {
+        if (current_path_index_ >= paths_.size() || state_ != PilotState::Adjusting) {
             return stand_command();
         }
     }
@@ -660,20 +678,29 @@ void Pilot::advance_after_stand(std::chrono::time_point<std::chrono::high_resolu
     if (current_path_index_ + 1 < paths_.size()) {
         const auto previous_path = paths_[current_path_index_];
         ++current_path_index_;
-        if (is_external_action_policy(previous_path)) {
-            segment_start_pos_ = current_pos_;
-        } else {
-            segment_start_pos_ = previous_path.target_pos;
-        }
-        segment_start_yaw_ = current_yaw_;
-        segment_start_speed_ = std::max(0.0, previous_path.target_vel);
-        segment_start_time_ = time;
         stand_start_time_ = {};
         transition_ = CubicTransition{};
-        aiming_done_ = paths_[current_path_index_].allow_y_vel;
         policy_done_pending_ = false;
         done_policy_id_ = 0;
-        state_ = PilotState::Running;
+        if (is_external_action_policy(paths_[current_path_index_])) {
+            segment_start_pos_ = current_pos_;
+            segment_start_yaw_ = current_yaw_;
+            segment_start_speed_ = 0.0;
+            segment_start_time_ = time;
+            aiming_done_ = true;
+            state_ = PilotState::ExternalAction;
+        } else {
+            if (is_external_action_policy(previous_path)) {
+                segment_start_pos_ = current_pos_;
+            } else {
+                segment_start_pos_ = previous_path.target_pos;
+            }
+            segment_start_yaw_ = current_yaw_;
+            segment_start_speed_ = std::max(0.0, previous_path.target_vel);
+            segment_start_time_ = time;
+            aiming_done_ = paths_[current_path_index_].allow_y_vel;
+            state_ = PilotState::Running;
+        }
         return;
     }
 

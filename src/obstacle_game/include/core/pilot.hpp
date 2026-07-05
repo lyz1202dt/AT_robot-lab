@@ -64,6 +64,7 @@ private:
         Running,
         Standing,
         Adjusting,
+        ExternalAction,
         Paused,
         Finished
     };
