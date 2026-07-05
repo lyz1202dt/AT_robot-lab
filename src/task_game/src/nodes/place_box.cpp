@@ -223,7 +223,7 @@ bool retreat_to_dst2(Robot* context, const MoveBoxPlan& plan, bool final_round)
     if (!context->pilot->start([&finished, &success](int result) {
             success = (result != 0);
             finished = true;
-        }, true)) {
+        }, false)) {
         RCLCPP_ERROR(context->node_->get_logger(), "PlaceBoxAction: 启动退让到 dst2 失败");
         return false;
     }
