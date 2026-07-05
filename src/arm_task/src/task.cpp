@@ -31,7 +31,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     // Declare parameters
     this->declare_parameter<int32_t>("arm_task", 0);
     this->declare_parameter<bool>("air_pump", false);
-    this->declare_parameter<bool>("use_vision_grasp", false);    //开启使用机械臂进行视觉抓取
+    this->declare_parameter<bool>("use_vision_grasp", true);    //开启使用机械臂进行视觉抓取
     this->declare_parameter<std::string>("base_frame", "arm_base_link");
     this->declare_parameter<std::string>("camera_frame", "camera_link");
     this->declare_parameter<std::string>("object_frame", "object_frame");
@@ -502,7 +502,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
                     // vision_weight = grasp_vision_threshold_variance_ / (grasp_vision_threshold_variance_ + vision_variance);
                     // vision_weight = std::max(0.0, std::min(1.0, vision_weight));
                     vision_weight = 0.5;      // 先写死平均数加权
-
+                    RCLCPP_INFO(get_logger(),"从背上抓取失败，触发重规划");
                     double dx=vision_box_pos.x-object_pose.pose.position.x;
                     double dy=vision_box_pos.y-object_pose.pose.position.y;
                     double dz=vision_box_pos.z-object_pose.pose.position.z;
@@ -725,6 +725,7 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
         std_msgs::msg::Int32 ret;
         ret.data = -1;
         arm_finished_pub->publish(ret);
+        RCLCPP_INFO(get_logger(),"从背上抓取失败，触发重规划");
         execute_joint_space_trajectory(home_position_, 0.3);
         std::this_thread::sleep_for(300ms);
         return;
@@ -803,6 +804,7 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
         std_msgs::msg::Int32 ret;
         ret.data = -1;
         arm_finished_pub->publish(ret);
+        RCLCPP_INFO(get_logger(),"从背上抓取失败，触发重规划");
         execute_joint_space_trajectory(home_position_, 0.3);
         std::this_thread::sleep_for(300ms);
         return;

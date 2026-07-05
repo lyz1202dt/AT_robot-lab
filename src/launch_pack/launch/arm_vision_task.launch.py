@@ -76,30 +76,43 @@ def launch_setup(context, *args, **kwargs):
     # Static transform from joint1 to camera_link.
     # The orientation includes an additional -90-degree rotation about camera_link's
     # current z-axis.
-    if model_package=="arm2":       #连杆狗（01云台）的ARM
-        static_tf_camera = Node(
+    # if model_package=="arm2":       #连杆狗（01云台）的ARM
+    #     static_tf_camera = Node(
+    #     package="tf2_ros",
+    #     executable="static_transform_publisher",
+    #     arguments=[
+    #         "0.32", "-0.02", "-0.03",
+    #         "-1.570796", "0.0", "-2.356194",
+    #         "joint1",
+    #         "camera_link",
+    #     ],
+    #     output="screen",
+    #     )
+    # else:       #同步带狗(05云台)的ARM
+    #     static_tf_camera = Node(
+    #     package="tf2_ros",
+    #     executable="static_transform_publisher",
+    #     arguments=[
+    #         "0.232", "-0.022", "-0.03",
+    #         "-1.570796", "0.0", "-2.356194",
+    #         "joint1",
+    #         "camera_link",
+    #     ],
+    #     output="screen",
+    #     )
+
+
+    static_tf_camera = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
         arguments=[
-            "0.32", "-0.02", "-0.03",
-            "-1.570796", "0.0", "-2.356194",
-            "joint1",
+            "-0.03165", "0.0", "0.042",
+            "0.5", "-0.5", "0.5", "-0.5",
+            "joint5",
             "camera_link",
         ],
         output="screen",
-        )
-    else:       #同步带狗(05云台)的ARM
-        static_tf_camera = Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        arguments=[
-            "0.232", "-0.022", "-0.03",
-            "-1.570796", "0.0", "-2.356194",
-            "joint1",
-            "camera_link",
-        ],
-        output="screen",
-        )
+    )
     
 
     return [
