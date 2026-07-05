@@ -628,7 +628,7 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
 
         // 二层判定（place_at_second_floor）改为运行期在放置时计算，这里不再预先计算。
         // dst2 退让点先按默认 box0 id 预填，运行期会用真实 id 重算。
-        plan.dst2_pos = {box0_dst[0] - 0.08f, box0_dst[1], 3.14};
+        plan.dst2_pos = {box0_dst[0] - 0.08f, box0_dst[1], box0_dst[2]};
         plan.dst0_to_dst2 = plan_config.dst0_to_dst2;
 
         RCLCPP_INFO(

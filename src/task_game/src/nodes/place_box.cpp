@@ -414,7 +414,7 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         MoveBoxPlan retreat_plan = plan;
         std::array<std::array<float, 3>, 4> place_table{};
         if (box_id >= 0 && box_id < 4 && tree.read_msg("place_table", place_table)) {
-            retreat_plan.dst2_pos = {place_table[box_id][0] - 0.1f, place_table[box_id][1], 3.14f};
+            retreat_plan.dst2_pos = {place_table[box_id][0] - 0.1f, place_table[box_id][1], place_table[box_id][2]};
         }
 
         const bool final_round = plan.finish_after_box0_place || (plan_index + 1 >= static_cast<int>(move_plan.size()));
