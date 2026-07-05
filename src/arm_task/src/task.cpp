@@ -454,6 +454,7 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         std::this_thread::sleep_for(800ms);
 
         max_ryretry--;
+        RCLCPP_INFO(get_logger(),"测距模块读数%f",current_box_hand_dis);
     } while (current_box_hand_dis > 0.1f && max_ryretry);
 
     std_msgs::msg::Int32 ret;
@@ -582,6 +583,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
         std::this_thread::sleep_for(2400ms);
 
         max_ryretry--;
+        RCLCPP_INFO(get_logger(),"测距模块读数%f",current_box_hand_dis);
     } while (current_box_hand_dis > 0.1f && max_ryretry);
 
 
@@ -735,6 +737,8 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
             std::this_thread::sleep_for(250ms);
         }
         
+        RCLCPP_INFO(get_logger(),"测距模块读数%f",current_box_hand_dis);
+
     } while (max_ryretry && current_box_hand_dis > 0.1f);
     if (current_box_hand_dis > 0.1f) {
         std_msgs::msg::Int32 ret;
@@ -813,6 +817,8 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
             execute_joint_space_trajectory(home_position_, 0.2);
             std::this_thread::sleep_for(250ms);
         }
+
+        RCLCPP_INFO(get_logger(),"测距模块读数%f",current_box_hand_dis);
 
     } while (max_ryretry && current_box_hand_dis > 0.1f);
     if (current_box_hand_dis > 0.1f) {
