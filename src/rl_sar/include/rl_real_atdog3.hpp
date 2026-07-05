@@ -33,6 +33,7 @@ private:
     rclcpp::Subscription<robot_msgs::msg::Cmd>::SharedPtr cmd_sub;
     rclcpp::Publisher<robot_msgs::msg::Int>::SharedPtr policy_done_pub_;
     robot_msgs::msg::Cmd remote_cmd;
+    int last_logged_remote_mode_ = -1;
     // rl functions
     std::vector<float> Forward() override;
     void GetState(RobotState<float> *state) override;

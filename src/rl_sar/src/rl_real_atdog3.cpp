@@ -42,8 +42,10 @@ RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
     cmd_sub =
         node_->create_subscription<robot_msgs::msg::Cmd>("robot_move_cmd", 10, [this](const robot_msgs::msg::Cmd& msg) {
             remote_cmd = msg;
-            std::cout << "mode=" << msg.mode << std::endl;
-            //RCLCPP_INFO(node_->get_logger(),"mode=", msg.mode);
+            if (msg.mode != last_logged_remote_mode_) {
+                last_logged_remote_mode_ = msg.mode;
+                RCLCPP_INFO(node_->get_logger(), "robot_move_cmd mode=%d", msg.mode);
+            }
         });
     policy_done_pub_ = node_->create_publisher<robot_msgs::msg::Int>("policy_done", 10);
 
@@ -149,7 +151,8 @@ void RL_Real::RobotControl() {
         && this->fsm.current_state_
         && this->fsm.previous_state_
         && this->fsm.current_state_->GetStateName() == "RLFSMStateGetUp"
-        && this->fsm.previous_state_->GetStateName() == "RLFSMStateCrosswall") {
+        && this->fsm.previous_state_->GetStateName() == "RLFSMStateCrosswall"
+        && this->resume_locomotion_after_crosswall) {
         robot_msgs::msg::Int msg;
         msg.data = 8;
         policy_done_pub_->publish(msg);

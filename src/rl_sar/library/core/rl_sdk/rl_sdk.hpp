@@ -215,6 +215,7 @@ public:
     RobotState<float> start_state;
     RobotState<float> now_state;
     bool rl_init_done = false;
+    bool resume_locomotion_after_crosswall = false;
 
     // init
     void InitObservations();

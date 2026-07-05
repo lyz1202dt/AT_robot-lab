@@ -247,7 +247,7 @@ bool Pilot::get_current_path_info(uint32_t& path_num, float& time_rate)
 void Pilot::notify_policy_done(int32_t policy_id)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (current_path_index_ >= paths_.size()) {
+    if (state_ != PilotState::ExternalAction || current_path_index_ >= paths_.size()) {
         return;
     }
 

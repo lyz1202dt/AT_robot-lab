@@ -141,16 +141,17 @@ public:
 
     std::string CheckChange() override
     {
-        if(rl.fsm.previous_state_->GetStateName()=="RLFSMStateCrosswall")
-        {
-            return "RLFSMStateRLLocomotion";
-        }
         if (rl.control.current_keyboard == Input::Keyboard::P || rl.control.current_gamepad == Input::Gamepad::LB_X)
         {
             return "RLFSMStatePassive";
         }
         if (percent_getup >= 1.0f)
         {
+            if (rl.resume_locomotion_after_crosswall)
+            {
+                rl.resume_locomotion_after_crosswall = false;
+                return "RLFSMStateRLLocomotion";
+            }
             if (rl.control.current_keyboard == Input::Keyboard::Num1 || rl.control.current_gamepad == Input::Gamepad::RB_DPadUp)
             {
                 return "RLFSMStateRLLocomotion";
@@ -353,14 +354,26 @@ public:
 
     std::string CheckChange() override
     {
+        const std::string remote_target = ResolveRemoteModeState(rl.control.mode, state_name_);
+        if (remote_target != state_name_)
+        {
+            rl.resume_locomotion_after_crosswall = false;
+            cross_wall_state->RL_walk_flag = false;
+            cross_wall_state->Cross_wall_over = false;
+            cross_wall_state->change_flag = true;
+            cross_wall_state->cross_wall_stage = -1;
+            return remote_target;
+        }
         if(cross_wall_state->RL_walk_flag == true)
         {
+            rl.resume_locomotion_after_crosswall = false;
             cross_wall_state->RL_walk_flag = false;
             cross_wall_state->cross_wall_stage = 13;
             return "RLFSMStateRLLocomotion";
         }
         if(cross_wall_state->Cross_wall_over == true)
         {
+            rl.resume_locomotion_after_crosswall = true;
             cross_wall_state->Cross_wall_over = false;
             cross_wall_state->cross_wall_stage = -1;
             return "RLFSMStateGetUp";

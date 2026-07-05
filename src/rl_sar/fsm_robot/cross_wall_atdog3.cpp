@@ -98,6 +98,11 @@ CrossWallStateAtdog3::CrossWallStateAtdog3(const std::string& urdf_file_path)
 }
 
 void CrossWallStateAtdog3::enter() {
+    cross_wall_stage = -1;
+    change_flag = true;
+    allow_vel = true;
+    RL_walk_flag = false;
+    Cross_wall_over = false;
     robot->lf_leg_calc->set_init_joint_pos(robot->lf_joint_pos);
     robot->rf_leg_calc->set_init_joint_pos(robot->rf_joint_pos);
     robot->lb_leg_calc->set_init_joint_pos(robot->lb_joint_pos);
