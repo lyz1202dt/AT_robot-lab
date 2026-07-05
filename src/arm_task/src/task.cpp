@@ -933,20 +933,11 @@ bool ArmTaskNode::sample_target_xy_from_tf(double tf_timeout_sec, double& x, dou
     int successful_samples     = 0;
     int remaining_retries      = 100;
     std::array<geometry_msgs::msg::TransformStamped, sample_count> transfer_array;
-    std::array<double, sample_count> joint1_angle_array{};
-
-    constexpr double dx=0.1f;
-    constexpr double dy=0.0f;
-
-    y+=dx;
-    x+=dy;
-
 
     while (remaining_retries != 0 && successful_samples < sample_count) {
         try {
             transfer_array[successful_samples] =
-                tf_buffer_->lookupTransform(base_frame_,"joint1", tf2::TimePointZero, tf2::durationFromSec(tf_timeout_sec));
-            joint1_angle_array[successful_samples] = -tf2::getYaw(transfer_array[successful_samples].transform.rotation);
+                tf_buffer_->lookupTransform(base_frame_, object_frame_, tf2::TimePointZero, tf2::durationFromSec(tf_timeout_sec));
             successful_samples++;
             std::this_thread::sleep_for(20ms);
         } catch (const tf2::TransformException& ex) {
@@ -954,7 +945,6 @@ bool ArmTaskNode::sample_target_xy_from_tf(double tf_timeout_sec, double& x, dou
             std::this_thread::sleep_for(100ms);
             remaining_retries--;
         }
-        RCLCPP_INFO(get_logger(),"进行固定坐标变换");
     }
 
     if (remaining_retries == 0) {
@@ -963,20 +953,13 @@ bool ArmTaskNode::sample_target_xy_from_tf(double tf_timeout_sec, double& x, dou
 
     x = 0.0;
     y = 0.0;
-    double joint1_angle = 0.0;
     for (int i = 0; i < sample_count; i++) {
         x += transfer_array[i].transform.translation.x;
         y += transfer_array[i].transform.translation.y;
-        joint1_angle += joint1_angle_array[i];
     }
-
-    
-
 
     x /= static_cast<double>(sample_count);
     y /= static_cast<double>(sample_count);
-    joint1_angle /= static_cast<double>(sample_count);
-    RCLCPP_DEBUG(get_logger(), "joint1 angle from TF: %.6f rad", joint1_angle);
     return true;
 }
 
