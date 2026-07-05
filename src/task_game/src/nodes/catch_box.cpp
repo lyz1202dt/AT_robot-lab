@@ -148,7 +148,7 @@ BT::Status CatchBoxAction::execute(BT& tree) {
             break;
         }
 
-        if (std::chrono::steady_clock::now() - start > 20s) {
+        if (std::chrono::steady_clock::now() - start > 60s) {
             RCLCPP_ERROR(context->node_->get_logger(), "机械臂任务超时");
             arm_done = true;
             break;

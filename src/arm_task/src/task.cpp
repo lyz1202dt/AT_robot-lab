@@ -363,6 +363,8 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         execute_cartesian_space_trajectory(object_pose, grasp_pregrasp_duration_);
         std::this_thread::sleep_for(350ms);
 
+        std::this_thread::sleep_for(5000ms);
+
         double vision_weight = 0.0;
         geometry_msgs::msg::Point vision_box_pos;
         if (use_vision_grasp_.load()) {
@@ -480,6 +482,8 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
         geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
         execute_cartesian_space_trajectory(object_pose, grasp_pregrasp_duration_);
         std::this_thread::sleep_for(350ms);
+
+        std::this_thread::sleep_for(5000ms);
 
         double vision_weight = 0.0;
         geometry_msgs::msg::Point vision_box_pos;
