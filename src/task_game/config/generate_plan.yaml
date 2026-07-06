@@ -25,8 +25,8 @@ start_to_a0_target_point: &start_to_a0_target_point
   kp: [2.0, 0.5, 1.2]
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.1
-  allow_final_pos_allow: 0.05
-  adjust_min_vel: 0.25
+  allow_final_pos_allow: 0.12
+  adjust_min_vel: 0.37
   adjust_min_omega: 0.35
   allow_y_vel: true
   trajectory_connection_radius: 0.0
@@ -40,8 +40,8 @@ a0_to_a1_target_point: &a0_to_a1_target_point
   kp: [2.0, 0.5, 1.2]
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.1
-  allow_final_pos_allow: 0.05
-  adjust_min_vel: 0.25
+  allow_final_pos_allow: 0.12
+  adjust_min_vel: 0.37
   adjust_min_omega: 0.35
   allow_y_vel: true
   trajectory_connection_radius: 0.0
@@ -56,7 +56,7 @@ a1_to_box0_target_point: &a1_to_box0_target_point
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.15
-  adjust_min_vel: 0.25
+  adjust_min_vel: 0.37
   adjust_min_omega: 0.35
   allow_y_vel: true
   trajectory_connection_radius: 0.0
@@ -71,7 +71,7 @@ box0_to_box1_target_point: &box0_to_box1_target_point
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.15
-  adjust_min_vel: 0.25
+  adjust_min_vel: 0.37
   adjust_min_omega: 0.35
   allow_y_vel: false
   trajectory_connection_radius: 0.0
@@ -86,7 +86,7 @@ box1_to_a2_target_point: &box1_to_a2_target_point
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.15
-  adjust_min_vel: 0.25
+  adjust_min_vel: 0.37
   adjust_min_omega: 0.35
   allow_y_vel: false
   trajectory_connection_radius: 0.0
@@ -101,7 +101,7 @@ a2_to_dst1_target_point: &a2_to_dst1_target_point #第一轮放
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.15
-  adjust_min_vel: 0.25
+  adjust_min_vel: 0.37
   adjust_min_omega: 0.35
   allow_y_vel: false
   trajectory_connection_radius: 0.0
@@ -116,7 +116,7 @@ box1_to_dst1_target_point: &box1_to_dst1_target_point   #去
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.15
-  adjust_min_vel: 0.25
+  adjust_min_vel: 0.37
   adjust_min_omega: 0.35
   allow_y_vel: false
   trajectory_connection_radius: 0.0
@@ -131,7 +131,7 @@ dst1_to_dst0_target_point: &dst1_to_dst0_target_point
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.15
-  adjust_min_vel: 0.25
+  adjust_min_vel: 0.37
   adjust_min_omega: 0.35
   allow_y_vel: true
   trajectory_connection_radius: 0.0
@@ -146,7 +146,7 @@ dst0_to_dst2_target_point: &dst0_to_dst2_target_point
   allow_start_dir_error: 3.2
   allow_final_dir_error: 0.15
   allow_final_pos_allow: 0.15
-  adjust_min_vel: 0.25
+  adjust_min_vel: 0.37
   adjust_min_omega: 0.35
   allow_y_vel: true
   trajectory_connection_radius: 0.0
@@ -161,7 +161,7 @@ dst2_to_box0_target_point: &dst2_to_box0_target_point #回
   allow_start_dir_error: 0.2
   allow_final_dir_error: 0.2
   allow_final_pos_allow: 0.15
-  adjust_min_vel: 0.25
+  adjust_min_vel: 0.37
   adjust_min_omega: 0.35
   allow_y_vel: false
   trajectory_connection_radius: 0.25
