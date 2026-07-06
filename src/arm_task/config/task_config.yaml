@@ -24,7 +24,7 @@ arm_task:
     poses:
       grasp_z: -0.19
       rady_grasp_z: 0.07
-      place_level_1_z: 0.10
+      place_level_1_z: 0.06
       place_level_2_z: 0.15
       pitch_offset: -0.25
 
@@ -43,10 +43,10 @@ arm_task:
       release_collision_avoid_duration: 0.2
       release_home_duration: 0.35
       place_hand_level_1_prepare_duration: 2.4
-      place_hand_level_1_cartesian_duration: 0.6
+      place_hand_level_1_cartesian_duration: 0.8
       place_hand_level_1_home_duration: 0.3
       place_hand_level_2_prepare_duration: 3.0
-      place_hand_level_2_cartesian_duration: 0.6
+      place_hand_level_2_cartesian_duration: 0.8
       place_hand_level_2_retract_duration: 0.2
       place_hand_level_2_home_duration: 0.5
       place_box_re_grasp_duration: 1.0
