@@ -119,7 +119,7 @@ def launch_setup(context, *args, **kwargs):
         robot_state_pub,
         joint_state_pub,
         arm_calc,
-        rviz2,
+        #rviz2,
         arm_task,
         arm_driver,
         static_tf_camera,

@@ -179,12 +179,17 @@ BT::Status CatchBoxAction::execute(BT& tree) {
         RCLCPP_INFO(context->node_->get_logger(), "CatchBoxAction: %s use_pnp_box_index=false，使用 grid 默认 ID=%d", slot_name(slot_), resolved_id);
     }
 
+    if (resolved_id < 0 || resolved_id >= 4) {
+        RCLCPP_ERROR(context->node_->get_logger(), "CatchBoxAction: %s 解析到非法放置区 ID=%d", slot_name(slot_), resolved_id);
+        return BT::FAILED;
+    }
+
     // 用解析到的 ID 查表，patch 黑板 move_plan：放置导航位末点 + 机械臂放置位 + box_id。
     std::array<std::array<float, 3>, 4> place_table{};
     std::array<std::array<float, 2>, 4> arm_place_table{};
     if (!tree.read_msg("place_table", place_table) || !tree.read_msg("arm_place_table", arm_place_table)) {
         RCLCPP_WARN(context->node_->get_logger(), "CatchBoxAction: 缺少 place_table/arm_place_table 查表");
-    } else if (resolved_id >= 0 && resolved_id < 4) {
+    } else {
         BoxMoveTask& task = (slot_ == BoxSlot::Box0) ? move_plan[plan_index].box0 : move_plan[plan_index].box1;
         task.box_id = resolved_id;
         task.place_box_pos = arm_place_table[resolved_id];

@@ -138,6 +138,35 @@ int choose_pair_replan_task(const std::vector<ReplanTask>& tasks, const BoxMoveT
     return choose_nearest_replan_task(tasks, pick_y(first_task));
 }
 
+bool is_valid_task(const BoxMoveTask& task)
+{
+    return task.box_id >= 0 && task.box_id < 4;
+}
+
+void append_remaining_tasks(std::vector<ReplanTask>& remaining_tasks, const MoveBoxPlan& old_plan)
+{
+    if (old_plan.plate_retry_plan) {
+        if (is_valid_task(old_plan.box0)) {
+            remaining_tasks.push_back({&old_plan, old_plan.box0});
+        }
+        return;
+    }
+
+    if (old_plan.hand_only_plan) {
+        if (is_valid_task(old_plan.box1)) {
+            remaining_tasks.push_back({&old_plan, old_plan.box1});
+        }
+        return;
+    }
+
+    if (is_valid_task(old_plan.box0)) {
+        remaining_tasks.push_back({&old_plan, old_plan.box0});
+    }
+    if (is_valid_task(old_plan.box1)) {
+        remaining_tasks.push_back({&old_plan, old_plan.box1});
+    }
+}
+
 // box0 平板放置失败后重建计划：
 // 1) 失败轮之后的剩余箱子改为单吸手放计划，按 pick_line_0 -> pick_line_1 成对排序；
 // 2) 末尾追加一轮“回头重试卡住的平板箱”计划（plate_retry）。
@@ -152,9 +181,7 @@ std::vector<MoveBoxPlan> make_replan_after_plate_blocked(const std::vector<MoveB
     std::vector<ReplanTask> remaining_tasks;
     remaining_tasks.reserve((move_plan.size() - blocked_plan_index - 1) * 2);
     for (int index = blocked_plan_index + 1; index < static_cast<int>(move_plan.size()); ++index) {
-        const auto& old_plan = move_plan[index];
-        remaining_tasks.push_back({&old_plan, old_plan.box0});
-        remaining_tasks.push_back({&old_plan, old_plan.box1});
+        append_remaining_tasks(remaining_tasks, move_plan[index]);
     }
 
     float current_dst2_y = move_plan[blocked_plan_index].dst2_pos[1];

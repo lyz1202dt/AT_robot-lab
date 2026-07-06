@@ -117,6 +117,12 @@ struct SelectedBox {
     int col{-1};
 };
 
+struct PickGroup {
+    SelectedBox box0{};
+    SelectedBox box1{};
+    bool hand_only{false};
+};
+
 std::tuple<float, float, float> read_point3_tuple(const YAML::Node& node, const std::string& name) {
     if (!node || !node.IsSequence() || node.size() != 3) {
         throw std::runtime_error(name + " 必须是长度为 3 的数组");
@@ -256,12 +262,18 @@ float box_y(const PlanConfig& plan_config, const SelectedBox& selected) {
     return pose_from_grid(plan_config.positions, selected.line + 1, selected.col)[1];
 }
 
-std::vector<SelectedBox> make_all_boxes() {
+constexpr int kDoneBoxId = 255;
+constexpr int kMaxBoxIdCount = 2;
+
+std::vector<SelectedBox> make_available_boxes(const BoxInfo& box_info) {
     std::vector<SelectedBox> boxes;
     boxes.reserve(8);
     for (int col = 0; col < 4; ++col) {
-        boxes.push_back({0, col});
-        boxes.push_back({1, col});
+        for (int line = 0; line < 2; ++line) {
+            if (box_info.box_ids[line][col] != kDoneBoxId) {
+                boxes.push_back({line, col});
+            }
+        }
     }
     return boxes;
 }
@@ -317,96 +329,111 @@ SelectedBox choose_pair_box(const PlanConfig& plan_config, const std::vector<Sel
     return choose_nearest_box_by_y(plan_config, boxes, box_y(plan_config, box0));
 }
 
-std::vector<SelectedBox> make_dst2_nearest_pick_order(const PlanConfig& plan_config,
-                                                      int first_col,
-                                                      float& current_dst2_y,
-                                                      const BoxInfo& box_info) {
-    std::vector<SelectedBox> pick_order;
-    pick_order.reserve(8);
+std::vector<PickGroup> make_dst2_nearest_pick_groups(const PlanConfig& plan_config,
+                                                    int first_col,
+                                                    float& current_dst2_y,
+                                                    const BoxInfo& box_info) {
+    std::vector<PickGroup> pick_groups;
+    pick_groups.reserve(4);
 
-    auto remaining_boxes = make_all_boxes();
-    SelectedBox box0{1, first_col};
-    SelectedBox box1{0, first_col};
-    bool first_pair = true;
+    std::array<int, 4> col_counts{};
+    for (const auto& box : make_available_boxes(box_info)) {
+        ++col_counts[box.col];
+    }
 
-    while (!remaining_boxes.empty()) {
-        if (!first_pair) {
-            box0 = choose_nearest_box_on_line_by_y(plan_config, remaining_boxes, 0, current_dst2_y);
-            remove_selected_box(remaining_boxes, box0);
-            box1 = choose_pair_box(plan_config, remaining_boxes, box0);
+    std::vector<SelectedBox> remaining_boxes;
+    std::vector<SelectedBox> tail_boxes;
+    remaining_boxes.reserve(8);
+    tail_boxes.reserve(4);
+    for (const auto& box : make_available_boxes(box_info)) {
+        if (col_counts[box.col] == 1) {
+            tail_boxes.push_back(box);
         } else {
-            remove_selected_box(remaining_boxes, box0);
+            remaining_boxes.push_back(box);
+        }
+    }
+
+    bool first_pair = true;
+    const SelectedBox first_box0{1, first_col};
+    const SelectedBox first_box1{0, first_col};
+    while (!remaining_boxes.empty()) {
+        SelectedBox box0{};
+        if (first_pair) {
+            const auto first_it = std::find_if(remaining_boxes.begin(), remaining_boxes.end(), [&](const SelectedBox& box) {
+                return same_box(box, first_box0);
+            });
+            if (first_it != remaining_boxes.end()) {
+                box0 = *first_it;
+            } else {
+                const auto pair_it = std::find_if(remaining_boxes.begin(), remaining_boxes.end(), [&](const SelectedBox& box) {
+                    return same_box(box, first_box1);
+                });
+                box0 = pair_it != remaining_boxes.end() ? *pair_it : choose_nearest_box_by_y(plan_config, remaining_boxes, current_dst2_y);
+            }
+        } else {
+            try {
+                box0 = choose_nearest_box_on_line_by_y(plan_config, remaining_boxes, 0, current_dst2_y);
+            } catch (const std::runtime_error&) {
+                box0 = choose_nearest_box_by_y(plan_config, remaining_boxes, current_dst2_y);
+            }
         }
         first_pair = false;
+        remove_selected_box(remaining_boxes, box0);
 
+        if (remaining_boxes.empty()) {
+            tail_boxes.push_back(box0);
+            break;
+        }
+
+        const auto box1 = choose_pair_box(plan_config, remaining_boxes, box0);
         remove_selected_box(remaining_boxes, box1);
-        pick_order.push_back(box0);
-        pick_order.push_back(box1);
+        pick_groups.push_back({box0, box1, false});
 
         const int box0_id = box_info.box_ids[box0.line][box0.col];
         current_dst2_y = pose_from_grid(plan_config.positions, 0, box0_id)[1];
     }
 
-    return pick_order;
-}
+    std::sort(tail_boxes.begin(), tail_boxes.end(), [&](const SelectedBox& lhs, const SelectedBox& rhs) {
+        return std::abs(box_y(plan_config, lhs) - current_dst2_y) < std::abs(box_y(plan_config, rhs) - current_dst2_y);
+    });
+    for (const auto& box : tail_boxes) {
+        pick_groups.push_back({box, box, true});
+        const int box_id = box_info.box_ids[box.line][box.col];
+        current_dst2_y = pose_from_grid(plan_config.positions, 0, box_id)[1];
+    }
 
-constexpr int kUnknownBoxId = 255;
-constexpr int kMaxBoxIdCount = 2;
+    return pick_groups;
+}
 
 bool normalize_box_id_grid(const std_msgs::msg::Int32MultiArray& msg, BoxIdGrid& box_id_grid, const rclcpp::Logger& logger) {
     std::array<int, 4> id_counts{};
-    std::vector<size_t> unknown_indices;
-    unknown_indices.reserve(8);
 
     for (size_t i = 0; i < 8; ++i) {
         const int value = msg.data[i];
-        if (value == kUnknownBoxId) {
-            unknown_indices.push_back(i);
+        if (value == kDoneBoxId) {
             continue;
         }
 
         if (value < 0 || value >= 4) {
-            RCLCPP_ERROR(logger, "box_id_grid[%zu]=%d 非法，必须是 [0,3] 或 255", i, value);
+            RCLCPP_ERROR(logger, "box_id_grid[%zu]=%d 非法，必须是 [0,3] 或 255；255 表示该位置已完成", i, value);
             return false;
         }
 
         ++id_counts[value];
         if (id_counts[value] > kMaxBoxIdCount) {
-            RCLCPP_ERROR(logger, "box_id_grid 中 ID=%d 的数量超过 %d", value, kMaxBoxIdCount);
+            RCLCPP_ERROR(logger, "box_id_grid 中 ID=%d 的剩余数量超过 %d", value, kMaxBoxIdCount);
             return false;
         }
     }
 
-    std::array<int, 8> normalized{};
-    for (size_t i = 0; i < 8; ++i) {
-        normalized[i] = msg.data[i];
-    }
-
-    for (const size_t index : unknown_indices) {
-        bool filled = false;
-        for (int id = 0; id < 4; ++id) {
-            if (id_counts[id] < kMaxBoxIdCount) {
-                normalized[index] = id;
-                ++id_counts[id];
-                filled = true;
-                break;
-            }
-        }
-
-        if (!filled) {
-            RCLCPP_ERROR(logger, "box_id_grid 中 255 数量超过可补全数量");
-            return false;
-        }
-    }
-
-    box_id_grid[0][0] = normalized[0];
-    box_id_grid[0][1] = normalized[1];
-    box_id_grid[0][2] = normalized[2];
-    box_id_grid[0][3] = normalized[3];
-    box_id_grid[1][0] = normalized[4];
-    box_id_grid[1][1] = normalized[5];
-    box_id_grid[1][2] = normalized[6];
-    box_id_grid[1][3] = normalized[7];
+    box_id_grid[0][0] = msg.data[0];
+    box_id_grid[0][1] = msg.data[1];
+    box_id_grid[0][2] = msg.data[2];
+    box_id_grid[0][3] = msg.data[3];
+    box_id_grid[1][0] = msg.data[4];
+    box_id_grid[1][1] = msg.data[5];
+    box_id_grid[1][2] = msg.data[6];
+    box_id_grid[1][3] = msg.data[7];
     return true;
 }
 
@@ -416,11 +443,51 @@ void fill_box_task(BoxMoveTask& task,
                    const SelectedBox& selected) {
     const int position_line = selected.line + 1;
     const int box_id = box_info.box_ids[selected.line][selected.col];
+    if (box_id < 0 || box_id >= 4) {
+        throw std::runtime_error("选中的箱子 ID 非法，不能生成搬运任务");
+    }
     task.pick_box_pos = plan_config.arm_box_positions[position_line][selected.col];
     task.place_box_pos = plan_config.arm_box_positions[0][box_id];
     task.box_id = box_id;
     task.line = selected.line;
     task.col = selected.col;
+}
+
+std::array<int, 4> make_initial_placed_count(const BoxIdGrid& box_ids) {
+    std::array<int, 4> remaining_count{};
+    for (const auto& line : box_ids) {
+        for (const int box_id : line) {
+            if (box_id >= 0 && box_id < 4) {
+                ++remaining_count[box_id];
+            }
+        }
+    }
+
+    std::array<int, 4> placed_count{};
+    for (int id = 0; id < 4; ++id) {
+        placed_count[id] = std::clamp(kMaxBoxIdCount - remaining_count[id], 0, kMaxBoxIdCount);
+    }
+    return placed_count;
+}
+
+TrajectoryPlan make_to_box_plan(const PlanConfig& plan_config,
+                                const std::array<float, 3>& src,
+                                bool first_plan,
+                                const std::array<float, 3>& a0,
+                                const std::array<float, 3>& a1) {
+    TrajectoryPlan to_box;
+    if (first_plan) {
+        to_box.trajectory.push_back(a0);
+        to_box.target_points.push_back(plan_config.start_to_a0);
+        to_box.trajectory.push_back(a1);
+        to_box.target_points.push_back(plan_config.a0_to_a1);
+        to_box.trajectory.push_back(src);
+        to_box.target_points.push_back(plan_config.a1_to_box0);
+    } else {
+        to_box.trajectory.push_back(src);
+        to_box.target_points.push_back(plan_config.dst2_to_box0);
+    }
+    return to_box;
 }
 
 }  // namespace
@@ -559,8 +626,8 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
 
     for (const auto& line : box_info.box_ids) {
         for (const int box_id : line) {
-            if (box_id < 0 || box_id >= 4) {
-                RCLCPP_ERROR(context->node_->get_logger(), "箱子 ID=%d 越界，必须在 [0,3]", box_id);
+            if ((box_id < 0 || box_id >= 4) && box_id != kDoneBoxId) {
+                RCLCPP_ERROR(context->node_->get_logger(), "箱子 ID=%d 越界，必须在 [0,3] 或 255", box_id);
                 return BT::FAILED;
             }
         }
@@ -571,77 +638,80 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     const std::array<float, 3> a2 = plan_config.route.a2;
     const int first_col = choose_first_col(plan_config, a1);
     float current_dst2_y = a1[1];
-    const auto pick_order = make_dst2_nearest_pick_order(plan_config, first_col, current_dst2_y, box_info);
-    if (pick_order.size() != 8) {
-        RCLCPP_ERROR(context->node_->get_logger(), "固定抓取顺序数量错误，当前为 %zu", pick_order.size());
-        return BT::FAILED;
-    }
+    const auto pick_groups = make_dst2_nearest_pick_groups(plan_config, first_col, current_dst2_y, box_info);
 
     std::vector<MoveBoxPlan> move_plan;
-    move_plan.reserve(4);
+    move_plan.reserve(pick_groups.size());
     bool first_plan = true;
 
-    RCLCPP_INFO(context->node_->get_logger(), "GeneratePlaneAction: 根据 a1.y=%.3f 选择第 %d 列先清通道", a1[1], first_col + 1);
+    RCLCPP_INFO(context->node_->get_logger(), "GeneratePlaneAction: 根据 a1.y=%.3f 选择第 %d 列先清通道，剩余生成 %zu 轮计划", a1[1], first_col + 1, pick_groups.size());
 
-    for (size_t order_index = 0; order_index < pick_order.size(); order_index += 2) {
-        const auto box0_selected = pick_order[order_index];
-        const auto box1_selected = pick_order[order_index + 1];
+    for (const auto& group : pick_groups) {
+        const auto box0_selected = group.box0;
+        const auto box1_selected = group.box1;
         const auto box0_src = pose_from_grid(plan_config.positions, box0_selected.line + 1, box0_selected.col);
         const auto box1_src = pose_from_grid(plan_config.positions, box1_selected.line + 1, box1_selected.col);
 
         MoveBoxPlan plan;
-        fill_box_task(plan.box0, plan_config, box_info, box0_selected);
-        fill_box_task(plan.box1, plan_config, box_info, box1_selected);
+        try {
+            fill_box_task(plan.box0, plan_config, box_info, box0_selected);
+            fill_box_task(plan.box1, plan_config, box_info, box1_selected);
+        } catch (const std::exception& e) {
+            RCLCPP_ERROR(context->node_->get_logger(), "GeneratePlaneAction: %s", e.what());
+            return BT::FAILED;
+        }
 
-        // 放置导航位与机械臂放置位先按 box_id_grid 的默认 ID 预填；
-        // 抓取时若收到 pnp_box_index 会在运行期覆盖这些值。
         const auto box0_dst = pose_from_grid(plan_config.positions, 0, plan.box0.box_id);
         const auto box1_dst = pose_from_grid(plan_config.positions, 0, plan.box1.box_id);
-
         const bool is_first_plan = first_plan;
-        // 去除跨轮耦合：非首轮 box0 不再以上一轮 dst2 作为途经点，
-        // 直接由 Pilot 从当前位置导航到 box0_src（每轮独立退让到 dst2）。
-        if (is_first_plan) {
-            plan.box0.to_box.trajectory.push_back(a0);
-            plan.box0.to_box.target_points.push_back(plan_config.start_to_a0);
-            plan.box0.to_box.trajectory.push_back(a1);
-            plan.box0.to_box.target_points.push_back(plan_config.a0_to_a1);
-            first_plan = false;
-            plan.box0.to_box.trajectory.push_back(box0_src);
-            plan.box0.to_box.target_points.push_back(plan_config.a1_to_box0);
+        plan.box0.to_box = make_to_box_plan(plan_config, box0_src, is_first_plan, a0, a1);
+        first_plan = false;
+
+        if (group.hand_only) {
+            plan.hand_only_plan = true;
+            plan.box0.to_box = {};
+            plan.box0.to_dst = {};
+            plan.box1.to_box = make_to_box_plan(plan_config, box1_src, is_first_plan, a0, a1);
+            if (is_first_plan) {
+                plan.box1.to_dst.trajectory.push_back(a2);
+                plan.box1.to_dst.target_points.push_back(plan_config.box1_to_a2);
+            }
+            plan.box1.to_dst.trajectory.push_back(box1_dst);
+            plan.box1.to_dst.target_points.push_back(is_first_plan ? plan_config.a2_to_dst1 : plan_config.box1_to_dst1);
+            plan.dst2_pos = {box1_dst[0] - 0.05f, box1_dst[1], box1_dst[2]};
+            RCLCPP_INFO(
+                context->node_->get_logger(),
+                "生成单吸手放计划: box(line=%d,col=%d,默认id=%d), dst2.y=%.3f",
+                plan.box1.line,
+                plan.box1.col,
+                plan.box1.box_id,
+                plan.dst2_pos[1]);
         } else {
-            plan.box0.to_box.trajectory.push_back(box0_src);
-            plan.box0.to_box.target_points.push_back(plan_config.dst2_to_box0);
+            plan.box1.to_box.trajectory.push_back(box1_src);
+            plan.box1.to_box.target_points.push_back(plan_config.box0_to_box1);
+
+            if (is_first_plan) {
+                plan.box1.to_dst.trajectory.push_back(a2);
+                plan.box1.to_dst.target_points.push_back(plan_config.box1_to_a2);
+            }
+            plan.box1.to_dst.trajectory.push_back(box1_dst);
+            plan.box1.to_dst.target_points.push_back(is_first_plan ? plan_config.a2_to_dst1 : plan_config.box1_to_dst1);
+            plan.box0.to_dst.trajectory.push_back(box0_dst);
+            plan.box0.to_dst.target_points.push_back(plan_config.dst1_to_dst0);
+            plan.dst2_pos = {box0_dst[0] - 0.05f, box0_dst[1], box0_dst[2]};
+            RCLCPP_INFO(
+                context->node_->get_logger(),
+                "生成双箱计划: box0(line=%d,col=%d,默认id=%d), box1(line=%d,col=%d,默认id=%d), dst2.y=%.3f",
+                plan.box0.line,
+                plan.box0.col,
+                plan.box0.box_id,
+                plan.box1.line,
+                plan.box1.col,
+                plan.box1.box_id,
+                plan.dst2_pos[1]);
         }
 
-        plan.box1.to_box.trajectory.push_back(box1_src);
-        plan.box1.to_box.target_points.push_back(plan_config.box0_to_box1);
-
-        if (is_first_plan) {
-            plan.box1.to_dst.trajectory.push_back(a2);
-            plan.box1.to_dst.target_points.push_back(plan_config.box1_to_a2);
-        }
-        plan.box1.to_dst.trajectory.push_back(box1_dst);
-        plan.box1.to_dst.target_points.push_back(is_first_plan ? plan_config.a2_to_dst1 : plan_config.box1_to_dst1);
-        plan.box0.to_dst.trajectory.push_back(box0_dst);
-        plan.box0.to_dst.target_points.push_back(plan_config.dst1_to_dst0);
-
-        // 二层判定（place_at_second_floor）改为运行期在放置时计算，这里不再预先计算。
-        // dst2 退让点先按默认 box0 id 预填，运行期会用真实 id 重算。
-        plan.dst2_pos = {box0_dst[0] - 0.05f, box0_dst[1], box0_dst[2]};
         plan.dst0_to_dst2 = plan_config.dst0_to_dst2;
-
-        RCLCPP_INFO(
-            context->node_->get_logger(),
-            "生成双箱计划: box0(line=%d,col=%d,默认id=%d), box1(line=%d,col=%d,默认id=%d), dst2.y=%.3f",
-            plan.box0.line,
-            plan.box0.col,
-            plan.box0.box_id,
-            plan.box1.line,
-            plan.box1.col,
-            plan.box1.box_id,
-            plan.dst2_pos[1]);
-
         move_plan.push_back(plan);
     }
 
@@ -657,12 +727,19 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     }
     tree.write_msg("place_table", place_table);
     tree.write_msg("arm_place_table", arm_place_table);
-    tree.write_msg("placed_count", std::array<int, 4>{});
+    tree.write_msg("placed_count", make_initial_placed_count(box_info.box_ids));
 
     tree.write_msg("move_plan", move_plan);
     tree.write_msg<int>("plan_index", 0);
 
-    RCLCPP_INFO(context->node_->get_logger(), "GeneratePlaneAction: 已生成 %zu 轮双箱移动计划", move_plan.size());
+    if (move_plan.empty()) {
+        RCLCPP_INFO(context->node_->get_logger(), "GeneratePlaneAction: box_id_grid 全部为 255，没有剩余箱子需要搬运");
+        generated = true;
+        context->enter_manual_mode();
+        return BT::SUCCESS;
+    }
+
+    RCLCPP_INFO(context->node_->get_logger(), "GeneratePlaneAction: 已生成 %zu 轮移动计划", move_plan.size());
 
     generated = true;
     if (!context->is_tree_debug_mode()) {
