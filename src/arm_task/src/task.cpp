@@ -31,7 +31,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     // Declare parameters
     this->declare_parameter<int32_t>("arm_task", 0);
     this->declare_parameter<bool>("air_pump", false);
-    this->declare_parameter<bool>("use_vision_grasp", true);    //开启使用机械臂进行视觉抓取
+    this->declare_parameter<bool>("use_vision_grasp", false);    //开启使用机械臂进行视觉抓取
     this->declare_parameter<std::string>("base_frame", "arm_base_link");
     this->declare_parameter<std::string>("camera_frame", "camera_link");
     this->declare_parameter<std::string>("object_frame", "object_frame");
@@ -356,18 +356,16 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
 
         // 移动到预抓取位置，等待相机识别
         
-        //geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
+        geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
 
         //视觉识别时，需要抬得高点
-        geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, 0.3, pitch_offset_);
+        //geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, 0.3, pitch_offset_);
 
 
         // 3.笛卡尔轨迹规划使机械臂运动到开启视觉识别的位置
         RCLCPP_INFO(this->get_logger(), "移动到块的预抓取位置");
         execute_cartesian_space_trajectory(object_pose, grasp_pregrasp_duration_);
         std::this_thread::sleep_for(350ms);
-
-        std::this_thread::sleep_for(1000ms);
 
         double vision_weight = 0.0;
         geometry_msgs::msg::Point vision_box_pos;
@@ -486,16 +484,14 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
         RCLCPP_INFO(this->get_logger(), "移动到预抓取位置");
 
 
-        //geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
+        geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
 
         //视觉识别时，需要抬得高点
-        geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, 0.3, pitch_offset_);
+        //geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, 0.3, pitch_offset_);
 
         
         execute_cartesian_space_trajectory(object_pose, grasp_pregrasp_duration_);
         std::this_thread::sleep_for(350ms);
-
-        std::this_thread::sleep_for(1000ms);
 
         double vision_weight = 0.0;
         geometry_msgs::msg::Point vision_box_pos;

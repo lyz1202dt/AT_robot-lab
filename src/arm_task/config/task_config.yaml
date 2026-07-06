@@ -2,7 +2,7 @@ arm_task:
   ros__parameters:
     arm_task: 0
     air_pump: false
-    use_vision_grasp: true
+    use_vision_grasp: false
     base_frame: arm_base_link
     camera_frame: camera_link
     object_frame: object_frame
