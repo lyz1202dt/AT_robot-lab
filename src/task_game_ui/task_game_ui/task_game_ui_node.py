@@ -30,10 +30,10 @@ START_CALC_PARAM = "start_calc"
 COLOR_SEQUENCE = (255, 0, 1, 2, 3)
 COLOR_STYLES = {
     255: {"bg": "#ffffff", "fg": "#111827", "active_bg": "#f3f4f6"},
-    0: {"bg": "#22c55e", "fg": "#052e16", "active_bg": "#16a34a"},
-    1: {"bg": "#9ca3af", "fg": "#111827", "active_bg": "#6b7280"},
-    2: {"bg": "#2563eb", "fg": "#ffffff", "active_bg": "#1d4ed8"},
-    3: {"bg": "#dc2626", "fg": "#ffffff", "active_bg": "#b91c1c"},
+    3: {"bg": "#22c55e", "fg": "#052e16", "active_bg": "#16a34a"},
+    2: {"bg": "#9ca3af", "fg": "#111827", "active_bg": "#6b7280"},
+    0: {"bg": "#2563eb", "fg": "#ffffff", "active_bg": "#1d4ed8"},
+    1: {"bg": "#dc2626", "fg": "#ffffff", "active_bg": "#b91c1c"},
 }
 
 
