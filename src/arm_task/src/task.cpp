@@ -497,10 +497,10 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
         RCLCPP_INFO(this->get_logger(), "移动到预抓取位置");
 
 
-        //geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
+        geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, rady_grasp_z_, pitch_offset_);
 
         //视觉识别时，需要抬得高点
-        geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, 0.3, pitch_offset_);
+        //geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, 0.3, pitch_offset_);
 
         
         execute_cartesian_space_trajectory(object_pose, grasp_pregrasp_duration_);
