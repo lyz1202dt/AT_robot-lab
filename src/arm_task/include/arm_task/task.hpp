@@ -120,7 +120,7 @@ private:
     double rady_grasp_z_{0.07};
     double place_level_1_z_{0.10};
     double place_level_2_z_{0.15};
-    double pitch_offset_{-0.25};
+    std::atomic<double> pitch_offset_{-0.25};
 
     double grasp_vision_threshold_variance_{0.1};
     int pump_on_wait_ms_{600};
