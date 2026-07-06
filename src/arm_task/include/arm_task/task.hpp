@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <geometry_msgs/msg/detail/pose__struct.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -54,6 +55,8 @@ private:
     geometry_msgs::msg::PoseStamped make_fixed_pitch_pose(double x, double y, double z, double pitch_offset) const;
     bool wait_for_stable_vision_target(geometry_msgs::msg::Point& vision_box_pos, double& vision_variance);
     bool wait_for_stable_place_target(geometry_msgs::msg::Point& vision_box_pos, double& vision_variance);
+    bool check_success_grasp(std::chrono::steady_clock::duration time_out);
+    float get_current_box_hand_dis();
     void set_air_pump(bool enabled);
     
 
@@ -90,6 +93,8 @@ private:
     std::atomic<bool> shutdown_requested_{false};
     int current_mode{0}; 
     float current_box_hand_dis{0.0};
+    std::mutex box_to_hand_dis_mutex_;
+    uint64_t box_to_hand_dis_msg_count_{0};
 
     std::thread task_thread_;
 

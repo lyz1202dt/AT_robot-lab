@@ -56,7 +56,11 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     joint_space_target_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("joint_space_target", 10);
 
     box_to_hand_dis_sub = this->create_subscription<std_msgs::msg::Float32>(
-        "plane_dst", 10, [this](std_msgs::msg::Float32::ConstSharedPtr msg) { current_box_hand_dis = msg->data; });
+        "plane_dst", 10, [this](std_msgs::msg::Float32::ConstSharedPtr msg) {
+            std::lock_guard<std::mutex> lock(box_to_hand_dis_mutex_);
+            current_box_hand_dis = msg->data;
+            box_to_hand_dis_msg_count_++;
+        });
     // 当发1时通知视觉可以开始全场扫描，当发2时通知视觉可以开始寻找并发布物块坐标使机械臂能够去抓取物块
     vision_command_pub_ = this->create_publisher<std_msgs::msg::Int32>("arm_command", 10);
 
@@ -449,11 +453,12 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         RCLCPP_INFO(this->get_logger(), "移动到准备位置");
         execute_joint_space_trajectory(grasp_finish_position, grasp_finish_duration_);
 
-        std::this_thread::sleep_for(800ms);
+        
 
         max_ryretry--;
-        RCLCPP_INFO(get_logger(),"测距模块读数%f",current_box_hand_dis);
-    } while (current_box_hand_dis > 0.1f && max_ryretry);
+        //RCLCPP_INFO(get_logger(),"测距模块读数%f", get_current_box_hand_dis());
+        
+    } while ((!check_success_grasp(1700ms) )&& max_ryretry);
 
     std_msgs::msg::Int32 ret;
     ret.data = 1;
@@ -579,8 +584,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
         std::this_thread::sleep_for(2400ms);
 
         max_ryretry--;
-        RCLCPP_INFO(get_logger(),"测距模块读数%f",current_box_hand_dis);
-    } while (current_box_hand_dis > 0.1f && max_ryretry);
+    } while ((!check_success_grasp(1700ms) )&& max_ryretry);
 
 
     // 设置气泵松开，
@@ -727,24 +731,24 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
 
         max_ryretry--;
 
-        if(current_box_hand_dis > 0.1f)
-        {
-            execute_joint_space_trajectory(home_position_, 0.2);
-            std::this_thread::sleep_for(250ms);
-        }
+        // if(get_current_box_hand_dis() > 0.1f)
+        // {
+        //     execute_joint_space_trajectory(home_position_, 0.2);
+        //     std::this_thread::sleep_for(250ms);
+        // }
         
-        RCLCPP_INFO(get_logger(),"测距模块读数%f",current_box_hand_dis);
+        // RCLCPP_INFO(get_logger(),"测距模块读数%f", get_current_box_hand_dis());
 
-    } while (max_ryretry && current_box_hand_dis > 0.1f);
-    if (current_box_hand_dis > 0.1f) {
-        std_msgs::msg::Int32 ret;
-        ret.data = -1;
-        arm_finished_pub->publish(ret);
-        RCLCPP_INFO(get_logger(),"从背上抓取失败，触发重规划");
-        execute_joint_space_trajectory(home_position_, 0.3);
-        std::this_thread::sleep_for(300ms);
-        return;
-    }
+    } while (/*max_ryretry && get_current_box_hand_dis() > 0.1f*/0);
+    // if (get_current_box_hand_dis() > 0.1f) {
+    //     std_msgs::msg::Int32 ret;
+    //     ret.data = -1;
+    //     arm_finished_pub->publish(ret);
+    //     RCLCPP_INFO(get_logger(),"从背上抓取失败，触发重规划");
+    //     execute_joint_space_trajectory(home_position_, 0.3);
+    //     std::this_thread::sleep_for(300ms);
+    //     return;
+    // }
 
     double x = 0.0;
     double y = 0.0;
@@ -808,24 +812,24 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
 
         max_ryretry--;
 
-        if(current_box_hand_dis > 0.1f)
-        {
-            execute_joint_space_trajectory(home_position_, 0.2);
-            std::this_thread::sleep_for(250ms);
-        }
+        // if(get_current_box_hand_dis() > 0.1f)
+        // {
+        //     execute_joint_space_trajectory(home_position_, 0.2);
+        //     std::this_thread::sleep_for(250ms);
+        // }
 
-        RCLCPP_INFO(get_logger(),"测距模块读数%f",current_box_hand_dis);
+        // RCLCPP_INFO(get_logger(),"测距模块读数%f", get_current_box_hand_dis());
 
-    } while (max_ryretry && current_box_hand_dis > 0.1f);
-    if (current_box_hand_dis > 0.1f) {
-        std_msgs::msg::Int32 ret;
-        ret.data = -1;
-        arm_finished_pub->publish(ret);
-        RCLCPP_INFO(get_logger(),"从背上抓取失败，触发重规划");
-        execute_joint_space_trajectory(home_position_, 0.3);
-        std::this_thread::sleep_for(300ms);
-        return;
-    }
+    } while (/*max_ryretry && get_current_box_hand_dis() > 0.1f*/0);
+    // if (get_current_box_hand_dis() > 0.1f) {
+    //     std_msgs::msg::Int32 ret;
+    //     ret.data = -1;
+    //     arm_finished_pub->publish(ret);
+    //     RCLCPP_INFO(get_logger(),"从背上抓取失败，触发重规划");
+    //     execute_joint_space_trajectory(home_position_, 0.3);
+    //     std::this_thread::sleep_for(300ms);
+    //     return;
+    // }
 
     double x = 0.0;
     double y = 0.0;
@@ -1047,6 +1051,64 @@ bool ArmTaskNode::wait_for_stable_place_target(geometry_msgs::msg::Point& vision
 
     RCLCPP_WARN(this->get_logger(), "放置位置识别3秒内未获取到结果");
     return false;
+}
+
+float ArmTaskNode::get_current_box_hand_dis() {
+    std::lock_guard<std::mutex> lock(box_to_hand_dis_mutex_);
+    return current_box_hand_dis;
+}
+
+bool ArmTaskNode::check_success_grasp(std::chrono::steady_clock::duration time_out) {
+    uint64_t start_msg_count = 0;
+    {
+        std::lock_guard<std::mutex> lock(box_to_hand_dis_mutex_);
+        start_msg_count = box_to_hand_dis_msg_count_;
+    }
+
+    if (!vision_model_param_client_->wait_for_service(1s)) {
+        RCLCPP_ERROR(this->get_logger(), "Parameter service for %s not available", vision_model_node_name_.c_str());
+        return false;
+    }
+
+    bool judge_started = false;
+    auto set_judge = [this](bool enabled) {
+        auto future = vision_model_param_client_->set_parameters({rclcpp::Parameter("judge", enabled)});
+        return future.wait_for(500ms) == std::future_status::ready;
+    };
+
+    if (!set_judge(true)) {
+        RCLCPP_ERROR(this->get_logger(), "Set %s judge=true timeout", vision_model_node_name_.c_str());
+    } else {
+        judge_started = true;
+    }
+
+    bool success = false;
+    if (judge_started) {
+        const auto start_time = std::chrono::steady_clock::now();
+        while (std::chrono::steady_clock::now() - start_time < time_out && !shutdown_requested_) {
+            bool has_new_msg = false;
+            float box_hand_dis = 0.0f;
+            {
+                std::lock_guard<std::mutex> lock(box_to_hand_dis_mutex_);
+                has_new_msg = box_to_hand_dis_msg_count_ > start_msg_count;
+                box_hand_dis = current_box_hand_dis;
+            }
+
+            if (has_new_msg) {
+                success = box_hand_dis < 0.1f;
+                RCLCPP_INFO(this->get_logger(), "抓取检测距离: %.4f, result=%s", box_hand_dis, success ? "true" : "false");
+                break;
+            }
+
+            std::this_thread::sleep_for(20ms);
+        }
+    }
+
+    if (!set_judge(false)) {
+        RCLCPP_WARN(this->get_logger(), "Set %s judge=false timeout", vision_model_node_name_.c_str());
+    }
+
+    return success;
 }
 
 
