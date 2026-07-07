@@ -451,7 +451,7 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         RCLCPP_INFO(this->get_logger(), "启动气泵");
         set_air_pump(true);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(pump_on_wait_ms_));
+        std::this_thread::sleep_for(1000ms);
         if (max_ryretry != kRetrycnt) // 重试时抓的时间长一些
             std::this_thread::sleep_for(500ms);
 
@@ -579,7 +579,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
         RCLCPP_INFO(this->get_logger(), "启动气泵");
         set_air_pump(true);
 
-        std::this_thread::sleep_for(500ms);
+        std::this_thread::sleep_for(1000ms);
         if (max_ryretry != kRetrycnt)
             std::this_thread::sleep_for(500ms);
 
