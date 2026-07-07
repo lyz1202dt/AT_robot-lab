@@ -9,6 +9,7 @@
 #include <robot_msgs/msg/remote.hpp>
 #include <core/pilot.hpp>
 #include <core/record.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 
@@ -19,6 +20,8 @@ public:
     bool check_key_pressed(uint32_t current_key,int index);
     void record_key(uint32_t current_key);
 private:
+    bool sync_pilot_state_from_transform(const geometry_msgs::msg::TransformStamped& transfer);
+
     rclcpp::Node::SharedPtr node_;
     rclcpp::TimerBase::SharedPtr control_timer;
     rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_server_;
@@ -41,6 +44,7 @@ private:
     bool record_yaml_opened{false};
     bool pending_record_stand_option_{false};
     bool pending_record_yaw_lock_option_{false};
+    bool robot_pose_valid_{false};
 
     geometry_msgs::msg::TransformStamped robot_pos_transfer;
 };

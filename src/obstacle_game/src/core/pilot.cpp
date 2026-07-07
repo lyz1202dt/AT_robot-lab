@@ -461,6 +461,22 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                 cmd.vx = 0.0f;
                 cmd.vy = 0.0f;
                 cmd.vz = static_cast<float>(clamp_abs(omega, path.max_omega));
+                RCLCPP_INFO_THROTTLE(
+                    node_->get_logger(),
+                    *node_->get_clock(),
+                    1000,
+                    "自动预对准: path=%zu, start=(%.3f, %.3f), target=(%.3f, %.3f), current=(%.3f, %.3f), path_yaw=%.3f, current_yaw=%.3f, yaw_error=%.3f, cmd_vz=%.3f",
+                    current_path_index_ + 1,
+                    segment_start_pos_.x(),
+                    segment_start_pos_.y(),
+                    path.target_pos.x(),
+                    path.target_pos.y(),
+                    current_pos_.x(),
+                    current_pos_.y(),
+                    path_yaw,
+                    current_yaw_,
+                    yaw_error,
+                    cmd.vz);
                 return cmd;
             }
         }

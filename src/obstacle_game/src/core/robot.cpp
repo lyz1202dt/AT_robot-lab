@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cmath>
 #include <core/robot.hpp>
 #include <ctime>
 #include <filesystem>
@@ -180,11 +181,13 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             if (check_key_trigger(msg.key,4)) {     //复位并停止
                 pilot->reset();
                 pilot->stop();
-            } else if (check_key_trigger(msg.key,5)) {
-                if (!pilot->start()) {        // 开始执行自动控制
+            } else if (check_key_trigger(msg.key, 5)) {
+                if (!robot_pose_valid_ || !sync_pilot_state_from_transform(robot_pos_transfer)) {
+                    RCLCPP_ERROR(node_->get_logger(), "自动轨迹启动失败，尚未获取有效map->base_link位姿");
+                } else if (!pilot->start()) {  // 开始执行自动控制
                     RCLCPP_ERROR(node_->get_logger(), "自动轨迹启动失败，请检查scene_path和路径点");
                 }
-            } else if (check_key_trigger(msg.key,6)) {
+            } else if (check_key_trigger(msg.key, 6)) {
                 pilot->stop();         //  自动控制执行暂停
             }
         }
@@ -220,8 +223,12 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 RCLCPP_INFO(node_->get_logger(), "下一录制点将写入 constraint_target_yaw=true, allow_y_vel=true");
             }
 
-            if(check_key_trigger(msg.key, 14))      //按键按下后记录一次点位
-            {
+            if (check_key_trigger(msg.key, 14)) {  //按键按下后记录一次点位
+                if (!robot_pose_valid_) {
+                    RCLCPP_WARN(node_->get_logger(), "尚未获取有效map->base_link位姿，跳过本次录点");
+                    record_key(msg.key);
+                    return;
+                }
                 Record::PathPoint target;
                 target.target_pos[0]=robot_pos_transfer.transform.translation.x;
                 target.target_pos[1]=robot_pos_transfer.transform.translation.y;
@@ -296,17 +303,11 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     control_timer = node_->create_wall_timer(50ms, [this]() {
         geometry_msgs::msg::TransformStamped transfer;
         try {
-                transfer = tf_buffer_->lookupTransform("map","base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));
-                robot_pos_transfer=transfer;
-                RCLCPP_INFO_THROTTLE(
-                    node_->get_logger(),
-                    *node_->get_clock(),
-                    1000,
-                    "pos=(%lf,%lf)",
-                    transfer.transform.translation.x,
-                    transfer.transform.translation.y);
-            } catch (const tf2::TransformException& ex) {
-                RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 500, "获取目标 TF 失败，自动驾驶仪停止运行: %s", ex.what());
+            transfer = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));
+            robot_pos_transfer = transfer;
+            robot_pose_valid_ = sync_pilot_state_from_transform(transfer);
+            if (!robot_pose_valid_) {
+                RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 500, "map->base_link位姿数值无效，自动驾驶仪停止运行");
                 if (current_control_mode == 1) {
                     pilot->stop();
                     cmd.mode = 1;
@@ -318,6 +319,27 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 cmd_pub_->publish(cmd);
                 return;
             }
+            RCLCPP_INFO_THROTTLE(
+                node_->get_logger(),
+                *node_->get_clock(),
+                1000,
+                "pos=(%lf,%lf)",
+                transfer.transform.translation.x,
+                transfer.transform.translation.y);
+        } catch (const tf2::TransformException& ex) {
+            robot_pose_valid_ = false;
+            RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 500, "获取目标 TF 失败，自动驾驶仪停止运行: %s", ex.what());
+            if (current_control_mode == 1) {
+                pilot->stop();
+                cmd.mode = 1;
+                cmd.vx = 0.0f;
+                cmd.vy = 0.0f;
+                cmd.vz = 0.0f;
+                current_control_mode = 0;
+            }
+            cmd_pub_->publish(cmd);
+            return;
+        }
 
         if (current_control_mode == 1) {
             // geometry_msgs::msg::TransformStamped transfer;
@@ -330,20 +352,42 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             //     return;
             // }
 
-            tf2::Quaternion q;
-            q.setW(transfer.transform.rotation.w);
-            q.setX(transfer.transform.rotation.x);
-            q.setY(transfer.transform.rotation.y);
-            q.setZ(transfer.transform.rotation.z);
-            double cur_roll, cur_pitch, cur_yaw;
-            tf2::Matrix3x3(q).getRPY(cur_roll, cur_pitch, cur_yaw);
-
-            pilot->set_state(Eigen::Vector2d(transfer.transform.translation.x, transfer.transform.translation.y), cur_yaw);
-
             cmd = pilot->get_command(std::chrono::high_resolution_clock::now());
         }
         cmd_pub_->publish(cmd);
     });
+}
+
+bool Robot::sync_pilot_state_from_transform(const geometry_msgs::msg::TransformStamped& transfer)
+{
+    const auto& translation = transfer.transform.translation;
+    const auto& rotation = transfer.transform.rotation;
+
+    if (!std::isfinite(translation.x) || !std::isfinite(translation.y) ||
+        !std::isfinite(rotation.x) || !std::isfinite(rotation.y) ||
+        !std::isfinite(rotation.z) || !std::isfinite(rotation.w)) {
+        return false;
+    }
+
+    tf2::Quaternion q;
+    q.setW(rotation.w);
+    q.setX(rotation.x);
+    q.setY(rotation.y);
+    q.setZ(rotation.z);
+    if (q.length2() <= 1e-12) {
+        return false;
+    }
+    q.normalize();
+
+    double cur_roll, cur_pitch, cur_yaw;
+    tf2::Matrix3x3(q).getRPY(cur_roll, cur_pitch, cur_yaw);
+
+    if (!std::isfinite(cur_yaw)) {
+        return false;
+    }
+
+    pilot->set_state(Eigen::Vector2d(translation.x, translation.y), cur_yaw);
+    return true;
 }
 
 bool Robot::check_key_trigger(uint32_t current_key,int index)
