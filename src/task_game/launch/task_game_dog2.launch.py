@@ -1,25 +1,31 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, TextSubstitution
 from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
 from ament_index_python.packages import get_package_share_directory
 import os
 
 
 def generate_launch_description():
-    task_game_share = get_package_share_directory("task_game")
     launch_pack_share = get_package_share_directory("launch_pack")
 
-    plan_config_path = os.path.join(
-        task_game_share,
+    plan_config_path = PathJoinSubstitution([
+        FindPackageShare("task_game"),
         "config",
-        "generate_plan.yaml",
-    )
+        [TextSubstitution(text="generate_plan_"), LaunchConfiguration("side"), TextSubstitution(text=".yaml")],
+    ])
     arm_vision_launch_path = os.path.join(
         launch_pack_share,
         "launch",
         "arm_vision_task.launch.py",
+    )
+
+    side_arg = DeclareLaunchArgument(
+        "side",
+        default_value="left",
+        description="Which side config to load: 'left' or 'right'.",
     )
 
     show_rviz_arg = DeclareLaunchArgument(
@@ -55,6 +61,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        side_arg,
         show_rviz_arg,
         arm_vision_launch,
         static_tf_arm,
