@@ -92,7 +92,8 @@ struct RoutePoints {
 };
 
 struct PlanConfig {
-    PositionGrid positions{};
+    PositionGrid positions{};        // 后续轮次（box_positions_second）
+    PositionGrid positions_first{};  // 第一轮（box_positions_first）
     BoxPositionGrid arm_box_positions{};
     RoutePoints route{};
     TargetPoint start_to_a0{};
@@ -201,20 +202,24 @@ PlanConfig load_plan_config(const std::string& yaml_path) {
     const YAML::Node root = YAML::LoadFile(yaml_path);
 
     const auto arm_box_positions = root["arm_box_positions"];
-    const auto box_positions = root["box_positions"];
+    const auto box_positions_second = root["box_positions_second"];
+    const auto box_positions_first = root["box_positions_first"];
     const auto routes = root["routes"];
     const auto target_points = root["target_points"];
-    if (!arm_box_positions || !box_positions || !routes || !target_points) {
-        throw std::runtime_error("generate_plan.yaml 缺少 arm_box_positions/box_positions/routes/target_points");
+    if (!arm_box_positions || !box_positions_second || !box_positions_first || !routes || !target_points) {
+        throw std::runtime_error("generate_plan.yaml 缺少 arm_box_positions/box_positions_first/box_positions_second/routes/target_points");
     }
 
     PlanConfig config;
     config.arm_box_positions[0] = read_point2_row(arm_box_positions["arm_place"], "arm_box_positions.arm_place");
     config.arm_box_positions[1] = read_point2_row(arm_box_positions["arm_pick_line_0"], "arm_box_positions.arm_pick_line_0");
     config.arm_box_positions[2] = read_point2_row(arm_box_positions["arm_pick_line_1"], "arm_box_positions.arm_pick_line_1");
-    config.positions[0] = read_point3_row(box_positions["place"], "box_positions.place");
-    config.positions[1] = read_point3_row(box_positions["pick_line_0"], "box_positions.pick_line_0");
-    config.positions[2] = read_point3_row(box_positions["pick_line_1"], "box_positions.pick_line_1");
+    config.positions[0] = read_point3_row(box_positions_second["place"], "box_positions_second.place");
+    config.positions[1] = read_point3_row(box_positions_second["pick_line_0"], "box_positions_second.pick_line_0");
+    config.positions[2] = read_point3_row(box_positions_second["pick_line_1"], "box_positions_second.pick_line_1");
+    // 第一轮只使用抓取线位姿；放置位统一取 box_positions_second，故不读取 box_positions_first.place。
+    config.positions_first[1] = read_point3_row(box_positions_first["pick_line_0"], "box_positions_first.pick_line_0");
+    config.positions_first[2] = read_point3_row(box_positions_first["pick_line_1"], "box_positions_first.pick_line_1");
 
     config.route.a0 = read_point3(routes["a0"], "routes.a0");
     config.route.a1 = read_point3(routes["a1"], "routes.a1");
@@ -276,6 +281,18 @@ std::vector<SelectedBox> make_available_boxes(const BoxInfo& box_info) {
         }
     }
     return boxes;
+}
+
+// box_id_grid 含 255 即为重试：至少有一个位置已完成。
+bool is_retry_grid(const BoxIdGrid& box_ids) {
+    for (const auto& line : box_ids) {
+        for (const int box_id : line) {
+            if (box_id == kDoneBoxId) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 void remove_selected_box(std::vector<SelectedBox>& boxes, const SelectedBox& selected) {
@@ -470,17 +487,24 @@ std::array<int, 4> make_initial_placed_count(const BoxIdGrid& box_ids) {
     return placed_count;
 }
 
+// 第一轮 box0 去箱轨迹：
+// - 正常启动(非重试)：start->a0->a1->box0；
+// - 重试(box_id_grid 含 255)：start->a0->box0（跳过 a1）。
+// 后续轮：dst2->box0。
 TrajectoryPlan make_to_box_plan(const PlanConfig& plan_config,
                                 const std::array<float, 3>& src,
                                 bool first_plan,
+                                bool retry,
                                 const std::array<float, 3>& a0,
                                 const std::array<float, 3>& a1) {
     TrajectoryPlan to_box;
     if (first_plan) {
         to_box.trajectory.push_back(a0);
         to_box.target_points.push_back(plan_config.start_to_a0);
-        to_box.trajectory.push_back(a1);
-        to_box.target_points.push_back(plan_config.a0_to_a1);
+        if (!retry) {
+            to_box.trajectory.push_back(a1);
+            to_box.target_points.push_back(plan_config.a0_to_a1);
+        }
         to_box.trajectory.push_back(src);
         to_box.target_points.push_back(plan_config.a1_to_box0);
     } else {
@@ -639,18 +663,22 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
     const int first_col = choose_first_col(plan_config, a1);
     float current_dst2_y = a1[1];
     const auto pick_groups = make_dst2_nearest_pick_groups(plan_config, first_col, current_dst2_y, box_info);
+    const bool retry = is_retry_grid(box_info.box_ids);
 
     std::vector<MoveBoxPlan> move_plan;
     move_plan.reserve(pick_groups.size());
     bool first_plan = true;
 
-    RCLCPP_INFO(context->node_->get_logger(), "GeneratePlaneAction: 根据 a1.y=%.3f 选择第 %d 列先清通道，剩余生成 %zu 轮计划", a1[1], first_col + 1, pick_groups.size());
+    RCLCPP_INFO(context->node_->get_logger(), "GeneratePlaneAction: 根据 a1.y=%.3f 选择第 %d 列先清通道，%s，剩余生成 %zu 轮计划", a1[1], first_col + 1, retry ? "重试(跳过a1)" : "正常启动", pick_groups.size());
 
     for (const auto& group : pick_groups) {
         const auto box0_selected = group.box0;
         const auto box1_selected = group.box1;
-        const auto box0_src = pose_from_grid(plan_config.positions, box0_selected.line + 1, box0_selected.col);
-        const auto box1_src = pose_from_grid(plan_config.positions, box1_selected.line + 1, box1_selected.col);
+        const bool is_first_plan = first_plan;
+        // 第一轮 box0/box1 的导航抓取位使用 box_positions_first，后续轮使用 box_positions_second。
+        const PositionGrid& pick_positions = is_first_plan ? plan_config.positions_first : plan_config.positions;
+        const auto box0_src = pose_from_grid(pick_positions, box0_selected.line + 1, box0_selected.col);
+        const auto box1_src = pose_from_grid(pick_positions, box1_selected.line + 1, box1_selected.col);
 
         MoveBoxPlan plan;
         try {
@@ -663,15 +691,14 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
 
         const auto box0_dst = pose_from_grid(plan_config.positions, 0, plan.box0.box_id);
         const auto box1_dst = pose_from_grid(plan_config.positions, 0, plan.box1.box_id);
-        const bool is_first_plan = first_plan;
-        plan.box0.to_box = make_to_box_plan(plan_config, box0_src, is_first_plan, a0, a1);
+        plan.box0.to_box = make_to_box_plan(plan_config, box0_src, is_first_plan, retry, a0, a1);
         first_plan = false;
 
         if (group.hand_only) {
             plan.hand_only_plan = true;
             plan.box0.to_box = {};
             plan.box0.to_dst = {};
-            plan.box1.to_box = make_to_box_plan(plan_config, box1_src, is_first_plan, a0, a1);
+            plan.box1.to_box = make_to_box_plan(plan_config, box1_src, is_first_plan, retry, a0, a1);
             if (is_first_plan) {
                 plan.box1.to_dst.trajectory.push_back(a2);
                 plan.box1.to_dst.target_points.push_back(plan_config.box1_to_a2);
