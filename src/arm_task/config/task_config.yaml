@@ -22,7 +22,7 @@ arm_task:
       finished_release_box: [0.0, 1.8, 2.0, 0.6]
 
     poses:
-      grasp_z: -0.19
+      grasp_z: -0.17
       rady_grasp_z: 0.07
       place_level_1_z: 0.06
       place_level_2_z: 0.15

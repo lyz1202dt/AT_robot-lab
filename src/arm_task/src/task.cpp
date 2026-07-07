@@ -250,6 +250,15 @@ rcl_interfaces::msg::SetParametersResult ArmTaskNode::on_parameters_changed(cons
         } else if (param.get_name() == "use_vision_grasp") {
             use_vision_grasp_ = param.as_bool();
             RCLCPP_INFO(this->get_logger(), "Use vision grasp changed to: %s", use_vision_grasp_.load() ? "true" : "false");
+        } else if (param.get_name() == "poses.pitch_offset") {
+            if (param.get_type() != rclcpp::ParameterType::PARAMETER_DOUBLE) {
+                result.successful = false;
+                result.reason     = "poses.pitch_offset must be a double";
+                return result;
+            }
+
+            pitch_offset_ = param.as_double();
+            RCLCPP_INFO(this->get_logger(), "Pitch offset changed to: %.6f", pitch_offset_);
         }
     }
 
