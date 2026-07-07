@@ -453,12 +453,12 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         RCLCPP_INFO(this->get_logger(), "移动到准备位置");
         execute_joint_space_trajectory(grasp_finish_position, grasp_finish_duration_);
 
-        
+        std::this_thread::sleep_for(800ms);
 
         max_ryretry--;
         //RCLCPP_INFO(get_logger(),"测距模块读数%f", get_current_box_hand_dis());
         
-    } while ((!check_success_grasp(1700ms) )&& max_ryretry);
+    } while (/*(!check_success_grasp(1700ms) )&& max_ryretry*/0);
 
     std_msgs::msg::Int32 ret;
     ret.data = 1;
@@ -584,7 +584,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
         std::this_thread::sleep_for(2400ms);
 
         max_ryretry--;
-    } while ((!check_success_grasp(1700ms) )&& max_ryretry);
+    } while (/*(!check_success_grasp(1700ms) )&& max_ryretry*/0);
 
 
     // 设置气泵松开，
