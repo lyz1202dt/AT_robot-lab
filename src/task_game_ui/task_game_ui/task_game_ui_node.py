@@ -14,6 +14,7 @@ except ImportError as exc:
 import rclpy
 from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
 from rcl_interfaces.srv import SetParameters
+from robot_msgs.msg import Remote
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 from std_msgs.msg import Int32, Int32MultiArray, MultiArrayDimension
@@ -26,6 +27,9 @@ START_GAME_PARAM_NODE = "robot_calc_node"
 START_GAME_PARAM = "start_game"
 START_CALC_PARAM_NODE = "arithmetic_node"
 START_CALC_PARAM = "start_calc"
+CALC_TEST_PARAM = "test"
+MINUTE_PREPARE_REMOTE_KEY = 2 + 16
+AUTO_REMOTE_KEY = 1
 
 COLOR_SEQUENCE = (255, 0, 1, 2, 3)
 COLOR_STYLES = {
@@ -95,6 +99,7 @@ class BoxIdGridNode(Node):
         self._ui_updates = ui_updates
         self._vip_box_id_updates = vip_box_id_updates
         self._publisher = self.create_publisher(Int32MultiArray, "box_id_grid", 10)
+        self._remote_publisher = self.create_publisher(Remote, "remote", 10)
         self._start_game_client = self.create_client(
             SetParameters,
             f"/{START_GAME_PARAM_NODE}/set_parameters",
@@ -134,6 +139,35 @@ class BoxIdGridNode(Node):
             START_CALC_PARAM,
             True,
         )
+
+    def minute_prepare(self) -> None:
+        self._set_bool_parameter(
+            self._start_calc_client,
+            START_CALC_PARAM_NODE,
+            CALC_TEST_PARAM,
+            True,
+        )
+        self._publish_remote_command(MINUTE_PREPARE_REMOTE_KEY)
+
+    def switch_to_auto(self) -> None:
+        self._set_bool_parameter(
+            self._start_calc_client,
+            START_CALC_PARAM_NODE,
+            CALC_TEST_PARAM,
+            False,
+        )
+        self._publish_remote_command(AUTO_REMOTE_KEY)
+
+    def _publish_remote_command(self, key: int) -> None:
+        msg = Remote()
+        msg.lx = 0.0
+        msg.ly = 0.0
+        msg.rx = 0.0
+        msg.ry = 0.0
+        msg.key = key
+        msg.just_reconnected = False
+        self._remote_publisher.publish(msg)
+        self.get_logger().info(f"Published remote command: key={key}")
 
     def _set_bool_parameter(
         self,
@@ -238,20 +272,34 @@ class TaskGameUi:
         shell = tk.Frame(self._root, bg="#f5f7fb", padx=22, pady=22)
         shell.grid(row=0, column=0, sticky="nsew")
         shell.grid_columnconfigure(0, weight=1)
-        shell.grid_rowconfigure(2, weight=1)
+        shell.grid_rowconfigure(4, weight=1)
+
+        minute_prepare_button = self._create_primary_button(
+            shell,
+            "一分钟准备",
+            self._minute_prepare,
+        )
+        minute_prepare_button.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+
+        auto_button = self._create_primary_button(
+            shell,
+            "切入自动",
+            self._switch_to_auto,
+        )
+        auto_button.grid(row=1, column=0, sticky="ew", pady=(0, 12))
 
         start_button = self._create_primary_button(
             shell,
             "比赛开始",
             self._start_game,
         )
-        start_button.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+        start_button.grid(row=2, column=0, sticky="ew", pady=(0, 12))
 
         confirm_button = self._create_primary_button(shell, "确定", self._publish_grid)
-        confirm_button.grid(row=1, column=0, sticky="ew", pady=(0, 18))
+        confirm_button.grid(row=3, column=0, sticky="ew", pady=(0, 18))
 
         grid_frame = tk.Frame(shell, bg="#f5f7fb")
-        grid_frame.grid(row=2, column=0, sticky="nsew")
+        grid_frame.grid(row=4, column=0, sticky="nsew")
         for row in range(ROWS):
             grid_frame.grid_rowconfigure(row, weight=1, uniform="grid_rows")
         for col in range(COLS):
@@ -279,7 +327,7 @@ class TaskGameUi:
             font=("Sans", 72, "bold"),
             anchor="center",
         )
-        self._vip_box_id_label.grid(row=3, column=0, sticky="ew", pady=(18, 0))
+        self._vip_box_id_label.grid(row=5, column=0, sticky="ew", pady=(18, 0))
 
     def _create_primary_button(self, parent: tk.Widget, text: str, command) -> tk.Button:
         return tk.Button(
@@ -303,6 +351,12 @@ class TaskGameUi:
 
     def _start_game(self) -> None:
         self._ros_node.set_start_game()
+
+    def _minute_prepare(self) -> None:
+        self._ros_node.minute_prepare()
+
+    def _switch_to_auto(self) -> None:
+        self._ros_node.switch_to_auto()
 
     def _publish_grid(self) -> None:
         snapshot = [row[:] for row in self._grid]
