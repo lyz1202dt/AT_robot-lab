@@ -27,7 +27,7 @@ START_GAME_PARAM_NODE = "robot_calc_node"
 START_GAME_PARAM = "start_game"
 START_CALC_PARAM_NODE = "arithmetic_node"
 START_CALC_PARAM = "start_calc"
-CALC_TEST_PARAM = "test"
+CALC_TEST_PARAM = "show_image"
 MINUTE_PREPARE_REMOTE_KEY = 2 + 16
 AUTO_REMOTE_KEY = 1
 
