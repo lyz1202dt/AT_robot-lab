@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 import queue
+import subprocess
 import sys
 import threading
+import time
 from typing import Iterable, List, Optional, Sequence
 
 try:
@@ -28,8 +30,12 @@ START_GAME_PARAM = "start_game"
 START_CALC_PARAM_NODE = "arithmetic_node"
 START_CALC_PARAM = "start_calc"
 CALC_TEST_PARAM = "show_image"
+RETRY_PARAM_NODE = "robot_calc"
+RETRY_PARAM = "is_first_game"
+RETRY_SCRIPT = "./AAA.sh"
 MINUTE_PREPARE_REMOTE_KEY = 16
 AUTO_REMOTE_KEY = 2
+FORCE_STOP_NODES = ("robot_calc_node", "robot_controller_node")
 
 COLOR_SEQUENCE = (255, 0, 1, 2, 3)
 COLOR_STYLES = {
@@ -108,6 +114,10 @@ class BoxIdGridNode(Node):
             SetParameters,
             f"/{START_CALC_PARAM_NODE}/set_parameters",
         )
+        self._retry_param_client = self.create_client(
+            SetParameters,
+            f"/{RETRY_PARAM_NODE}/set_parameters",
+        )
         self._subscription = self.create_subscription(
             Int32MultiArray,
             "box_id_grid",
@@ -158,6 +168,60 @@ class BoxIdGridNode(Node):
         )
         self._publish_remote_command(AUTO_REMOTE_KEY)
 
+    def emergency_stop(self) -> None:
+        for node_name in FORCE_STOP_NODES:
+            self._force_stop_node(node_name)
+
+    def retry_this_run(self) -> None:
+        thread = threading.Thread(target=self._retry_this_run_worker, daemon=True)
+        thread.start()
+
+    def _retry_this_run_worker(self) -> None:
+        try:
+            process = subprocess.Popen(["bash", RETRY_SCRIPT])
+        except OSError as exc:
+            self.get_logger().error(f"Failed to run {RETRY_SCRIPT}: {exc}")
+            return
+
+        self.get_logger().info(f"Started {RETRY_SCRIPT}, waiting 5 seconds")
+        time.sleep(5.0)
+        return_code = process.poll()
+        if return_code is not None and return_code != 0:
+            self.get_logger().error(
+                f"{RETRY_SCRIPT} exited with code {return_code}, skip retry parameter"
+            )
+            return
+
+        self._set_bool_parameter(
+            self._retry_param_client,
+            RETRY_PARAM_NODE,
+            RETRY_PARAM,
+            False,
+            timeout_sec=5.0,
+        )
+
+    def _force_stop_node(self, node_name: str) -> None:
+        patterns = (
+            f"__node:={node_name}",
+            f"__name:={node_name}",
+            f"name:={node_name}",
+            node_name,
+        )
+        stopped = False
+        for pattern in patterns:
+            result = subprocess.run(
+                ["pkill", "-9", "-f", pattern],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            stopped = stopped or result.returncode == 0
+
+        if stopped:
+            self.get_logger().warn(f"Force stopped ROS node process: {node_name}")
+        else:
+            self.get_logger().error(f"No process matched ROS node name: {node_name}")
+
     def _publish_remote_command(self, key: int) -> None:
         msg = Remote()
         msg.lx = 0.0
@@ -175,8 +239,9 @@ class BoxIdGridNode(Node):
         node_name: str,
         param_name: str,
         value: bool,
+        timeout_sec: float = 0.0,
     ) -> None:
-        if not client.wait_for_service(timeout_sec=0.0):
+        if not client.wait_for_service(timeout_sec=timeout_sec):
             self.get_logger().error(
                 f"Parameter service /{node_name}/set_parameters is not available"
             )
@@ -264,7 +329,7 @@ class TaskGameUi:
 
     def _build_window(self) -> None:
         self._root.title("Task Game UI")
-        self._root.minsize(560, 360)
+        self._root.minsize(820, 360)
         self._root.configure(bg="#f5f7fb")
         self._root.grid_columnconfigure(0, weight=1)
         self._root.grid_rowconfigure(0, weight=1)
@@ -272,9 +337,19 @@ class TaskGameUi:
         shell = tk.Frame(self._root, bg="#f5f7fb", padx=22, pady=22)
         shell.grid(row=0, column=0, sticky="nsew")
         shell.grid_columnconfigure(0, weight=1)
-        shell.grid_rowconfigure(2, weight=1)
+        shell.grid_columnconfigure(1, weight=0)
+        shell.grid_rowconfigure(0, weight=1)
 
-        action_frame = tk.Frame(shell, bg="#f5f7fb")
+        left_frame = tk.Frame(shell, bg="#f5f7fb")
+        left_frame.grid(row=0, column=0, sticky="nsew")
+        left_frame.grid_columnconfigure(0, weight=1)
+        left_frame.grid_rowconfigure(2, weight=1)
+
+        right_frame = tk.Frame(shell, bg="#f5f7fb")
+        right_frame.grid(row=0, column=1, sticky="ns", padx=(22, 0))
+        right_frame.grid_columnconfigure(0, weight=1)
+
+        action_frame = tk.Frame(left_frame, bg="#f5f7fb")
         action_frame.grid(row=0, column=0, sticky="ew", pady=(0, 18))
         action_frame.grid_columnconfigure(0, weight=1, uniform="actions")
         action_frame.grid_columnconfigure(1, weight=1, uniform="actions")
@@ -303,7 +378,21 @@ class TaskGameUi:
         confirm_button = self._create_primary_button(action_frame, "确定", self._publish_grid)
         confirm_button.grid(row=1, column=1, sticky="ew", padx=(7, 0))
 
-        grid_frame = tk.Frame(shell, bg="#f5f7fb")
+        emergency_stop_button = self._create_emergency_button(
+            right_frame,
+            "紧急关停",
+            self._emergency_stop,
+        )
+        emergency_stop_button.grid(row=0, column=0, sticky="nsew", pady=(0, 14))
+
+        retry_button = self._create_primary_button(
+            right_frame,
+            "本次重试",
+            self._retry_this_run,
+        )
+        retry_button.grid(row=1, column=0, sticky="ew")
+
+        grid_frame = tk.Frame(left_frame, bg="#f5f7fb")
         grid_frame.grid(row=2, column=0, sticky="nsew")
         for row in range(ROWS):
             grid_frame.grid_rowconfigure(row, weight=1, uniform="grid_rows")
@@ -326,7 +415,7 @@ class TaskGameUi:
             self._buttons.append(button_row)
 
         self._vip_box_id_label = tk.Label(
-            shell,
+            left_frame,
             bg="#f5f7fb",
             fg="#111827",
             font=("Sans", 72, "bold"),
@@ -350,6 +439,23 @@ class TaskGameUi:
             cursor="hand2",
         )
 
+    def _create_emergency_button(self, parent: tk.Widget, text: str, command) -> tk.Button:
+        return tk.Button(
+            parent,
+            text=text,
+            command=command,
+            bg="#dc2626",
+            fg="#ffffff",
+            activebackground="#991b1b",
+            activeforeground="#ffffff",
+            font=("Sans", 28, "bold"),
+            relief=tk.FLAT,
+            borderwidth=0,
+            width=8,
+            height=5,
+            cursor="hand2",
+        )
+
     def _advance_button(self, row: int, col: int) -> None:
         self._grid[row][col] = next_color_value(self._grid[row][col])
         self._refresh_button(row, col)
@@ -362,6 +468,12 @@ class TaskGameUi:
 
     def _switch_to_auto(self) -> None:
         self._ros_node.switch_to_auto()
+
+    def _emergency_stop(self) -> None:
+        self._ros_node.emergency_stop()
+
+    def _retry_this_run(self) -> None:
+        self._ros_node.retry_this_run()
 
     def _publish_grid(self) -> None:
         snapshot = [row[:] for row in self._grid]
