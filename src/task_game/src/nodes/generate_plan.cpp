@@ -599,13 +599,20 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         if (context->auto_pilot_enabled.load()) {
             context->cmd.mode = 1;
         }
-        if (!wait_with_interrupt(context, 3s)) {
+        if (!wait_with_interrupt(context, 500ms)) {
             return BT::FAILED;
         }
 
-        std_msgs::msg::Int32 msg;
-        msg.data = kArmCheckBoxID;
-        arm_cmd_pub_->publish(msg);
+        bool is_first_game = context->node_->get_parameter("is_first_game").as_bool();
+
+        if(is_first_game)
+        {
+            std_msgs::msg::Int32 msg;
+            msg.data = kArmCheckBoxID;
+            arm_cmd_pub_->publish(msg);
+        }
+
+        
 
         // 注意：新流程不再发送 arm_cmd=7。box_id_grid 仅作为默认 ID 来源，
         // 真正每个箱子的放置区 ID 在抓取时由 pnp_box_index 话题给出。
