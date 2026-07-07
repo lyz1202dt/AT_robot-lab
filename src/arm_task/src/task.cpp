@@ -726,6 +726,10 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
     constexpr const int kRetrycnt = 2;
     int max_ryretry               = kRetrycnt;
 
+    std::vector<double> temp1={-0.3,0.1,0.1,0.0};   //把机械臂让开，
+    execute_joint_space_trajectory(temp1, 0.5);
+    std::this_thread::sleep_for(1000ms);
+
     do {
         RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
         set_air_pump(true);
@@ -807,6 +811,10 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
     constexpr const int kRetrycnt = 2;
     int max_ryretry               = kRetrycnt;
 
+    std::vector<double> temp1={-0.3,0.1,0.1,0.0};   //把机械臂让开，
+    execute_joint_space_trajectory(temp1, 0.5);
+    std::this_thread::sleep_for(1000ms);
+    
     do {
         RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
         set_air_pump(true);
