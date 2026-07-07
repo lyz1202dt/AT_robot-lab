@@ -1,0 +1,143 @@
+#policy_id表示机器人执行这段路径时使用的策略，0表示上电策略，不用；1表示位控站立，一般也不用；
+#2表示walk策略，3表示sand策略，4表示stair策略，5表示slope策略，6表示bar策略
+#可选轨迹字段支持target_yaw、constraint_target_yaw、allow_y_vel、trajectory_connection_radius、max_omega、stand_at_target、stand_duration等，用于新Pilot更自由地规划
+
+paths:
+  - policy_id: 2
+    target_pos:
+      x: -1.25491
+      y: -1.39408
+    target_yaw: 3.11926
+    constraint_target_yaw: false
+    target_vel: 0.01
+    max_velocity: 1
+    max_accelation: 0.3
+    max_omega: 1.2
+    kp:
+      x: 3
+      y: 2.5
+      yaw: 2
+    allow_start_dir_error: 0.05
+    allow_final_dir_error: 0.05
+    allow_final_pos_allow: 0.05
+    adjust_min_vel: 0.5
+    adjust_min_omega: 0.4
+    allow_y_vel: false
+    trajectory_connection_radius: 0
+    stand_at_target: false
+    stand_duration: 0
+  - policy_id: 2
+    target_pos:
+      x: -1.31523
+      y: -2.1393
+    target_yaw: 1.65963
+    constraint_target_yaw: true
+    target_vel: 0.01
+    max_velocity: 1
+    max_accelation: 0.3
+    max_omega: 1.2
+    kp:
+      x: 3
+      y: 2.5
+      yaw: 2
+    allow_start_dir_error: 0.05
+    allow_final_dir_error: 0.05
+    allow_final_pos_allow: 0.05
+    adjust_min_vel: 0.5
+    adjust_min_omega: 0.4
+    allow_y_vel: true
+    trajectory_connection_radius: 0
+    stand_at_target: false
+    stand_duration: 0
+  - policy_id: 2
+    target_pos:
+      x: -2.58962
+      y: -2.03878
+    target_yaw: 1.71877
+    constraint_target_yaw: false
+    target_vel: 0.01
+    max_velocity: 1
+    max_accelation: 0.3
+    max_omega: 1.2
+    kp:
+      x: 3
+      y: 2.5
+      yaw: 2
+    allow_start_dir_error: 0.05
+    allow_final_dir_error: 0.05
+    allow_final_pos_allow: 0.05
+    adjust_min_vel: 0.5
+    adjust_min_omega: 0.4
+    allow_y_vel: false
+    trajectory_connection_radius: 0
+    stand_at_target: false
+    stand_duration: 0
+  - policy_id: 2
+    target_pos:
+      x: -2.56106
+      y: -0.869904
+    target_yaw: 1.59102
+    constraint_target_yaw: true
+    target_vel: 0.01
+    max_velocity: 1
+    max_accelation: 0.3
+    max_omega: 1.2
+    kp:
+      x: 3
+      y: 2.5
+      yaw: 2
+    allow_start_dir_error: 0.05
+    allow_final_dir_error: 0.05
+    allow_final_pos_allow: 0.05
+    adjust_min_vel: 0.5
+    adjust_min_omega: 0.4
+    allow_y_vel: true
+    trajectory_connection_radius: 0
+    stand_at_target: false
+    stand_duration: 0
+  - policy_id: 2
+    target_pos:
+      x: -3.54782
+      y: -0.806824
+    target_yaw: 1.47141
+    constraint_target_yaw: true
+    target_vel: 0.01
+    max_velocity: 1
+    max_accelation: 0.3
+    max_omega: 1.2
+    kp:
+      x: 3
+      y: 2.5
+      yaw: 2
+    allow_start_dir_error: 0.05
+    allow_final_dir_error: 0.05
+    allow_final_pos_allow: 0.05
+    adjust_min_vel: 0.5
+    adjust_min_omega: 0.4
+    allow_y_vel: true
+    trajectory_connection_radius: 0
+    stand_at_target: false
+    stand_duration: 0
+  - policy_id: 2
+    target_pos:
+      x: -3.57679
+      y: -1.88637
+    target_yaw: 1.51467
+    constraint_target_yaw: true
+    target_vel: 0.01
+    max_velocity: 1
+    max_accelation: 0.3
+    max_omega: 1.2
+    kp:
+      x: 3
+      y: 2.5
+      yaw: 2
+    allow_start_dir_error: 0.05
+    allow_final_dir_error: 0.05
+    allow_final_pos_allow: 0.05
+    adjust_min_vel: 0.5
+    adjust_min_omega: 0.4
+    allow_y_vel: true
+    trajectory_connection_radius: 0
+    stand_at_target: false
+    stand_duration: 0
