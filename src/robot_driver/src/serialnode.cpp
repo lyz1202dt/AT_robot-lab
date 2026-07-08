@@ -92,28 +92,8 @@ void ArmNode::publish_plane_dst(const plane_dst_state_pack_t *arm_state){
     {
         return;
     }
-
-    plane_dst_samples[plane_dst_sample_index] = arm_state->plane_dst;
-    plane_dst_sample_index = (plane_dst_sample_index + 1) % plane_dst_samples.size();
-    if (plane_dst_sample_count < plane_dst_samples.size()) {
-        ++plane_dst_sample_count;
-    }
-    if (plane_dst_sample_count < plane_dst_samples.size()) {
-        return;
-    }
-
-    float sum = plane_dst_samples[0];
-    float min_value = plane_dst_samples[0];
-    float max_value = plane_dst_samples[0];
-    for (size_t i = 1; i < plane_dst_samples.size(); ++i) {
-        const float value = plane_dst_samples[i];
-        sum += value;
-        min_value = std::min(min_value, value);
-        max_value = std::max(max_value, value);
-    }
-
     std_msgs::msg::Float32 msg;
-    msg.data = (sum - min_value - max_value) / static_cast<float>(plane_dst_samples.size() - 2);
+    msg.data = arm_state->plane_dst;
     plane_dst_pub->publish(msg);
 }
 
