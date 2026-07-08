@@ -83,7 +83,7 @@ class ObstacleGameUiRun:
         self.node = node
         self.root = Tk()
         self.root.title("Obstacle Game Run")
-        self.root.geometry("420x300")
+        self.root.geometry("420x450")
         self.root.protocol("WM_DELETE_WINDOW", self.close)
 
         self.main_frame = Frame(self.root, padx=18, pady=18)
