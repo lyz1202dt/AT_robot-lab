@@ -1075,60 +1075,6 @@ float ArmTaskNode::get_current_box_hand_dis() {
     return current_box_hand_dis;
 }
 
-bool ArmTaskNode::check_success_grasp(std::chrono::steady_clock::duration time_out) {
-    uint64_t start_msg_count = 0;
-    {
-        std::lock_guard<std::mutex> lock(box_to_hand_dis_mutex_);
-        start_msg_count = box_to_hand_dis_msg_count_;
-    }
-
-    if (!vision_model_param_client_->wait_for_service(1s)) {
-        RCLCPP_ERROR(this->get_logger(), "Parameter service for %s not available", vision_model_node_name_.c_str());
-        return false;
-    }
-
-    bool judge_started = false;
-    auto set_judge = [this](bool enabled) {
-        auto future = vision_model_param_client_->set_parameters({rclcpp::Parameter("judge", enabled)});
-        return future.wait_for(500ms) == std::future_status::ready;
-    };
-
-    if (!set_judge(true)) {
-        RCLCPP_ERROR(this->get_logger(), "Set %s judge=true timeout", vision_model_node_name_.c_str());
-    } else {
-        judge_started = true;
-    }
-
-    bool success = false;
-    if (judge_started) {
-        const auto start_time = std::chrono::steady_clock::now();
-        while (std::chrono::steady_clock::now() - start_time < time_out && !shutdown_requested_) {
-            bool has_new_msg = false;
-            float box_hand_dis = 0.0f;
-            {
-                std::lock_guard<std::mutex> lock(box_to_hand_dis_mutex_);
-                has_new_msg = box_to_hand_dis_msg_count_ > start_msg_count;
-                box_hand_dis = current_box_hand_dis;
-            }
-
-            if (has_new_msg) {
-                success = box_hand_dis < 0.1f;
-                RCLCPP_INFO(this->get_logger(), "抓取检测距离: %.4f, result=%s", box_hand_dis, success ? "true" : "false");
-                break;
-            }
-
-            std::this_thread::sleep_for(20ms);
-        }
-    }
-
-    if (!set_judge(false)) {
-        RCLCPP_WARN(this->get_logger(), "Set %s judge=false timeout", vision_model_node_name_.c_str());
-    }
-
-    return success;
-}
-
-
 
 void ArmTaskNode::set_air_pump(bool enabled) {
     std_msgs::msg::Int32 msg;
