@@ -36,6 +36,7 @@ private:
     bool first_run_{true};
     rclcpp::Node::SharedPtr node_;
     rclcpp::Subscription<std_msgs::msg::Int32MultiArray>::SharedPtr box_grid_sub_;
+    rclcpp::Publisher<std_msgs::msg::Int32MultiArray>::SharedPtr grid_pub_;
 
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr arm_cmd_pub_;
     BoxIdGrid box_id_grid_{};
