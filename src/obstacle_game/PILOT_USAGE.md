@@ -213,14 +213,14 @@ ros2 run obstacle_game robot_control --ros-args \
 如果 `yaml_file_path` 使用默认值：
 
 ```text
-./record
+./trajectory/record
 ```
 
 则搜索顺序是：
 
 ```text
-./obstacle_game.yaml
-./record*.yaml 中文件名最新的文件
+./trajectory/obstacle_game.yaml
+./trajectory/record*.yaml 中文件名最新的文件
 ```
 
 ---
