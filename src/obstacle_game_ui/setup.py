@@ -1,3 +1,5 @@
+from glob import glob
+
 from setuptools import find_packages, setup
 
 package_name = 'obstacle_game_ui'
@@ -10,12 +12,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        ('share/' + package_name + '/config', [
-            'config/brige_a.yaml',
-            'config/brige_b.yaml',
-            'config/stairs.yaml',
-            'config/walk.yaml',
-        ]),
+        ('share/' + package_name + '/config', sorted(glob('config/*.yaml'))),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
