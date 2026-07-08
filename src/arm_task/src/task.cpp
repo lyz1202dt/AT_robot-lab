@@ -482,6 +482,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
     constexpr const int kRetrycnt = 2;
     int max_ryretry               = kRetrycnt;
 
+    bool re_grasp=false;
     do {
         RCLCPP_INFO(this->get_logger(), "移动到准备位置");
         execute_joint_space_trajectory(ready_position, grasp_ready_duration_);
@@ -590,10 +591,16 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
         RCLCPP_INFO(this->get_logger(), "移动到框的位置");
         execute_joint_space_trajectory(release_box_position, release_box_duration_);
 
-        std::this_thread::sleep_for(2400ms);
+        std::this_thread::sleep_for(1000ms);
+        re_grasp=get_current_box_hand_dis()>0.1f;
+        RCLCPP_INFO(get_logger(),"测距模块读数%f", get_current_box_hand_dis());
+
+        std::this_thread::sleep_for(1400ms);
 
         max_ryretry--;
-    } while ((get_current_box_hand_dis()>0.1f )&& max_ryretry);
+
+        
+    } while (re_grasp&& max_ryretry);
 
 
     // 设置气泵松开，
