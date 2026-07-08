@@ -112,8 +112,8 @@ paths:
   adjust_min_omega: 0.4
   allow_y_vel: false
   trajectory_connection_radius: 0
-  stand_at_target: false
-  stand_duration: 0
+  stand_at_target: true
+  stand_duration: 2
 - policy_id: 2
   target_pos:
     x: -6.208133
@@ -164,10 +164,10 @@ paths:
   target_pos:
     x: -7.572238
     y: 1.344366
-  target_yaw: -1.497973
+  target_yaw: 1.497973
   constraint_target_yaw: true
   target_vel: 0.01
-  max_velocity: 1
+  max_velocity: 1.3
   max_accelation: 0.3
   max_omega: 1.2
   kp:
