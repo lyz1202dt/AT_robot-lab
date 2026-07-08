@@ -6,7 +6,7 @@ config:
     max_omega: 1.2
     kp:
       x: 3
-      y: 2.5
+      y: 3.0
       yaw: 2
     allow_start_dir_error: 0.05
     allow_final_dir_error: 0.05

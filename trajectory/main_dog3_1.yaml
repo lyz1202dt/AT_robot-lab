@@ -236,7 +236,7 @@ paths:
   - policy_id: 2
     target_pos:
       x: 1.23359
-      y: -1.52844
+      y: -1.58844
     target_yaw: 3.14123
     constraint_target_yaw: false
     target_vel: 0.01
@@ -259,7 +259,7 @@ paths:
   - policy_id: 2
     target_pos:
       x: 1.23359
-      y: 0.0
+      y: -1.58844
     target_yaw: 3.14123
     constraint_target_yaw: false
     target_vel: 0.01
@@ -516,12 +516,12 @@ paths:
     target_yaw: 1.1213
     constraint_target_yaw: false
     target_vel: 0.01
-    max_velocity: 1
+    max_velocity: 1.5
     max_accelation: 0.3
     max_omega: 1.2
     kp:
       x: 3
-      y: 2.5
+      y: 3.0
       yaw: 2
     allow_start_dir_error: 0.05
     allow_final_dir_error: 0.05
@@ -539,12 +539,12 @@ paths:
     target_yaw: 0.0993725
     constraint_target_yaw: false
     target_vel: 0.01
-    max_velocity: 1
+    max_velocity: 1.5
     max_accelation: 0.3
     max_omega: 1.2
     kp:
       x: 3
-      y: 2.5
+      y: 3.0
       yaw: 2
     allow_start_dir_error: 0.05
     allow_final_dir_error: 0.05
@@ -581,7 +581,7 @@ paths:
   - policy_id: 2
     target_pos:
       x: 0.219532
-      y: 1.48264
+      y: 0.0
     target_yaw: -1.00001
     constraint_target_yaw: true
     target_vel: 0.01
