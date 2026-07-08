@@ -619,9 +619,16 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
 
 void ArmTaskNode::execute_place_flow_1_on_hand() {
 
+    RCLCPP_INFO(this->get_logger(), "移动到避相机准备位置");
+    auto temp1=place_position;
+    temp1[0]=-0.35;
+    execute_joint_space_trajectory(place_position, 2.5);
+    std::this_thread::sleep_for(3500ms);
+
+
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     execute_joint_space_trajectory(place_position, place_hand_level_1_prepare_duration_);
-    std::this_thread::sleep_for(2500ms);
+    std::this_thread::sleep_for(2000ms);
 
     double x = 0.0;
     double y = 0.0;
@@ -667,6 +674,11 @@ void ArmTaskNode::execute_place_flow_1_on_hand() {
 }
 
 void ArmTaskNode::execute_place_flow_2_on_hand() {
+    RCLCPP_INFO(this->get_logger(), "移动到避相机准备位置");
+    auto temp1=place_position_2;
+    temp1[0]=-0.35;
+    execute_joint_space_trajectory(place_position, 2.5);
+    std::this_thread::sleep_for(3500ms);
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     execute_joint_space_trajectory(place_position_2, place_hand_level_2_prepare_duration_);
@@ -722,6 +734,10 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
 }
 
 void ArmTaskNode::execute_place_flow_1_on_box() {
+
+    std::vector<double> temp1={-0.3,0.1,0.1,0.0};   //把机械臂让开，
+    execute_joint_space_trajectory(temp1, 0.5);
+    std::this_thread::sleep_for(1400ms);
 
     constexpr const int kRetrycnt = 2;
     int max_ryretry               = kRetrycnt;
@@ -803,6 +819,10 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
 }
 
 void ArmTaskNode::execute_place_flow_2_on_box() {
+
+    std::vector<double> temp1={-0.3,0.1,0.1,0.0};   //把机械臂让开，
+    execute_joint_space_trajectory(temp1, 0.5);
+    std::this_thread::sleep_for(1400ms);
 
     constexpr const int kRetrycnt = 2;
     int max_ryretry               = kRetrycnt;
