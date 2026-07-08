@@ -256,10 +256,10 @@ paths:
     trajectory_connection_radius: 0
     stand_at_target: false
     stand_duration: 0
-  - policy_id: 8
+  - policy_id: 2
     target_pos:
       x: 1.23359
-      y: -1.52844
+      y: 0.0
     target_yaw: 3.14123
     constraint_target_yaw: false
     target_vel: 0.01
