@@ -32,6 +32,7 @@ ArmTaskNode::ArmTaskNode(const rclcpp::NodeOptions& options)
     this->declare_parameter<int32_t>("arm_task", 0);
     this->declare_parameter<bool>("air_pump", false);
     this->declare_parameter<bool>("use_vision_grasp", false);    //开启使用机械臂进行视觉抓取
+    this->declare_parameter<bool>("enable_retry", false);
     this->declare_parameter<std::string>("base_frame", "arm_base_link");
     this->declare_parameter<std::string>("camera_frame", "camera_link");
     this->declare_parameter<std::string>("object_frame", "object_frame");
@@ -1070,6 +1071,8 @@ bool ArmTaskNode::wait_for_stable_place_target(geometry_msgs::msg::Point& vision
 }
 
 float ArmTaskNode::get_current_box_hand_dis() {
+    if(!get_parameter("enable_retry").as_bool())
+        return 0.03f;
     std::lock_guard<std::mutex> lock(box_to_hand_dis_mutex_);
     return current_box_hand_dis;
 }
