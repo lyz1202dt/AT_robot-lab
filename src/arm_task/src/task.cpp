@@ -629,7 +629,7 @@ void ArmTaskNode::execute_place_flow_1_on_hand() {
     RCLCPP_INFO(this->get_logger(), "移动到避相机准备位置");
     auto temp1=place_position;
     temp1[0]=-0.35;
-    execute_joint_space_trajectory(place_position, 2.5);
+    execute_joint_space_trajectory(temp1, 2.5);
     std::this_thread::sleep_for(3500ms);
 
 
@@ -684,7 +684,7 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
     RCLCPP_INFO(this->get_logger(), "移动到避相机准备位置");
     auto temp1=place_position_2;
     temp1[0]=-0.35;
-    execute_joint_space_trajectory(place_position, 2.5);
+    execute_joint_space_trajectory(temp1, 2.5);
     std::this_thread::sleep_for(3500ms);
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
