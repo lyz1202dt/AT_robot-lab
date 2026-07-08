@@ -183,8 +183,15 @@ class ObstacleGameUiRun:
         self.control_frame = Frame(self.button_frame)
         self.control_frame.pack(side=RIGHT, fill=Y, padx=(18, 0))
 
+        # 将右侧控制区分为左右两列：左列为大按钮（停止/开始），右列为并排的小动作按钮
+        self.control_left = Frame(self.control_frame)
+        self.control_left.pack(side=LEFT, fill=Y)
+
+        self.control_right = Frame(self.control_frame)
+        self.control_right.pack(side=LEFT, fill=Y, padx=(12, 0))
+
         self.stop_button = Button(
-            self.control_frame,
+            self.control_left,
             text="停止",
             width=8,
             height=5,
@@ -198,7 +205,7 @@ class ObstacleGameUiRun:
         self.stop_button.pack(fill="x", pady=(0, 14))
 
         self.start_button = Button(
-            self.control_frame,
+            self.control_left,
             text="开始",
             width=8,
             height=5,
@@ -211,34 +218,37 @@ class ObstacleGameUiRun:
         )
         self.start_button.pack(fill="x", pady=(14, 0))
 
-        self.game_control_frame = Frame(self.main_frame)
-        self.game_control_frame.pack(fill="x", pady=(18, 0))
-
-        self.prepare_button = Button(
-            self.game_control_frame,
-            text="准备",
-            height=3,
-            font=("Arial", 26, "bold"),
-            bg="#fbbc04",
-            fg="black",
-            activebackground="#f29900",
-            activeforeground="black",
-            command=self.prepare_stand,
-        )
-        self.prepare_button.pack(side=LEFT, fill="x", expand=True, padx=(0, 9))
+        # 在右侧列创建一行，把两个小按钮并排放置
+        self.small_buttons_row = Frame(self.control_right)
+        self.small_buttons_row.pack(anchor="n", pady=(34, 0))
 
         self.begin_game_button = Button(
-            self.game_control_frame,
-            text="开始",
-            height=3,
-            font=("Arial", 26, "bold"),
+            self.small_buttons_row,
+            text="开始比赛",
+            width=12,
+            height=2,
+            font=("Arial", 18, "bold"),
             bg="#188038",
             fg="white",
             activebackground="#146c2e",
             activeforeground="white",
             command=self.begin_game,
         )
-        self.begin_game_button.pack(side=RIGHT, fill="x", expand=True, padx=(9, 0))
+        self.begin_game_button.pack(side=LEFT, padx=(0, 8))
+
+        self.prepare_button = Button(
+            self.small_buttons_row,
+            text="准备比赛",
+            width=12,
+            height=2,
+            font=("Arial", 18, "bold"),
+            bg="#fbbc04",
+            fg="black",
+            activebackground="#f29900",
+            activeforeground="black",
+            command=self.prepare_stand,
+        )
+        self.prepare_button.pack(side=LEFT)
 
     def run(self):
         self.root.mainloop()
@@ -260,7 +270,7 @@ class ObstacleGameUiRun:
 
     def prepare_stand(self):
         self.status_label.configure(text="正在进入准备站立...")
-        self.node.set_target_trigger("stand", "准备", self.update_status)
+        self.node.set_target_trigger("stand", "准备比赛", self.update_status)
 
     def begin_game(self):
         self.status_label.configure(text="正在开始比赛...")
