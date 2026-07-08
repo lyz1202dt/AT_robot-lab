@@ -10,10 +10,6 @@ DOG_NAME = "dog2"
 PATH_GROUPS = ("main", "stairs", "brige_a", "brige_b")
 
 
-def _as_bool(value):
-    return str(value).lower() in ("1", "true", "yes", "on")
-
-
 def _trajectory_dir():
     candidates = [Path.cwd(), Path(__file__).resolve()]
     for candidate in candidates:
@@ -25,21 +21,15 @@ def _trajectory_dir():
 
 
 def _launch_setup(context, *args, **kwargs):
-    selected_profiles = []
-    if _as_bool(LaunchConfiguration("p1").perform(context)):
-        selected_profiles.append("1")
-    if _as_bool(LaunchConfiguration("p2").perform(context)):
-        selected_profiles.append("2")
-    if not selected_profiles:
-        selected_profiles.append("1")
+    side = LaunchConfiguration("side").perform(context).lower()
+    profile = "2" if side == "p2" else "1"
 
     trajectory_dir = _trajectory_dir()
     scene_paths = []
-    for profile in selected_profiles:
-        for group in PATH_GROUPS:
-            yaml_path = trajectory_dir / f"{group}_{DOG_NAME}_{profile}.yaml"
-            if yaml_path.is_file():
-                scene_paths.append(str(yaml_path))
+    for group in PATH_GROUPS:
+        yaml_path = trajectory_dir / f"{group}_{DOG_NAME}_{profile}.yaml"
+        if yaml_path.is_file():
+            scene_paths.append(str(yaml_path))
 
     robot_control_node = Node(
         package="obstacle_game",
@@ -68,8 +58,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        DeclareLaunchArgument("p1", default_value="false"),
-        DeclareLaunchArgument("p2", default_value="false"),
+        DeclareLaunchArgument("side", default_value="p1", choices=["p1", "p2"]),
         OpaqueFunction(function=_launch_setup),
         remote_node,
         obstacle_game_ui_run_node,
