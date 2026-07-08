@@ -67,6 +67,8 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     node_->declare_parameter<std::string>("scene_path","");
     node_->declare_parameter<std::string>("trajectory_dir","./trajectory");
     node_->declare_parameter<int>("switch_path", 0);
+    node_->declare_parameter<bool>("stop_target", false);
+    node_->declare_parameter<bool>("start_target", false);
 
     const auto yaml_paths = select_scene_yamls(
         node_,
@@ -190,21 +192,50 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         rcl_interfaces::msg::SetParametersResult result;
         result.successful = true;
         for (const auto& param : params) {
-            if (param.get_name() != "switch_path") {
-                continue;
+            const auto& name = param.get_name();
+            if (name == "switch_path") {
+                const int path_id = param.as_int();
+                if (path_id < 0 || static_cast<std::size_t>(path_id) >= pilots_.size()) {
+                    RCLCPP_ERROR(node_->get_logger(), "switch_path=%d超过轨迹数量%zu，忽略本次切换", path_id, pilots_.size());
+                    continue;
+                }
+                switch_to_path(path_id);
+            } else if (name == "stop_target") {
+                if (!param.as_bool()) {
+                    continue;
+                }
+                auto pilot = active_pilot();
+                if (pilot) {
+                    pilot->stop();
+                    RCLCPP_INFO(node_->get_logger(), "stop_target触发，已暂停当前轨迹");
+                } else {
+                    RCLCPP_WARN(node_->get_logger(), "stop_target触发失败，当前无有效轨迹");
+                }
+                stop_target_clear_pending_.store(true);
+            } else if (name == "start_target") {
+                if (!param.as_bool()) {
+                    continue;
+                }
+                auto pilot = active_pilot();
+                if (pilot && pilot->start()) {
+                    RCLCPP_INFO(node_->get_logger(), "start_target触发，已继续当前轨迹");
+                } else {
+                    RCLCPP_ERROR(node_->get_logger(), "start_target触发失败，请检查当前轨迹");
+                }
+                start_target_clear_pending_.store(true);
             }
-
-            const int path_id = param.as_int();
-            if (path_id < 0 || static_cast<std::size_t>(path_id) >= pilots_.size()) {
-                RCLCPP_ERROR(node_->get_logger(), "switch_path=%d超过轨迹数量%zu，忽略本次切换", path_id, pilots_.size());
-                continue;
-            }
-            switch_to_path(path_id);
         }
         return result;
     });
 
     control_timer = node_->create_wall_timer(50ms, [this]() {
+        if (stop_target_clear_pending_.exchange(false)) {
+            node_->set_parameter(rclcpp::Parameter("stop_target", false));
+        }
+        if (start_target_clear_pending_.exchange(false)) {
+            node_->set_parameter(rclcpp::Parameter("start_target", false));
+        }
+
         geometry_msgs::msg::TransformStamped transfer;
         try {
             transfer = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));

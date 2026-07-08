@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <rclcpp/publisher.hpp>
@@ -43,6 +44,8 @@ private:
     static constexpr int kManualSwitchDebounceFrames = 3;
     bool autopilot_available{true};
     bool robot_pose_valid_{false};
+    std::atomic_bool stop_target_clear_pending_{false};
+    std::atomic_bool start_target_clear_pending_{false};
 
     geometry_msgs::msg::TransformStamped robot_pos_transfer;
 };
