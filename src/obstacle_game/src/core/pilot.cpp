@@ -244,6 +244,63 @@ bool Pilot::get_current_path_info(uint32_t& path_num, float& time_rate)
     return true;
 }
 
+int Pilot::get_target_id()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (paths_.empty() || state_ == PilotState::Finished || current_path_index_ >= paths_.size()) {
+        return -1;
+    }
+
+    return static_cast<int>(current_path_index_);
+}
+
+bool Pilot::set_target_id(int id)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (id < 0 || static_cast<std::size_t>(id) >= paths_.size()) {
+        RCLCPP_WARN(node_->get_logger(), "目标点编号越界: id=%d, paths=%zu", id, paths_.size());
+        return false;
+    }
+
+    const auto now = std::chrono::high_resolution_clock::now();
+    const bool was_paused = state_ == PilotState::Paused;
+    const bool was_active = state_ == PilotState::Running || state_ == PilotState::Standing ||
+                            state_ == PilotState::Adjusting || state_ == PilotState::ExternalAction;
+
+    current_path_index_ = static_cast<std::size_t>(id);
+    adjust_phase_ = AdjustPhase::Position;
+    stand_start_time_ = {};
+    policy_done_pending_ = false;
+    done_policy_id_ = 0;
+    transition_ = CubicTransition{};
+
+    const bool is_external_action = is_external_action_policy(paths_[current_path_index_]);
+    if (was_paused) {
+        resume_state_ = is_external_action ? PilotState::ExternalAction : PilotState::Running;
+        begin_current_segment(now, 0.0);
+        state_ = PilotState::Paused;
+    } else if (was_active) {
+        if (is_external_action) {
+            segment_start_pos_ = current_pos_;
+            segment_start_yaw_ = current_yaw_;
+            segment_start_speed_ = 0.0;
+            segment_start_time_ = now;
+            aiming_done_ = true;
+            state_ = PilotState::ExternalAction;
+        } else {
+            state_ = PilotState::Running;
+            begin_current_segment(now, 0.0);
+        }
+    } else {
+        state_ = PilotState::Idle;
+        resume_state_ = PilotState::Running;
+        begin_current_segment(now, 0.0);
+    }
+
+    RCLCPP_INFO(node_->get_logger(), "设置当前目标点: id=%d/%zu", id, paths_.size());
+    return true;
+}
+
 void Pilot::notify_policy_done(int32_t policy_id)
 {
     std::lock_guard<std::mutex> lock(mutex_);

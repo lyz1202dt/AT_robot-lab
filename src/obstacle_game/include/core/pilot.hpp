@@ -31,6 +31,12 @@ public:
     //得到当前轨迹的执行状态
     bool get_current_path_info(uint32_t &path_num,float &time_rate);
 
+    // 获取当前正在前往的目标点编号，轨迹为空或已完成时返回-1
+    int get_target_id();
+
+    // 设置当前目标点编号，编号从0开始，越界时返回false
+    bool set_target_id(int id);
+
     //获取当前机器人的速度指令输出
     robot_msgs::msg::Cmd get_command(std::chrono::time_point<std::chrono::high_resolution_clock> time);
 
