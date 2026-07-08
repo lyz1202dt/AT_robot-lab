@@ -69,6 +69,8 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
     node_->declare_parameter<int>("switch_path", 0);
     node_->declare_parameter<bool>("stop_target", false);
     node_->declare_parameter<bool>("start_target", false);
+    node_->declare_parameter<bool>("stand", false);
+    node_->declare_parameter<bool>("begin_game", false);
 
     const auto yaml_paths = select_scene_yamls(
         node_,
@@ -223,6 +225,40 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                     RCLCPP_ERROR(node_->get_logger(), "start_target触发失败，请检查当前轨迹");
                 }
                 start_target_clear_pending_.store(true);
+            } else if (name == "stand") {
+                if (!param.as_bool()) {
+                    continue;
+                }
+                auto pilot = active_pilot();
+                if (pilot) {
+                    pilot->reset();
+                    pilot->stop();
+                }
+                current_control_mode = 0;
+                manual_switch_request_count_ = 0;
+                cmd.mode = 1;
+                cmd.vx = 0.0f;
+                cmd.vy = 0.0f;
+                cmd.vz = 0.0f;
+                RCLCPP_INFO(node_->get_logger(), "stand触发，已切入位控站立模式");
+                stand_clear_pending_.store(true);
+            } else if (name == "begin_game") {
+                if (!param.as_bool()) {
+                    continue;
+                }
+                if (!robot_pose_valid_ || !sync_pilot_state_from_transform(robot_pos_transfer)) {
+                    RCLCPP_ERROR(node_->get_logger(), "begin_game触发失败，尚未获取有效map->base_link位姿");
+                } else {
+                    auto pilot = active_pilot();
+                    if (pilot && pilot->start()) {
+                        current_control_mode = 1;
+                        manual_switch_request_count_ = 0;
+                        RCLCPP_INFO(node_->get_logger(), "begin_game触发，已切入自动控制并开始轨迹");
+                    } else {
+                        RCLCPP_ERROR(node_->get_logger(), "begin_game触发失败，请检查scene_path和路径点");
+                    }
+                }
+                begin_game_clear_pending_.store(true);
             }
         }
         return result;
@@ -234,6 +270,12 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         }
         if (start_target_clear_pending_.exchange(false)) {
             node_->set_parameter(rclcpp::Parameter("start_target", false));
+        }
+        if (stand_clear_pending_.exchange(false)) {
+            node_->set_parameter(rclcpp::Parameter("stand", false));
+        }
+        if (begin_game_clear_pending_.exchange(false)) {
+            node_->set_parameter(rclcpp::Parameter("begin_game", false));
         }
 
         geometry_msgs::msg::TransformStamped transfer;

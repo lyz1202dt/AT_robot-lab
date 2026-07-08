@@ -46,6 +46,8 @@ private:
     bool robot_pose_valid_{false};
     std::atomic_bool stop_target_clear_pending_{false};
     std::atomic_bool start_target_clear_pending_{false};
+    std::atomic_bool stand_clear_pending_{false};
+    std::atomic_bool begin_game_clear_pending_{false};
 
     geometry_msgs::msg::TransformStamped robot_pos_transfer;
 };

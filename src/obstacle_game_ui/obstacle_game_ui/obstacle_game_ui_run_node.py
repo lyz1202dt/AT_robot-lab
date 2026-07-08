@@ -145,7 +145,8 @@ class ObstacleGameUiRun:
         self.node = node
         self.root = Tk()
         self.root.title("Obstacle Game Run")
-        self.root.geometry("620x450")
+        self.root.geometry("620x620")
+        self.root.minsize(620, 620)
         self.root.protocol("WM_DELETE_WINDOW", self.close)
 
         self.main_frame = Frame(self.root, padx=18, pady=18)
@@ -210,6 +211,35 @@ class ObstacleGameUiRun:
         )
         self.start_button.pack(fill="x", pady=(14, 0))
 
+        self.game_control_frame = Frame(self.main_frame)
+        self.game_control_frame.pack(fill="x", pady=(18, 0))
+
+        self.prepare_button = Button(
+            self.game_control_frame,
+            text="准备",
+            height=3,
+            font=("Arial", 26, "bold"),
+            bg="#fbbc04",
+            fg="black",
+            activebackground="#f29900",
+            activeforeground="black",
+            command=self.prepare_stand,
+        )
+        self.prepare_button.pack(side=LEFT, fill="x", expand=True, padx=(0, 9))
+
+        self.begin_game_button = Button(
+            self.game_control_frame,
+            text="开始",
+            height=3,
+            font=("Arial", 26, "bold"),
+            bg="#188038",
+            fg="white",
+            activebackground="#146c2e",
+            activeforeground="white",
+            command=self.begin_game,
+        )
+        self.begin_game_button.pack(side=RIGHT, fill="x", expand=True, padx=(9, 0))
+
     def run(self):
         self.root.mainloop()
 
@@ -227,6 +257,14 @@ class ObstacleGameUiRun:
     def start_target(self):
         self.status_label.configure(text="正在开始当前轨迹...")
         self.node.set_target_trigger("start_target", "开始", self.update_status)
+
+    def prepare_stand(self):
+        self.status_label.configure(text="正在进入准备站立...")
+        self.node.set_target_trigger("stand", "准备", self.update_status)
+
+    def begin_game(self):
+        self.status_label.configure(text="正在开始比赛...")
+        self.node.set_target_trigger("begin_game", "开始比赛", self.update_status)
 
     def update_status(self, successful, message):
         def set_text():
