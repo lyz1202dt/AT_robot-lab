@@ -35,7 +35,8 @@ RETRY_PARAM = "is_first_game"
 RETRY_SCRIPT = "./AAA.sh"
 MINUTE_PREPARE_REMOTE_KEY = 16
 AUTO_REMOTE_KEY = 2
-FORCE_STOP_NODES = ("robot_calc_node", "robot_controller_node")
+MANUAL_REMOTE_KEY = 0
+FORCE_STOP_NODES = ("rl_real_atdog2", "rl_real_atdog3", "robot_control")
 
 COLOR_SEQUENCE = (255, 0, 1, 2, 3)
 COLOR_STYLES = {
@@ -168,6 +169,9 @@ class BoxIdGridNode(Node):
         )
         self._publish_remote_command(AUTO_REMOTE_KEY)
 
+    def switch_to_manual(self) -> None:
+        self._publish_remote_command(MANUAL_REMOTE_KEY)
+
     def emergency_stop(self) -> None:
         for node_name in FORCE_STOP_NODES:
             self._force_stop_node(node_name)
@@ -201,16 +205,32 @@ class BoxIdGridNode(Node):
         )
 
     def _force_stop_node(self, node_name: str) -> None:
-        patterns = (
-            f"__node:={node_name}",
-            f"__name:={node_name}",
-            f"name:={node_name}",
-            node_name,
+        # rl_real_atdog2/3、robot_control 在代码里的 rclcpp 节点名（robot_controller_node、
+        # robot_calc_node）不会出现在进程命令行里，只能按可执行文件名匹配进程。
+        detect = subprocess.run(
+            ["pgrep", "-f", f"/{node_name}$"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
+        if detect.returncode != 0:
+            detect = subprocess.run(
+                ["pgrep", "-x", node_name],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        if detect.returncode != 0:
+            self.get_logger().warn(f"No running process matched node: {node_name}")
+            return
+
         stopped = False
-        for pattern in patterns:
+        for command in (
+            ["pkill", "-9", "-f", f"/{node_name}$"],
+            ["pkill", "-9", "-x", node_name],
+        ):
             result = subprocess.run(
-                ["pkill", "-9", "-f", pattern],
+                command,
                 check=False,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -220,7 +240,7 @@ class BoxIdGridNode(Node):
         if stopped:
             self.get_logger().warn(f"Force stopped ROS node process: {node_name}")
         else:
-            self.get_logger().error(f"No process matched ROS node name: {node_name}")
+            self.get_logger().error(f"Failed to stop ROS node process: {node_name}")
 
     def _publish_remote_command(self, key: int) -> None:
         msg = Remote()
@@ -366,7 +386,14 @@ class TaskGameUi:
             "切入自动",
             self._switch_to_auto,
         )
-        auto_button.grid(row=1, column=0, sticky="ew", padx=(0, 7))
+        auto_button.grid(row=1, column=0, sticky="ew", padx=(0, 7), pady=(0, 12))
+
+        manual_button = self._create_primary_button(
+            action_frame,
+            "切入手动",
+            self._switch_to_manual,
+        )
+        manual_button.grid(row=2, column=0, sticky="ew", padx=(0, 7))
 
         start_button = self._create_primary_button(
             action_frame,
@@ -376,7 +403,7 @@ class TaskGameUi:
         start_button.grid(row=0, column=1, sticky="ew", padx=(7, 0), pady=(0, 12))
 
         confirm_button = self._create_primary_button(action_frame, "确定", self._publish_grid)
-        confirm_button.grid(row=1, column=1, sticky="ew", padx=(7, 0))
+        confirm_button.grid(row=1, column=1, sticky="ew", padx=(7, 0), pady=(0, 12))
 
         emergency_stop_button = self._create_emergency_button(
             right_frame,
@@ -468,6 +495,9 @@ class TaskGameUi:
 
     def _switch_to_auto(self) -> None:
         self._ros_node.switch_to_auto()
+
+    def _switch_to_manual(self) -> None:
+        self._ros_node.switch_to_manual()
 
     def _emergency_stop(self) -> None:
         self._ros_node.emergency_stop()
