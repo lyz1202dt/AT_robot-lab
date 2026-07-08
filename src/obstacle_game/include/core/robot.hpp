@@ -7,6 +7,7 @@
 #include <robot_msgs/msg/cmd.hpp>
 #include <robot_msgs/msg/int.hpp>
 #include <robot_msgs/msg/remote.hpp>
+#include <vector>
 #include <core/pilot.hpp>
 #include <core/record.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -21,6 +22,8 @@ public:
     void record_key(uint32_t current_key);
 private:
     bool sync_pilot_state_from_transform(const geometry_msgs::msg::TransformStamped& transfer);
+    std::shared_ptr<Pilot> active_pilot() const;
+    bool switch_to_path(int path_id);
 
     rclcpp::Node::SharedPtr node_;
     rclcpp::TimerBase::SharedPtr control_timer;
@@ -32,7 +35,8 @@ private:
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
     std::shared_ptr<Record> record;
-    std::shared_ptr<Pilot> pilot;
+    std::vector<std::shared_ptr<Pilot>> pilots_;
+    int active_path_id_{0};
     robot_msgs::msg::Cmd cmd;
 
     uint32_t last_key{0};
