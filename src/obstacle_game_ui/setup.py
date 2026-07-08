@@ -29,6 +29,8 @@ setup(
         'console_scripts': [
             'obstacle_game_ui_node = '
             'obstacle_game_ui.obstacle_game_ui_node:main',
+            'obstacle_game_ui_run_node = '
+            'obstacle_game_ui.obstacle_game_ui_run_node:main',
         ],
     },
 )
