@@ -54,8 +54,16 @@ def _launch_setup(context, *args, **kwargs):
 
 
 def generate_launch_description():
+
+    remote_node = Node(
+        package="remote_node",
+        executable="remote_node",
+        output="screen",
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument("p1", default_value="false"),
         DeclareLaunchArgument("p2", default_value="false"),
         OpaqueFunction(function=_launch_setup),
+        remote_node
     ])
