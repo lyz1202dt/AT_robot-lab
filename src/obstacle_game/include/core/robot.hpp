@@ -7,8 +7,8 @@
 #include <robot_msgs/msg/cmd.hpp>
 #include <robot_msgs/msg/int.hpp>
 #include <robot_msgs/msg/remote.hpp>
+#include <vector>
 #include <core/pilot.hpp>
-#include <core/record.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
@@ -18,9 +18,11 @@ public:
     Robot(const std::shared_ptr<rclcpp::Node> node);
     bool check_key_trigger(uint32_t current_key,int index);
     bool check_key_pressed(uint32_t current_key,int index);
-    void record_key(uint32_t current_key);
 private:
     bool sync_pilot_state_from_transform(const geometry_msgs::msg::TransformStamped& transfer);
+    std::shared_ptr<Pilot> active_pilot() const;
+    bool switch_to_path(int path_id);
+    void save_key_state(uint32_t current_key);
 
     rclcpp::Node::SharedPtr node_;
     rclcpp::TimerBase::SharedPtr control_timer;
@@ -31,19 +33,15 @@ private:
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
-    std::shared_ptr<Record> record;
-    std::shared_ptr<Pilot> pilot;
+    std::vector<std::shared_ptr<Pilot>> pilots_;
+    int active_path_id_{0};
     robot_msgs::msg::Cmd cmd;
 
     uint32_t last_key{0};
     int current_control_mode{0};
     int manual_switch_request_count_{0};
     static constexpr int kManualSwitchDebounceFrames = 3;
-    int32_t current_record_policy_id{2};
     bool autopilot_available{true};
-    bool record_yaml_opened{false};
-    bool pending_record_stand_option_{false};
-    bool pending_record_yaw_lock_option_{false};
     bool robot_pose_valid_{false};
 
     geometry_msgs::msg::TransformStamped robot_pos_transfer;

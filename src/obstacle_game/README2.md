@@ -460,7 +460,7 @@ ros2 run obstacle_game robot_control
 | 参数名 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
 | `scene_path` | string | `/home/dog/Desktop/AT_robot-lab/record20260515_211359.yaml` | 导航路径配置文件 |
-| `yaml_file_path` | string | `./record` | 记录输出路径前缀 |
+| `yaml_file_path` | string | `./trajectory/record` | 记录输出路径前缀 |
 
 ---
 
