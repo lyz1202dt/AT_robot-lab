@@ -13,25 +13,31 @@
 -----------------
 - 节点：`remote_node`（位于 `src/remote_node`）。
 - 发布：`robot_msgs/msg/Remote` 到话题 `/remote`。
-- 行为：从串口读取遥控器协议并发布按键/摇杆状态；若系统缺少 ROS `serial` 包，会回退使用仓库内置的串口实现（构建日志会提示）。
+- 行为：从串口读取遥控器协议并发布按键/摇杆状态。协议负载为 `float[4]` 摇杆值加 `uint32_t key`，对应 `lx`、`ly`、`rx`、`ry`、`key`。
 - 模式：遥控器按键用于在 手动 / 自动 / 录制 模式间切换。
   - 手动模式：遥控器摇杆直接填充 `Cmd`（线速度/角速度等），由 `Robot` 节点读取并转发到 `/robot_move_cmd`。
-  - 自动模式：由 `Pilot`（控制模块）依据 TF（例如 `odom -> base_link`）与路径 YAML 生成控制命令，`Robot` 发布为 `Cmd`。
-- 录制模式：记录当前位置到 YAML（用于路径重放）。
+  - 自动模式：由 `Pilot` 依据 `map -> base_link` TF 与路径 YAML 生成控制命令，`Robot` 发布为 `Cmd`。
+- 录制模式：记录当前位置到 YAML（用于路径重放），并可给下一录制点附加站立或航向约束选项。
+- 断连处理：串口断开或 1 秒无数据时，`remote_node` 发布一次清零的 `Remote` 消息并持续尝试重连；重连后的第一帧会设置 `just_reconnected=true`。
 - 数据流：`/remote` -> `obstacle_game::Robot` / `task_game::Robot` -> 发布 `robot_msgs/msg/Cmd` 到 `/robot_move_cmd`。
 
 遥控器实机操作速查
 -----------------
 - 模式拨杆：
-  - `bit 1 = 0`：手动模式。此时摇杆直接控制底盘速度，策略按键即时切换 `Cmd.mode`。
-  - `bit 1 = 1`：自动模式。此时 `Pilot` 接管运动控制，遥控器只负责开始、暂停、复位等动作。
+  - `bit 1 = 0`：手动模式。此时摇杆直接控制底盘速度，策略按键切换 `Cmd.mode`。
+  - `bit 1 = 1`：自动模式。此时 `Pilot` 接管运动控制，遥控器只负责开始、暂停、复位。刚从自动切回手动时，需要连续 3 帧检测到 `bit 1 = 0` 才生效，切回后进入位控站立 `mode=1` 并停止 `Pilot`。
 - 录制拨杆：
-  - `bit 2 = 1`：开始录制路径。
+  - `bit 2 = 1`：开始录制路径，首次进入时创建 `yaml_file_path + 时间戳 + .yaml`。
   - `bit 2 = 0`：结束录制并写出 YAML。
+- 录制修饰键：
+  - `bit 9 + bit 13`：录制状态下触发，下一次记录点写入 `stand_at_target=true`、`stand_duration=2`。
+  - `bit 9 + bit 11`：录制状态下触发，下一次记录点写入 `constraint_target_yaw=true`、`allow_y_vel=true`。
+  - 上面两个组合键只影响下一次 `bit 14` 记录的点位，写入后自动清除。
 - 摇杆控制：
   - 左摇杆前后（`ly`）：控制前进/后退，对应 `cmd.vx`。
   - 左摇杆左右（`lx`）：控制横移，对应 `cmd.vy`。
   - 右摇杆左右（`rx`）：控制转向，对应 `cmd.vz`。
+  - `ry`：当前 `obstacle_game` 和 `task_game` 未使用。
 - 手动模式下的常用按键：
   - `bit 4`：位控站立，`mode=1`。
   - `bit 5`：普通行走，`mode=2`。
@@ -41,14 +47,17 @@
   - `bit 12`：限高杆策略，`mode=6`。
   - `bit 13`：木桥策略，`mode=7`。
   - `bit 10`：翻墙策略，`mode=8`。
+  - 手动模式下若同时处于录制状态并按住 `bit 9`，`bit 11` 与 `bit 13` 不再切换策略，而是作为下一录制点的修饰键。
 - 自动模式下的常用按键：
   - `bit 4`：复位并停止自动导航。
   - `bit 5`：开始自动导航。
   - `bit 6`：暂停自动导航。
 - 录制操作：
   - 先把 `bit 2` 置 1 进入录制状态。
+  - 需要特殊点位时，先触发 `bit 9 + bit 13` 或 `bit 9 + bit 11`。
   - 录制过程中触发 `bit 14`，记录当前点位。
-  - 记录点会带上当前策略编号：普通 `2`、台阶 `3`、沙地 `4`、斜坡 `5`、限高杆 `6`、木桥 `7`、翻墙 `8`。
+  - 记录点会带上当前策略编号：位控站立 `1`、普通 `2`、台阶 `3`、沙地 `4`、斜坡 `5`、限高杆 `6`、木桥 `7`、翻墙 `8`。
+  - 若当前没有有效 `map -> base_link` 位姿，`bit 14` 会跳过本次录点。
 
 > 说明：源码里遥控器按键最终都映射成 `Remote.key` 的 bit 位。若您的实体遥控器面板标识与这里不同，请以实际发出的 bit 位为准。
 
@@ -87,7 +96,7 @@ ros2 topic echo /robot_move_cmd
 实现注意事项
 -----------------
 - 模式与优先级：在手动模式下应优先响应摇杆/键盘输入，自动模式由 Pilot 决定输出；确保各来源发布频率与 TF 更新频率兼容。
-- 串口回退：若构建或运行时提示找不到 ROS `serial` 包，代码会使用仓库内封装的串口实现（见构建输出警告）。
+- 串口参数：`remote_node` 默认读取 `/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0`，可通过 `--ros-args -p remote_dev_port:=/dev/ttyUSB0` 指定其他设备。
 - 修改映射：若需修改按键或摇杆到 `Cmd` 的映射，请编辑 `src/keyboard` 或 `src/remote_node` 中对应逻辑并通过 `ros2 topic echo` 验证输出。
 
 参考位置
@@ -98,11 +107,9 @@ ros2 topic echo /robot_move_cmd
 - `src/task_game`
 - `src/robot_msgs`
 
-如需我把具体的按键映射表从源码提取并写入此文档，或生成快速测试脚本，请告诉我。
-
 键位映射（源码摘录）
 --------------------
-下面键位与按键位（bit 索引）来自 `src/keyboard/src/keyboard_node.cpp`，机器人侧对键位的使用见 `src/task_game/src/core/robot.cpp`。
+下面键位与按键位（bit 索引）来自 `src/keyboard/src/keyboard_node.cpp`，机器人侧对键位的使用见 `src/obstacle_game/src/core/robot.cpp` 和 `src/task_game/src/core/robot.cpp`。
 
 - 运动轴（发布为 `robot_msgs/msg/Remote` 的摇杆值）：
   - `w`：前进 — 设置 `ly = +1200`（在 `task_game` 中映射为 `cmd.vx = ly/1200`）。
@@ -130,7 +137,8 @@ ros2 topic echo /robot_move_cmd
   - `m`：记录当前点（pulse bit 14，用于路径记录）。
 
 注释与行为说明：
-- 在 `task_game` 中，节点通过 `check_key_trigger(msg.key, index)` 判断某个动作按键是否被触发（该函数检测当前帧该 bit 从 0 -> 1）。
+- 键盘节点当前没有映射 `bit 9`，因此不能直接模拟实体遥控器上的录制修饰组合键 `bit 9 + bit 13` 和 `bit 9 + bit 11`。
+- 在 `obstacle_game` 和 `task_game` 中，节点通过 `check_key_trigger(msg.key, index)` 判断某个动作按键是否被触发（该函数检测当前帧该 bit 从 0 -> 1）。
 - `check_key_pressed(msg.key, index)` 用于检测某个模式位是否保持按下（例如自动模式 bit）。
 - 遥控器/键盘发布的话题为 `/remote`，机器人控制命令发布在 `/robot_move_cmd`，可以通过 `ros2 topic echo` 验证实时数据。
 
@@ -146,21 +154,22 @@ ros2 topic echo /robot_move_cmd
 |---------|---------|---------|------|
 | 1 | `3` | **Auto（自动模式）** | 该位为 1 时进入自动导航模式；为 0 时为手动模式 |
 | 2 | `1` | **Record（路径录制模式）** | 该位为 1 时开始路径录制，松开后停止录制 |
+| 9 | - | **Record option modifier（录制选项修饰）** | 仅 `obstacle_game` 使用；录制状态下和 bit 11 / bit 13 组合，给下一录制点增加 YAML 选项 |
 
-> **注意**：Bit 1 和 Bit 2 独立设置，可以组合使用（例如自动模式下同时开启录制）。手动模式为所有位清零的默认状态。
+> **注意**：Bit 1 和 Bit 2 独立设置，可以组合使用（例如自动模式下同时开启录制）。手动模式为 bit 1 清零的默认状态。
 
 ### 脉冲位（上升沿触发，一次性动作）
 
 | Bit 索引 | 键盘按键 | 功能名称 | obstacle_game 行为 | task_game 行为 |
 |---------|---------|---------|------------------|---------------|
 | 3 | `v` | **sand（沙地策略）** | 切换到沙地策略 (mode=4) | 不支持 |
-| 4 | `z` | **stand（位控站立/复位）** | 手动模式：切换到位控站立 (mode=1)；自动模式：复位并停止导航 | 手动模式：切换到位控站立 (mode=1) |
-| 5 | `x` | **walk（普通行走/开始导航）** | 手动模式：切换到普通行走 (mode=2)；自动模式：开始自动导航 | 手动模式：切换到普通行走 (mode=2) |
+| 4 | `z` | **stand（位控站立/复位）** | 手动模式：切换到位控站立 (mode=1)；自动模式：复位并停止导航 | 手动模式：切换到位控站立 (mode=1)；自动调试模式：推进一次行为树阶段 |
+| 5 | `x` | **walk（普通行走/开始导航）** | 手动模式：切换到普通行走 (mode=2)；自动模式：开始自动导航，启动前要求已有有效 `map -> base_link` 位姿 | 手动模式：切换到普通行走 (mode=2) |
 | 6 | `c` | **stairs（台阶策略/暂停导航）** | 手动模式：切换到台阶策略 (mode=3)；自动模式：暂停自动导航 | 不支持 |
 | 10 | `g` | **cross_wall（翻墙模式）** | 切换到翻墙策略 (mode=8) | 不支持 |
-| 11 | `n` | **robot_lab_slope（斜坡模式）** | 切换到斜坡策略 (mode=5) | 不支持 |
+| 11 | `n` | **robot_lab_slope（斜坡模式）/yaw lock 录制选项** | 普通手动：切换到斜坡策略 (mode=5)；录制状态且 bit 9 按下：下一录制点写入 `constraint_target_yaw=true`、`allow_y_vel=true` | 不支持 |
 | 12 | `b` | **robot_lab_bar（限高杆模式）** | 切换到限高杆策略 (mode=6) | 切换到限高杆策略 (mode=6) |
-| 13 | `h` | **robot_lab_bridge（木桥模式）** | 切换到木桥策略 (mode=7) | 不支持 |
+| 13 | `h` | **robot_lab_bridge（木桥模式）/stand 录制选项** | 普通手动：切换到木桥策略 (mode=7)；录制状态且 bit 9 按下：下一录制点写入 `stand_at_target=true`、`stand_duration=2` | 不支持 |
 | 14 | `m` | **record_point（记录路径点）** | 记录一个当前路径点到 YAML | 不支持 |
 
 ### 摇杆轴映射（填充 Remote 的模拟量字段）
@@ -172,7 +181,9 @@ ros2 topic echo /robot_move_cmd
 | `rx` | q / e | 自转 | `cmd.vz` | ±1200 | `vz = -rx / 1200` |
 | `ry` | - | （未使用） | - | - | - |
 
-速度限幅：`vx`、`vy` 被 `std::clamp` 到 `[-1.2, 1.2]`；`vz` 被 `std::clamp` 到 `[-1.0, 1.0]`。
+速度限幅：
+- `obstacle_game`：`vx` 限幅 `[-1.2, 1.2]`，`vy` 限幅 `[-0.8, 0.8]`，`vz` 限幅 `[-1.0, 1.0]`。
+- `task_game`：`vx`、`vy` 限幅 `[-1.2, 1.2]`，`vz` 限幅 `[-1.0, 1.0]`。
 
 ### 策略模式与 Cmd.mode 值
 
@@ -191,6 +202,7 @@ ros2 topic echo /robot_move_cmd
 
 | policy_id | 对应策略 | 实际运行时 Cmd.mode |
 |----------|---------|-------------------|
+| 1 | 位控站立 | 1 |
 | 2 | 普通行走 | 2 |
 | 3 | 台阶 | 3 |
 | 4 | 沙地 | 4 |
@@ -220,11 +232,14 @@ bool check_key_pressed(uint32_t current_key, int index) {
 | Bit | obstacle_game | task_game |
 |-----|--------------|-----------|
 | 3   | 沙地策略 | 不支持 |
+| 4   | 手动位控站立；自动复位并停止导航 | 手动位控站立；自动调试模式推进行为树阶段 |
+| 5   | 手动普通行走；自动开始导航 | 手动普通行走 |
 | 6   | 台阶策略 / 暂停导航 | 不支持 |
+| 9   | 录制选项修饰键，需要和 bit 11 / bit 13 组合 | 不支持 |
 | 10  | 翻墙策略 | 不支持 |
-| 11  | robot_lab_slope（斜坡策略） | 不支持 |
+| 11  | 斜坡策略；录制状态下配合 bit 9 设置下一点航向锁定 | 不支持 |
 | 12  | robot_lab_bar（限高杆策略） | 支持 |
-| 13  | robot_lab_bridge（木桥策略） | 不支持 |
+| 13  | 木桥策略；录制状态下配合 bit 9 设置下一点站立等待 | 不支持 |
 | 14  | 记录路径点 | 不支持 |
 
 `task_game` 专注于搬运箱子的行为树流程，因此不需要沙地、台阶等地面策略和路径记录功能。
@@ -319,14 +334,16 @@ bool check_key_pressed(uint32_t current_key, int index) {
 | Bit 索引 | 检测方式 | obstacle_game 功能 | 说明 |
 |----------|---------|-------------------|------|
 | 1 | `check_key_pressed` | 自动/手动切换 | 该位为 1 时进入自动模式，为 0 时手动模式 |
-| 2 | `check_key_pressed` | 路径录制开关 | 按下列开始录制路径 YAML，松开后停止 |
+| 2 | `check_key_pressed` | 路径录制开关 | 按下后开始录制路径 YAML，松开后停止 |
 | 3 | `check_key_trigger` | 沙地策略 (mode=4) | 手动模式下切换到沙地策略 |
 | 4 | `check_key_trigger` | 手动: 位控站立 (mode=1)；自动: 复位并停止导航 | 上升沿触发 |
 | 5 | `check_key_trigger` | 手动: 普通行走 (mode=2)；自动: 开始自动导航 | 上升沿触发 |
 | 6 | `check_key_trigger` | 手动: 台阶策略 (mode=3)；自动: 暂停自动导航 | 上升沿触发 |
+| 9 | `check_key_pressed` | 录制选项修饰键 | 录制模式下配合 bit 11 / bit 13 使用 |
 | 10 | `check_key_trigger` | 翻墙策略 (mode=8) | 上升沿触发 |
-| 11 | `check_key_trigger` | 斜坡策略 (mode=5) | 上升沿触发 |
+| 11 | `check_key_trigger` | 斜坡策略 (mode=5) / 下一录制点锁航向 | 普通手动为斜坡；录制模式且 bit 9 按下时写入 `constraint_target_yaw=true`、`allow_y_vel=true` |
 | 12 | `check_key_trigger` | 限高杆策略 (mode=6) | 上升沿触发 |
+| 13 | `check_key_trigger` | 木桥策略 (mode=7) / 下一录制点站立等待 | 普通手动为木桥；录制模式且 bit 9 按下时写入 `stand_at_target=true`、`stand_duration=2` |
 | 14 | `check_key_trigger` | 记录当前路径点 | 上升沿触发，需先开启录制模式 (bit 2) |
 
 > 完整 Bit 映射总表见上方「遥控器 Bit 映射总表」章节。

@@ -1,8 +1,8 @@
 config:
   - constraint_target_yaw: false
     target_vel: 0.01
-    max_velocity: 0.7
-    max_accelation: 0.2
+    max_velocity: 1.4
+    max_accelation: 0.3
     max_omega: 1.2
     kp:
       x: 3
