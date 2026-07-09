@@ -51,14 +51,15 @@ MAP_POINTS = np.array([
 
 # static_tf: base_link -> sensor_frame，即 static_transform_publisher 的 parent=base_link child=sensor_frame。
 # 这两个值后面你可以直接改；也可以运行时用 --dog2-tf / --dog3-tf 覆盖。
+#  x, y, z, w
 DOG_STATIC_TF = {
     "dog2": {
-        "translation": [0.0, 0.0, 0.0],
-        "quaternion": [0.0, 0.0, 0.0, 1.0],
+        "translation": [-0.16, 0.0, 0.0],
+        "quaternion": [0.0, 0.0, 1.0, 1.0],
     },
     "dog3": {
-        "translation": [0.120, 0.0, 0.092],
-        "quaternion": [0.0, 0.0, 0.0, 1.0],
+        "translation": [0.22, 0.0, 0.0],
+        "quaternion": [0.0, 0.0, 1.0, 0.0],
     },
 }
 
