@@ -179,7 +179,7 @@ paths:
   allow_final_pos_allow: 0.05
   adjust_min_vel: 0.5
   adjust_min_omega: 0.4
-  allow_y_vel: false
+  allow_y_vel: true
   trajectory_connection_radius: 0
   stand_at_target: false
   stand_duration: 0
