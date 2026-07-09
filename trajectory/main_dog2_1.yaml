@@ -71,7 +71,7 @@ paths:
 - policy_id: 5
   target_pos:
     x: -3.741583
-    y: -2.482053
+    y: -2.282053
   target_yaw: -1.566415
   constraint_target_yaw: false
   target_vel: 0.01
@@ -252,7 +252,6 @@ paths:
   trajectory_connection_radius: 0
   stand_at_target: false
   stand_duration: 0
-paths:
 - policy_id: 2
   target_pos:
     x: 1.697557
