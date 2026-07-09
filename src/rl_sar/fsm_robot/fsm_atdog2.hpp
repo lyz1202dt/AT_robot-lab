@@ -110,7 +110,7 @@ public:
     {
         percent_pre_getup = 0.0f;
         percent_getup = 0.0f;
-        if (rl.fsm.previous_state_->GetStateName() == "RLFSMStatePassive" || rl.fsm.previous_state_->GetStateName() == "RLFSMStateCheck")
+        if (rl.fsm.previous_state_->GetStateName() == "RLFSMStatePassive")
         {
             stand_from_passive = true;
         }
@@ -188,10 +188,10 @@ public:
 
     float percent_pre_getup = 0.0f;
     std::vector<float> pre_running_pos = {
-        0.00, -0.8, 0.0,
-        0.00, 0.8, 0.0,
-        0.00, 0.8, -3.28,
-        0.00, -0.8, 3.28,
+        0.00, -1.13, 0.306,
+        0.00, 1.13, -0.306,
+        0.00, 1.13, -3.52,
+        0.00, -1.13, 3.52,
         0.00, 0.00, 0.00, 0.00
     };
 
