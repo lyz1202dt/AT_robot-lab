@@ -53,7 +53,7 @@ def generate_launch_description():
         package="tf2_ros",
         executable="static_transform_publisher",
         arguments=[
-            "0.120", "0.0", "0.092",
+            "0.092", "0.0", "0.120",
             "0.0", "0.0", "0.0", "1.0",
             "base_link",
             "arm_base_link",
