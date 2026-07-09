@@ -614,9 +614,9 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
             //     0, 1, 2, 3
             // };
             // grid_pub_->publish(grid_msg);
-            std_msgs::msg::Int32 msg;
-            msg.data = kArmCheckBoxID;
-            arm_cmd_pub_->publish(msg);
+            // std_msgs::msg::Int32 msg;
+            // msg.data = kArmCheckBoxID;
+            // arm_cmd_pub_->publish(msg);
         }
 
         

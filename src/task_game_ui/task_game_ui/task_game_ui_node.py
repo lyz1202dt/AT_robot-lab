@@ -4,7 +4,6 @@ import queue
 import subprocess
 import sys
 import threading
-import time
 from typing import Iterable, List, Optional, Sequence
 
 try:
@@ -30,9 +29,6 @@ START_GAME_PARAM = "start_game"
 START_CALC_PARAM_NODE = "arithmetic_node"
 START_CALC_PARAM = "start_calc"
 CALC_TEST_PARAM = "show_image"
-RETRY_PARAM_NODE = "robot_calc"
-RETRY_PARAM = "is_first_game"
-RETRY_SCRIPT = "./AAA.sh"
 MINUTE_PREPARE_REMOTE_KEY = 16
 AUTO_REMOTE_KEY = 2
 MANUAL_REMOTE_KEY = 0
@@ -115,10 +111,6 @@ class BoxIdGridNode(Node):
             SetParameters,
             f"/{START_CALC_PARAM_NODE}/set_parameters",
         )
-        self._retry_param_client = self.create_client(
-            SetParameters,
-            f"/{RETRY_PARAM_NODE}/set_parameters",
-        )
         self._subscription = self.create_subscription(
             Int32MultiArray,
             "box_id_grid",
@@ -144,6 +136,8 @@ class BoxIdGridNode(Node):
             START_GAME_PARAM,
             True,
         )
+
+    def start_vip_recognition(self) -> None:
         self._set_bool_parameter(
             self._start_calc_client,
             START_CALC_PARAM_NODE,
@@ -175,34 +169,6 @@ class BoxIdGridNode(Node):
     def emergency_stop(self) -> None:
         for node_name in FORCE_STOP_NODES:
             self._force_stop_node(node_name)
-
-    def retry_this_run(self) -> None:
-        thread = threading.Thread(target=self._retry_this_run_worker, daemon=True)
-        thread.start()
-
-    def _retry_this_run_worker(self) -> None:
-        try:
-            process = subprocess.Popen(["bash", RETRY_SCRIPT])
-        except OSError as exc:
-            self.get_logger().error(f"Failed to run {RETRY_SCRIPT}: {exc}")
-            return
-
-        self.get_logger().info(f"Started {RETRY_SCRIPT}, waiting 5 seconds")
-        time.sleep(5.0)
-        return_code = process.poll()
-        if return_code is not None and return_code != 0:
-            self.get_logger().error(
-                f"{RETRY_SCRIPT} exited with code {return_code}, skip retry parameter"
-            )
-            return
-
-        self._set_bool_parameter(
-            self._retry_param_client,
-            RETRY_PARAM_NODE,
-            RETRY_PARAM,
-            False,
-            timeout_sec=5.0,
-        )
 
     def _force_stop_node(self, node_name: str) -> None:
         # rl_real_atdog2/3、robot_control 在代码里的 rclcpp 节点名（robot_controller_node、
@@ -403,12 +369,25 @@ class TaskGameUi:
             pady=(0, self._action_gap),
         )
 
+        vip_recognition_button = self._create_primary_button(
+            action_frame,
+            "开始VIP识别",
+            self._start_vip_recognition,
+        )
+        vip_recognition_button.grid(
+            row=1,
+            column=0,
+            sticky="ew",
+            padx=(0, self._action_gap // 2),
+            pady=(0, self._action_gap),
+        )
+
         auto_button = self._create_primary_button(
             action_frame,
             "切入自动",
             self._switch_to_auto,
         )
-        auto_button.grid(row=1, column=0, sticky="ew", padx=(0, self._action_gap // 2))
+        auto_button.grid(row=2, column=0, sticky="ew", padx=(0, self._action_gap // 2))
 
         start_button = self._create_primary_button(
             action_frame,
@@ -438,14 +417,7 @@ class TaskGameUi:
             "切入手动",
             self._switch_to_manual,
         )
-        manual_button.grid(row=1, column=0, sticky="ew", pady=(0, self._action_gap))
-
-        retry_button = self._create_primary_button(
-            right_frame,
-            "本次重试",
-            self._retry_this_run,
-        )
-        retry_button.grid(row=2, column=0, sticky="ew")
+        manual_button.grid(row=1, column=0, sticky="ew")
 
         grid_frame = tk.Frame(left_frame, bg="#f5f7fb")
         grid_frame.grid(row=1, column=0, sticky="nsew")
@@ -524,6 +496,9 @@ class TaskGameUi:
     def _start_game(self) -> None:
         self._ros_node.set_start_game()
 
+    def _start_vip_recognition(self) -> None:
+        self._ros_node.start_vip_recognition()
+
     def _minute_prepare(self) -> None:
         self._ros_node.minute_prepare()
 
@@ -535,9 +510,6 @@ class TaskGameUi:
 
     def _emergency_stop(self) -> None:
         self._ros_node.emergency_stop()
-
-    def _retry_this_run(self) -> None:
-        self._ros_node.retry_this_run()
 
     def _publish_grid(self) -> None:
         snapshot = [row[:] for row in self._grid]
