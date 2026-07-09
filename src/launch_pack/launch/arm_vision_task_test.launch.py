@@ -107,7 +107,7 @@ def launch_setup(context, *args, **kwargs):
         arguments=[
             "-0.03165", "0.0", "0.042",
             "0.5", "-0.5", "0.5", "-0.5",
-            "joint5",
+            "arm_base_link",
             "camera_link",
         ],
         output="screen",
