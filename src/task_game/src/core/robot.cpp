@@ -183,6 +183,16 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         geometry_msgs::msg::TransformStamped transfer;
         try {
                 transfer = tf_buffer_->lookupTransform("map","base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));
+
+                // const double relocalize_cos = ...;
+                // const double relocalize_sin = ...;
+                // const double relocalize_tx = ...;
+                // const double relocalize_ty = ...;
+                // const double source_x = transfer.transform.translation.x;
+                // const double source_y = transfer.transform.translation.y;
+                // transfer.transform.translation.x = relocalize_cos * source_x - relocalize_sin * source_y + relocalize_tx;
+                // transfer.transform.translation.y = relocalize_sin * source_x + relocalize_cos * source_y + relocalize_ty;
+
                 robot_pos_transfer=transfer;
                 if (is_position_out_of_bounds(transfer)) {
                     ++out_of_bounds_frames_;
