@@ -349,12 +349,27 @@ class TaskGameUi:
 
     def _build_window(self) -> None:
         self._root.title("Task Game UI")
-        self._root.minsize(820, 360)
+        screen_width = self._root.winfo_screenwidth()
+        screen_height = self._root.winfo_screenheight()
+        compact = screen_height <= 720
+
+        self._shell_pad = 12 if compact else 22
+        self._action_gap = 8 if compact else 14
+        self._button_font = ("Sans", 18 if compact else 22, "bold")
+        self._grid_font = ("Sans", 16 if compact else 18, "bold")
+        self._emergency_font = ("Sans", 24 if compact else 28, "bold")
+        self._vip_font = ("Sans", 48 if compact else 72, "bold")
+        self._primary_button_height = 1 if compact else 2
+        self._emergency_button_height = 4 if compact else 5
+
+        min_width = max(560, min(820, screen_width - 80))
+        min_height = max(420, min(540 if compact else 600, screen_height - 90))
+        self._root.minsize(min_width, min_height)
         self._root.configure(bg="#f5f7fb")
         self._root.grid_columnconfigure(0, weight=1)
         self._root.grid_rowconfigure(0, weight=1)
 
-        shell = tk.Frame(self._root, bg="#f5f7fb", padx=22, pady=22)
+        shell = tk.Frame(self._root, bg="#f5f7fb", padx=self._shell_pad, pady=self._shell_pad)
         shell.grid(row=0, column=0, sticky="nsew")
         shell.grid_columnconfigure(0, weight=1)
         shell.grid_columnconfigure(1, weight=0)
@@ -363,14 +378,15 @@ class TaskGameUi:
         left_frame = tk.Frame(shell, bg="#f5f7fb")
         left_frame.grid(row=0, column=0, sticky="nsew")
         left_frame.grid_columnconfigure(0, weight=1)
-        left_frame.grid_rowconfigure(2, weight=1)
+        left_frame.grid_rowconfigure(1, weight=1, minsize=150 if compact else 190)
 
         right_frame = tk.Frame(shell, bg="#f5f7fb")
-        right_frame.grid(row=0, column=1, sticky="ns", padx=(22, 0))
-        right_frame.grid_columnconfigure(0, weight=1)
+        right_frame.grid(row=0, column=1, sticky="ns", padx=(self._shell_pad, 0))
+        right_frame.grid_columnconfigure(0, weight=1, minsize=160 if compact else 200)
+        right_frame.grid_rowconfigure(0, weight=1)
 
         action_frame = tk.Frame(left_frame, bg="#f5f7fb")
-        action_frame.grid(row=0, column=0, sticky="ew", pady=(0, 18))
+        action_frame.grid(row=0, column=0, sticky="ew", pady=(0, self._action_gap))
         action_frame.grid_columnconfigure(0, weight=1, uniform="actions")
         action_frame.grid_columnconfigure(1, weight=1, uniform="actions")
 
@@ -379,48 +395,60 @@ class TaskGameUi:
             "一分钟准备",
             self._minute_prepare,
         )
-        minute_prepare_button.grid(row=0, column=0, sticky="ew", padx=(0, 7), pady=(0, 12))
+        minute_prepare_button.grid(
+            row=0,
+            column=0,
+            sticky="ew",
+            padx=(0, self._action_gap // 2),
+            pady=(0, self._action_gap),
+        )
 
         auto_button = self._create_primary_button(
             action_frame,
             "切入自动",
             self._switch_to_auto,
         )
-        auto_button.grid(row=1, column=0, sticky="ew", padx=(0, 7), pady=(0, 12))
-
-        manual_button = self._create_primary_button(
-            action_frame,
-            "切入手动",
-            self._switch_to_manual,
-        )
-        manual_button.grid(row=2, column=0, sticky="ew", padx=(0, 7))
+        auto_button.grid(row=1, column=0, sticky="ew", padx=(0, self._action_gap // 2))
 
         start_button = self._create_primary_button(
             action_frame,
             "比赛开始",
             self._start_game,
         )
-        start_button.grid(row=0, column=1, sticky="ew", padx=(7, 0), pady=(0, 12))
+        start_button.grid(
+            row=0,
+            column=1,
+            sticky="ew",
+            padx=(self._action_gap // 2, 0),
+            pady=(0, self._action_gap),
+        )
 
         confirm_button = self._create_primary_button(action_frame, "确定", self._publish_grid)
-        confirm_button.grid(row=1, column=1, sticky="ew", padx=(7, 0), pady=(0, 12))
+        confirm_button.grid(row=1, column=1, sticky="ew", padx=(self._action_gap // 2, 0))
 
         emergency_stop_button = self._create_emergency_button(
             right_frame,
             "紧急关停",
             self._emergency_stop,
         )
-        emergency_stop_button.grid(row=0, column=0, sticky="nsew", pady=(0, 14))
+        emergency_stop_button.grid(row=0, column=0, sticky="nsew", pady=(0, self._action_gap))
+
+        manual_button = self._create_primary_button(
+            right_frame,
+            "切入手动",
+            self._switch_to_manual,
+        )
+        manual_button.grid(row=1, column=0, sticky="ew", pady=(0, self._action_gap))
 
         retry_button = self._create_primary_button(
             right_frame,
             "本次重试",
             self._retry_this_run,
         )
-        retry_button.grid(row=1, column=0, sticky="ew")
+        retry_button.grid(row=2, column=0, sticky="ew")
 
         grid_frame = tk.Frame(left_frame, bg="#f5f7fb")
-        grid_frame.grid(row=2, column=0, sticky="nsew")
+        grid_frame.grid(row=1, column=0, sticky="nsew")
         for row in range(ROWS):
             grid_frame.grid_rowconfigure(row, weight=1, uniform="grid_rows")
         for col in range(COLS):
@@ -432,12 +460,18 @@ class TaskGameUi:
                 button = tk.Button(
                     grid_frame,
                     command=lambda r=row, c=col: self._advance_button(r, c),
-                    font=("Sans", 18, "bold"),
+                    font=self._grid_font,
                     relief=tk.FLAT,
                     borderwidth=0,
                     cursor="hand2",
                 )
-                button.grid(row=row, column=col, sticky="nsew", padx=7, pady=7)
+                button.grid(
+                    row=row,
+                    column=col,
+                    sticky="nsew",
+                    padx=self._action_gap // 2,
+                    pady=self._action_gap // 2,
+                )
                 button_row.append(button)
             self._buttons.append(button_row)
 
@@ -445,10 +479,10 @@ class TaskGameUi:
             left_frame,
             bg="#f5f7fb",
             fg="#111827",
-            font=("Sans", 72, "bold"),
+            font=self._vip_font,
             anchor="center",
         )
-        self._vip_box_id_label.grid(row=3, column=0, sticky="ew", pady=(18, 0))
+        self._vip_box_id_label.grid(row=2, column=0, sticky="ew", pady=(self._action_gap, 0))
 
     def _create_primary_button(self, parent: tk.Widget, text: str, command) -> tk.Button:
         return tk.Button(
@@ -459,10 +493,10 @@ class TaskGameUi:
             fg="#ffffff",
             activebackground="#374151",
             activeforeground="#ffffff",
-            font=("Sans", 22, "bold"),
+            font=self._button_font,
             relief=tk.FLAT,
             borderwidth=0,
-            height=2,
+            height=self._primary_button_height,
             cursor="hand2",
         )
 
@@ -475,11 +509,11 @@ class TaskGameUi:
             fg="#ffffff",
             activebackground="#991b1b",
             activeforeground="#ffffff",
-            font=("Sans", 28, "bold"),
+            font=self._emergency_font,
             relief=tk.FLAT,
             borderwidth=0,
             width=8,
-            height=5,
+            height=self._emergency_button_height,
             cursor="hand2",
         )
 
