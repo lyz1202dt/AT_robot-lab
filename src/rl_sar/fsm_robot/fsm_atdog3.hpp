@@ -51,6 +51,61 @@ public:
     }
 };
 
+class RLFSMCheck : public RLFSMState
+{
+public:
+    RLFSMCheck(RL *rl) : RLFSMState(*rl, "RLFSMCheck") {}
+
+
+    float percent_pre_getup = 0.0f;
+    float percent_getup = 0.0f;
+    std::vector<float> pre_running_pos = {
+        0.00, -0.8, 0.0,
+        0.00, 0.8, 0.0,
+        0.00, -0.8, 0.0,
+        0.00, 0.8, 0.0
+    };
+    bool stand_from_passive = true;
+
+    void Enter() override
+    {
+        percent_pre_getup = 0.0f;
+        percent_getup = 0.0f;
+        rl.now_state = *fsm_state;
+        rl.start_state = rl.now_state;
+        std::cout<<"当前关节角:"<<rl.now_state.motor_state.q<<std::endl;
+    }
+
+    void Run() override
+    {
+        if (Interpolate(percent_getup, rl.now_state.motor_state.q, pre_running_pos, 0.5f, "Checking", true))
+            return;
+    }
+
+    void Exit() override {}
+
+    std::string CheckChange() override
+    {
+        if (rl.control.current_keyboard == Input::Keyboard::P || rl.control.current_gamepad == Input::Gamepad::LB_X)
+        {
+            return "RLFSMStatePassive";
+        }
+        if (percent_getup >= 1.0f)
+        {
+            if (rl.control.current_keyboard == Input::Keyboard::Num1 || rl.control.current_gamepad == Input::Gamepad::RB_DPadUp)
+            {
+                return "RLFSMStateRLLocomotion";
+            }
+            else if (rl.control.current_keyboard == Input::Keyboard::Num9 || rl.control.current_gamepad == Input::Gamepad::B)
+            {
+                return "RLFSMStateGetDown";
+            }
+        }
+        return state_name_;
+    }
+};
+
+
 class RLFSMStateGetUp : public RLFSMState
 {
 public:
@@ -581,7 +636,8 @@ public:
             "RLFSMStateRLStairs",
             "RLFSMStateRLSand",
             "RLFSMStateCrosswall",
-            "RLFSMStateRLBar"
+            "RLFSMStateRLBar",
+            "RLFSMCheck"
         };
     }
     std::string GetInitialState() const override { return initial_state_; }
