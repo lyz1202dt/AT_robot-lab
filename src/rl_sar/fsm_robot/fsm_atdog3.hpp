@@ -297,7 +297,6 @@ public:
     }
 };
 
-
 class RLFSMStateCheck : public RLFSMState
 {
 public:
@@ -308,8 +307,8 @@ public:
     std::vector<float> pre_running_pos = {
         0.00, -0.8, 0.0,
         0.00, 0.8, 0.0,
-        0.00, 0.8, 0.0,
         0.00, -0.8, 0.0,
+        0.00, 0.8, 0.0,
     };
 
     void Enter() override
