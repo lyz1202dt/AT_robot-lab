@@ -305,10 +305,10 @@ public:
 
     float percent_pre_getup = 0.0f;
     std::vector<float> pre_running_pos = {
-        0.00, -0.8, 0.0,
-        0.00, 0.8, 0.0,
-        0.00, -0.8, 0.0,
-        0.00, 0.8, 0.0,
+        0.00, -1.0, 0.3,
+        0.00, 1.0, -0.3,
+        0.00, -1.0, 0.3,
+        0.00, 1.0, -0.3,
     };
 
     void Enter() override
@@ -321,8 +321,7 @@ public:
 
     void Run() override
     {
-        std::cout<<"当前关节角:"<<percent_pre_getup<<std::endl;
-            if (Interpolate(percent_pre_getup, rl.now_state.motor_state.q, pre_running_pos, 3.0f, "RLFSMStateCheck", true)) return;
+        if (Interpolate(percent_pre_getup, rl.now_state.motor_state.q, pre_running_pos, 3.0f, "RLFSMStateCheck", true)) return;
     }
 
     void Exit() override {}
