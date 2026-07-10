@@ -627,6 +627,13 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
 
 void ArmTaskNode::execute_place_flow_1_on_hand() {
 
+    auto temp1=std::vector{-1.3,1.57,1.57,0.0};
+    execute_joint_space_trajectory(temp1, 4.0);
+    std::this_thread::sleep_for(4100ms);
+
+    std::this_thread::sleep_for(2000ms);
+
+
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
     execute_joint_space_trajectory(place_position, place_hand_level_1_prepare_duration_);
     std::this_thread::sleep_for(2500ms);
@@ -733,6 +740,15 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
 
     constexpr const int kRetrycnt = 2;
     int max_ryretry               = kRetrycnt;
+
+    auto temp1=std::vector{-1.3,1.57,1.57,0.0};
+    execute_joint_space_trajectory(temp1, 4.0);
+    std::this_thread::sleep_for(4100ms);
+
+    std::this_thread::sleep_for(2000ms);
+
+    execute_joint_space_trajectory(grasp_finish_position, 4.0);
+    std::this_thread::sleep_for(4100ms);
 
     do {
         RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
