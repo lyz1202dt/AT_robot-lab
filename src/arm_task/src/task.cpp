@@ -748,7 +748,10 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
     execute_joint_space_trajectory(temp1, 4.0);
     std::this_thread::sleep_for(4100ms);
 
-    std::this_thread::sleep_for(2000ms);
+    double a2; 
+    geometry_msgs::msg::Point pos;
+    wait_for_stable_vision_target(pos, a2);
+    RCLCPP_INFO(this->get_logger(),"视觉坐标:(%lf,%lf)",pos.x,pos.y);
 
     execute_joint_space_trajectory(grasp_finish_position, 4.0);
     std::this_thread::sleep_for(4100ms);
