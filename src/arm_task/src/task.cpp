@@ -627,11 +627,14 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
 
 void ArmTaskNode::execute_place_flow_1_on_hand() {
 
-    // auto temp1=std::vector{-1.3,1.57,1.57,0.0};
-    // execute_joint_space_trajectory(temp1, 4.0);
-    // std::this_thread::sleep_for(4100ms);
+    auto temp1=std::vector{-1.3,1.57,1.57,0.0};
+    execute_joint_space_trajectory(temp1, 4.0);
+    std::this_thread::sleep_for(4100ms);
 
-    // std::this_thread::sleep_for(2000ms);
+    double a2; 
+    geometry_msgs::msg::Point pos;
+    wait_for_stable_vision_target(pos, a2);
+    RCLCPP_INFO(this->get_logger(),"视觉坐标:(%lf,%lf)",pos.x,pos.y);
 
 
     RCLCPP_INFO(this->get_logger(), "移动到准备位置");
@@ -741,14 +744,14 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
     constexpr const int kRetrycnt = 2;
     int max_ryretry               = kRetrycnt;
 
-    // auto temp1=std::vector{-1.3,1.57,1.57,0.0};
-    // execute_joint_space_trajectory(temp1, 4.0);
-    // std::this_thread::sleep_for(4100ms);
+    auto temp1=std::vector{-1.3,1.57,1.57,0.0};
+    execute_joint_space_trajectory(temp1, 4.0);
+    std::this_thread::sleep_for(4100ms);
 
-    // std::this_thread::sleep_for(2000ms);
+    std::this_thread::sleep_for(2000ms);
 
-    // execute_joint_space_trajectory(grasp_finish_position, 4.0);
-    // std::this_thread::sleep_for(4100ms);
+    execute_joint_space_trajectory(grasp_finish_position, 4.0);
+    std::this_thread::sleep_for(4100ms);
 
     do {
         RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
@@ -1025,7 +1028,7 @@ bool ArmTaskNode::wait_for_stable_vision_target(geometry_msgs::msg::Point& visio
     }
 
     bool vision_ready = false;
-    vision_model_param_client_->set_parameters({rclcpp::Parameter("start_pnp", true)});
+    vision_model_param_client_->set_parameters({rclcpp::Parameter("Block", true)});
 
     const auto vision_start_time = std::chrono::steady_clock::now();
     while (std::chrono::steady_clock::now() - vision_start_time < 5s) {
@@ -1052,7 +1055,7 @@ bool ArmTaskNode::wait_for_stable_vision_target(geometry_msgs::msg::Point& visio
         std::this_thread::sleep_for(400ms);
     }
 
-    vision_model_param_client_->set_parameters({rclcpp::Parameter("start_pnp", false)});
+    vision_model_param_client_->set_parameters({rclcpp::Parameter("Block", false)});
     return vision_ready;
 }
 
