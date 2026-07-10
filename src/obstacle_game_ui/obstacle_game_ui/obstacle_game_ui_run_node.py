@@ -1,6 +1,7 @@
+import subprocess
 import threading
 from functools import partial
-from tkinter import BOTH, LEFT, RIGHT, Y, Button, Frame, Label, Tk
+from tkinter import BOTH, LEFT, RIGHT, Y, Button, Frame, Label, Tk, Toplevel
 
 import rclpy
 from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
@@ -13,6 +14,14 @@ class ObstacleGameUiRunNode(Node):
     def __init__(self):
         super().__init__("obstacle_game_ui_run_node")
         self.declare_parameter("target_node", "robot_calc_node")
+        self.declare_parameter(
+            "dog2_real_path",
+            "/home/qi/AT_DOG/AT_robot-lab/install/rl_sar/lib/rl_sar/rl_real_atdog2",
+        )
+        self.declare_parameter(
+            "dog3_real_path",
+            "/home/qi/AT_DOG/AT_robot-lab/install/rl_sar/lib/rl_sar/rl_real_atdog3",
+        )
         target_node = self.get_parameter("target_node").value
         service_name = self._parameter_service_name(target_node)
         self.set_parameters_client = self.create_client(
@@ -20,6 +29,7 @@ class ObstacleGameUiRunNode(Node):
             service_name,
         )
         self.get_logger().info(f"Using parameter service: {service_name}")
+        self.real_processes = {}
 
     @staticmethod
     def _parameter_service_name(node_name):
@@ -139,6 +149,37 @@ class ObstacleGameUiRunNode(Node):
             self.get_logger().error(message)
             done_callback(False, message)
 
+    def toggle_real(self, dog_name):
+        process = self.real_processes.get(dog_name)
+        if process is not None and process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=3.0)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=1.0)
+            self.real_processes.pop(dog_name, None)
+            message = f"已停止{dog_name}_real"
+            self.get_logger().info(message)
+            return True, message, False
+
+        path_parameter = f"{dog_name}_real_path"
+        executable_path = self.get_parameter(path_parameter).value
+        try:
+            self.real_processes[dog_name] = subprocess.Popen([executable_path])
+        except Exception as exc:
+            message = f"启动{dog_name}_real失败: {exc}"
+            self.get_logger().error(message)
+            return False, message, False
+
+        message = f"已启动{dog_name}_real: {executable_path}"
+        self.get_logger().info(message)
+        return True, message, True
+
+    def real_is_running(self, dog_name):
+        process = self.real_processes.get(dog_name)
+        return process is not None and process.poll() is None
+
 
 class ObstacleGameUiRun:
     def __init__(self, node):
@@ -250,10 +291,30 @@ class ObstacleGameUiRun:
         )
         self.prepare_button.pack(side=LEFT)
 
+        self.start_real_button = Button(
+            self.control_right,
+            text="启动real",
+            width=25,
+            height=2,
+            font=("Arial", 18, "bold"),
+            bg="#1a73e8",
+            fg="white",
+            activebackground="#1558b0",
+            activeforeground="white",
+            command=self.open_start_real_dialog,
+        )
+        self.start_real_button.pack(anchor="n", pady=(24, 0))
+
+        self.start_real_window = None
+        self.real_buttons = {}
+
     def run(self):
         self.root.mainloop()
 
     def close(self):
+        for dog_name in ("dog2", "dog3"):
+            if self.node.real_is_running(dog_name):
+                self.node.toggle_real(dog_name)
         self.root.destroy()
 
     def set_switch_path(self, path_id):
@@ -275,6 +336,70 @@ class ObstacleGameUiRun:
     def begin_game(self):
         self.status_label.configure(text="正在开始比赛...")
         self.node.set_target_trigger("begin_game", "开始比赛", self.update_status)
+
+    def open_start_real_dialog(self):
+        if self.start_real_window is not None and self.start_real_window.winfo_exists():
+            self.start_real_window.lift()
+            return
+
+        window = Toplevel(self.root)
+        window.title("启动real")
+        window.geometry("360x220")
+        window.transient(self.root)
+        window.protocol("WM_DELETE_WINDOW", self.close_start_real_dialog)
+        self.start_real_window = window
+        self.real_buttons = {}
+
+        Label(
+            window,
+            text="请选择要启动的 real 节点",
+            font=("Arial", 14),
+            pady=14,
+        ).pack(fill="x")
+
+        for dog_name in ("dog2", "dog3"):
+            button = Button(
+                window,
+                height=2,
+                font=("Arial", 16, "bold"),
+                command=partial(self.toggle_real, dog_name),
+            )
+            button.pack(fill="x", padx=24, pady=8)
+            self.real_buttons[dog_name] = button
+            self._refresh_real_button(dog_name)
+
+    def _refresh_real_button(self, dog_name):
+        button = self.real_buttons.get(dog_name)
+        if button is None:
+            return
+        if self.node.real_is_running(dog_name):
+            button.configure(
+                text=f"停止{dog_name}_real",
+                bg="#d93025",
+                fg="white",
+                activebackground="#b3261e",
+                activeforeground="white",
+            )
+        else:
+            button.configure(
+                text=f"启动{dog_name}_real",
+                bg="#188038",
+                fg="white",
+                activebackground="#146c2e",
+                activeforeground="white",
+            )
+
+    def close_start_real_dialog(self):
+        if self.start_real_window is not None:
+            self.start_real_window.destroy()
+        self.start_real_window = None
+        self.real_buttons = {}
+
+    def toggle_real(self, dog_name):
+        self.status_label.configure(text=f"正在处理{dog_name}_real...")
+        successful, message = self.node.toggle_real(dog_name)[:2]
+        self.update_status(successful, message)
+        self._refresh_real_button(dog_name)
 
     def update_status(self, successful, message):
         def set_text():
