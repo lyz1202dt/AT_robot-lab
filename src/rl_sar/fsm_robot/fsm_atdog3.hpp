@@ -429,10 +429,10 @@ public:
 
     float percent_pre_getup = 0.0f;
     std::vector<float> pre_running_pos = {
-        0.00, -0.8, 0.0,
-        0.00, 0.8, 0.0,
-        0.00, -0.8, 0.0,
-        0.00, 0.8, 0.0,
+        0.00, -1.0, 0.3,
+        0.00, 1.0, -0.3,
+        0.00, -1.0, 0.3,
+        0.00, 1.0, -0.3,
     };
 
     void Enter() override
