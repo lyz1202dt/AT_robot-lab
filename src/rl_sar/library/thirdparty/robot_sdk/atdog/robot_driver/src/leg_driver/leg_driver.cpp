@@ -85,10 +85,16 @@ LegDriver::LegDriver(uint16_t vid, uint16_t pid) {
         }
 
         auto motor_error_callback = motor_error_callback_;
+        auto motor_error_code_callback = motor_error_code_callback_;
+        const uint16_t error_code = is_pack3 ? state_pack.pack3.motor_error : state_pack.pack0.motor_error;
 
 
 
         first_update = false;
+
+        if (error_code == 0x10 && motor_error_code_callback) {
+            motor_error_code_callback(error_code);
+        }
 
         if (motor_has_error && motor_error_callback) {
             motor_error_callback(motor_error_code);
@@ -128,6 +134,11 @@ bool LegDriver::get_imu_state(std::array<float,4> &q,std::array<float,3> &w) {
 void LegDriver::set_motor_error_callback(std::function<void(uint16_t)> callback) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     motor_error_callback_ = std::move(callback);
+}
+
+void LegDriver::set_motor_error_code_callback(std::function<void(uint16_t)> callback) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    motor_error_code_callback_ = std::move(callback);
 }
 
 LegDriver::~LegDriver() {

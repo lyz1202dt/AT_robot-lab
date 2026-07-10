@@ -27,6 +27,7 @@ public:
 
     bool get_imu_state(std::array<float,4> &q,std::array<float,3> &w);
     void set_motor_error_callback(std::function<void(uint16_t)> callback);
+    void set_motor_error_code_callback(std::function<void(uint16_t)> callback);
 private:
     bool exit_thread{false};
     bool first_update{true};
@@ -67,6 +68,7 @@ private:
 
     uint32_t last_time{0};
     std::function<void(uint16_t)> motor_error_callback_;
+    std::function<void(uint16_t)> motor_error_code_callback_;
 };
 
 #endif

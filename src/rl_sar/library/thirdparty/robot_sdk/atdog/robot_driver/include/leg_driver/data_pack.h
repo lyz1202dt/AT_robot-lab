@@ -78,6 +78,7 @@ typedef struct {
     IMU_t imu;
     uint16_t motor_state;
     uint32_t time;
+    uint16_t motor_error;//0x10
 } DogStatePack0_t;
 
 
@@ -87,6 +88,7 @@ typedef struct {
     LegState_t leg[4];
     uint16_t motor_state;
     uint32_t time;
+    uint16_t motor_error;
 } DogStatePack3_t;
 
 typedef struct {

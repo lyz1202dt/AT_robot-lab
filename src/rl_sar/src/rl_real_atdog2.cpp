@@ -11,6 +11,7 @@
 #include <array>
 #include <memory>
 #include <atomic>
+#include <cstdlib>
 
 RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
 
@@ -39,6 +40,15 @@ RL_Real::RL_Real(int argc, char** argv, const rclcpp::Node::SharedPtr node) {
         }
         std::cout << LOGGER::ERROR << "atdog2 电机异常，准备退出节点，motor_state=" << motor_state << std::endl;
         rclcpp::shutdown();
+    });
+    leg_driver->set_motor_error_code_callback([](uint16_t motor_error) {
+        static std::atomic_bool motor_error_code_shutdown_requested{false};
+        if (motor_error != 0x10 || motor_error_code_shutdown_requested.exchange(true)) {
+            return;
+        }
+        std::cout << LOGGER::ERROR << "motor_error=0x10，准备停止 rl_real_atdog2/rl_real_atdog3" << std::endl;
+        std::system("pkill -f '/rl_sar/.*rl_real_atdog2$' || pkill -x 'rl_real_atdog2'");
+        std::system("pkill -f '/rl_sar/.*rl_real_atdog3$' || pkill -x 'rl_real_atdog3'");
     });
 
     cmd_sub =
