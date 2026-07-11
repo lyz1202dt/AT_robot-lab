@@ -607,13 +607,13 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
 
         if(is_first_game)
         {
-            // grid_pub_ = context->node_->create_publisher<std_msgs::msg::Int32MultiArray>("box_id_grid", 10);
-            // auto grid_msg = std_msgs::msg::Int32MultiArray();
-            // grid_msg.data = {
-            //     3, 2, 1, 0,
-            //     0, 1, 2, 3
-            // };
-            // grid_pub_->publish(grid_msg);
+            grid_pub_ = context->node_->create_publisher<std_msgs::msg::Int32MultiArray>("box_id_grid", 10);
+            auto grid_msg = std_msgs::msg::Int32MultiArray();
+            grid_msg.data = {
+                255, 255, 255, 255,
+                1, 0, 2, 3
+            };
+            grid_pub_->publish(grid_msg);
             // std_msgs::msg::Int32 msg;
             // msg.data = kArmCheckBoxID;
             // arm_cmd_pub_->publish(msg);
