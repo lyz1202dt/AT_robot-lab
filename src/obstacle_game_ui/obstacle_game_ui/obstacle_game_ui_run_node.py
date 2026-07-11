@@ -16,7 +16,7 @@ class ObstacleGameUiRunNode(Node):
         self.declare_parameter("target_node", "robot_calc_node")
         self.declare_parameter(
             "dog2_real_path",
-            "/home/qi/AT_DOG/AT_robot-lab/install/rl_sar/lib/rl_sar/rl_real_atdog2",
+            "/home/pc2/Desktop/AT_robot-lab_obstacle/install/rl_sar/lib/rl_sar/rl_real_atdog2",
         )
         self.declare_parameter(
             "dog3_real_path",

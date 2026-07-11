@@ -205,7 +205,7 @@ public:
 
     void Run() override
     {
-            if (Interpolate(percent_pre_getup, rl.now_state.motor_state.q, pre_running_pos, 3.0f, "RLFSMStateCheck", true)) return;
+            if (Interpolate(percent_pre_getup, rl.now_state.motor_state.q, pre_running_pos, 5.0f, "RLFSMStateCheck", true)) return;
     }
 
     void Exit() override {}

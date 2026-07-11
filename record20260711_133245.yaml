@@ -1,5 +1,5 @@
 paths:
-- policy_id: 2
+- policy_id: 1
   target_pos:
     x: 0.68262
     y: -1.959936
@@ -22,7 +22,7 @@ paths:
   trajectory_connection_radius: 0
   stand_at_target: false
   stand_duration: 0
-- policy_id: 6
+- policy_id: 2
   target_pos:
     x: -0.806888
     y: -2.102462
@@ -91,7 +91,6 @@ paths:
   trajectory_connection_radius: 0
   stand_at_target: false
   stand_duration: 0
-
 - policy_id: 2
   target_pos:
     x: -3.043928
