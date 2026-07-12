@@ -760,28 +760,30 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
         std::this_thread::sleep_for(200ms);
 
         execute_joint_space_trajectory(place_position, place_box_level_1_prepare_duration_);
-        std::this_thread::sleep_for(3500ms);
+        std::this_thread::sleep_for(2000ms);
 
         max_ryretry--;
 
         if(get_current_box_hand_dis() > 0.1f)
         {
+            std::this_thread::sleep_for(1600ms);
             execute_joint_space_trajectory(home_position_, 0.2);
-            std::this_thread::sleep_for(250ms);
         }
+        else
+            std::this_thread::sleep_for(1500ms);
         
         RCLCPP_INFO(get_logger(),"测距模块读数%f", get_current_box_hand_dis());
 
     } while (max_ryretry && get_current_box_hand_dis() > 0.1f);
-    // if (get_current_box_hand_dis() > 0.1f) {
-    //     std_msgs::msg::Int32 ret;
-    //     ret.data = -1;
-    //     arm_finished_pub->publish(ret);
-    //     RCLCPP_INFO(get_logger(),"从背上抓取失败，触发重规划");
-    //     execute_joint_space_trajectory(home_position_, 0.3);
-    //     std::this_thread::sleep_for(300ms);
-    //     return;
-    // }
+    if (get_current_box_hand_dis() > 0.1f) {
+        std_msgs::msg::Int32 ret;
+        ret.data = -1;
+        arm_finished_pub->publish(ret);
+        RCLCPP_INFO(get_logger(),"从背上抓取失败，触发重规划");
+        execute_joint_space_trajectory(home_position_, 0.3);
+        std::this_thread::sleep_for(300ms);
+        return;
+    }
 
     double x = 0.0;
     double y = 0.0;
@@ -845,24 +847,26 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
 
         max_ryretry--;
 
-        // if(get_current_box_hand_dis() > 0.1f)
-        // {
-        //     execute_joint_space_trajectory(home_position_, 0.2);
-        //     std::this_thread::sleep_for(250ms);
-        // }
+        if(get_current_box_hand_dis() > 0.1f)
+        {
+            std::this_thread::sleep_for(1600ms);
+            execute_joint_space_trajectory(home_position_, 0.2);
+        }
+        else
+            std::this_thread::sleep_for(1500ms);
+        
+        RCLCPP_INFO(get_logger(),"测距模块读数%f", get_current_box_hand_dis());
 
-        // RCLCPP_INFO(get_logger(),"测距模块读数%f", get_current_box_hand_dis());
-
-    } while (/*max_ryretry && get_current_box_hand_dis() > 0.1f*/0);
-    // if (get_current_box_hand_dis() > 0.1f) {
-    //     std_msgs::msg::Int32 ret;
-    //     ret.data = -1;
-    //     arm_finished_pub->publish(ret);
-    //     RCLCPP_INFO(get_logger(),"从背上抓取失败，触发重规划");
-    //     execute_joint_space_trajectory(home_position_, 0.3);
-    //     std::this_thread::sleep_for(300ms);
-    //     return;
-    // }
+    } while (max_ryretry && get_current_box_hand_dis() > 0.1f);
+    if (get_current_box_hand_dis() > 0.1f) {
+        std_msgs::msg::Int32 ret;
+        ret.data = -1;
+        arm_finished_pub->publish(ret);
+        RCLCPP_INFO(get_logger(),"从背上抓取失败，触发重规划");
+        execute_joint_space_trajectory(home_position_, 0.3);
+        std::this_thread::sleep_for(300ms);
+        return;
+    }
 
     double x = 0.0;
     double y = 0.0;
