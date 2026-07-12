@@ -210,7 +210,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                         transfer_y_limits_[1],
                         transfer_z_limits_[0],
                         transfer_z_limits_[1]);
-                    if (out_of_bounds_frames_ >= kOutOfBoundsStopFrames) {
+                    if (out_of_bounds_frames_ >= kOutOfBoundsStopFrames && current_control_mode == 1) {
                         stop_rl_real_nodes();
                     }
                     if (current_control_mode == 1) {

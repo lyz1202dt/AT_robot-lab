@@ -764,15 +764,15 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
 
         max_ryretry--;
 
-        // if(get_current_box_hand_dis() > 0.1f)
-        // {
-        //     execute_joint_space_trajectory(home_position_, 0.2);
-        //     std::this_thread::sleep_for(250ms);
-        // }
+        if(get_current_box_hand_dis() > 0.1f)
+        {
+            execute_joint_space_trajectory(home_position_, 0.2);
+            std::this_thread::sleep_for(250ms);
+        }
         
-        // RCLCPP_INFO(get_logger(),"测距模块读数%f", get_current_box_hand_dis());
+        RCLCPP_INFO(get_logger(),"测距模块读数%f", get_current_box_hand_dis());
 
-    } while (/*max_ryretry && get_current_box_hand_dis() > 0.1f*/0);
+    } while (max_ryretry && get_current_box_hand_dis() > 0.1f);
     // if (get_current_box_hand_dis() > 0.1f) {
     //     std_msgs::msg::Int32 ret;
     //     ret.data = -1;
