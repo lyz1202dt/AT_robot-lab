@@ -439,7 +439,7 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         object_pose.pose.position.z = grasp_z_;
 
         if (max_ryretry != kRetrycnt)         // 重试时抓得更靠下一点
-            object_pose.pose.position.z -= 0.05;
+            object_pose.pose.position.z -= 0.03;
 
         RCLCPP_INFO(
             this->get_logger(), "抓取坐标: x=%.4f, y=%.4f, z=%.4f, vision_weight=%.3f", object_pose.pose.position.x,
