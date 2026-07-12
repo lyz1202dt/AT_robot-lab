@@ -2,7 +2,7 @@ paths:
 - policy_id: 2
   target_pos:
     x: 0.68262
-    y: -1.959936
+    y: -2.159936
   target_yaw: -3.031061
   constraint_target_yaw: false
   target_vel: 0.01
@@ -10,9 +10,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -33,9 +33,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -91,7 +91,6 @@ paths:
   trajectory_connection_radius: 0
   stand_at_target: false
   stand_duration: 0
-
 - policy_id: 2
   target_pos:
     x: -3.043928
@@ -103,9 +102,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -126,9 +125,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -149,9 +148,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -172,55 +171,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
-  allow_start_dir_error: 0.05
-  allow_final_dir_error: 0.05
-  allow_final_pos_allow: 0.05
-  adjust_min_vel: 0.5
-  adjust_min_omega: 0.4
-  allow_y_vel: false
-  trajectory_connection_radius: 0
-  stand_at_target: false
-  stand_duration: 0
-- policy_id: 2
-  target_pos:
-    x: -3.213777
-    y: 2.284015
-  target_yaw: 1.678692
-  constraint_target_yaw: false
-  target_vel: 0.01
-  max_velocity: 1
-  max_accelation: 0.3
-  max_omega: 1.2
-  kp:
-    x: 3
-    y: 2.5
-    yaw: 2
-  allow_start_dir_error: 0.05
-  allow_final_dir_error: 0.05
-  allow_final_pos_allow: 0.05
-  adjust_min_vel: 0.5
-  adjust_min_omega: 0.4
-  allow_y_vel: false
-  trajectory_connection_radius: 0
-  stand_at_target: false
-  stand_duration: 0
-- policy_id: 2
-  target_pos:
-    x: -3.212288
-    y: 2.278111
-  target_yaw: 1.677031
-  constraint_target_yaw: false
-  target_vel: 0.01
-  max_velocity: 1
-  max_accelation: 0.3
-  max_omega: 1.2
-  kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -241,9 +194,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -264,9 +217,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -287,9 +240,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -310,9 +263,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -333,9 +286,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -356,9 +309,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -379,32 +332,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
-  allow_start_dir_error: 0.05
-  allow_final_dir_error: 0.05
-  allow_final_pos_allow: 0.05
-  adjust_min_vel: 0.5
-  adjust_min_omega: 0.4
-  allow_y_vel: false
-  trajectory_connection_radius: 0
-  stand_at_target: false
-  stand_duration: 0
-- policy_id: 2
-  target_pos:
-    x: 2.667641
-    y: 2.070791
-  target_yaw: 0.020726
-  constraint_target_yaw: false
-  target_vel: 0.01
-  max_velocity: 1
-  max_accelation: 0.3
-  max_omega: 1.2
-  kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -425,9 +355,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -460,58 +390,12 @@ paths:
   trajectory_connection_radius: 0
   stand_at_target: false
   stand_duration: 0
-- policy_id: 3
-  target_pos:
-    x: 6.58557
-    y: 2.432683
-  target_yaw: 0.040922
-  constraint_target_yaw: false
-  target_vel: 0.01
-  max_velocity: 1.2
-  max_accelation: 0.3
-  max_omega: 1.2
-  kp:
-    x: 3
-    y: 3.0
-    yaw: 2
-  allow_start_dir_error: 0.05
-  allow_final_dir_error: 0.05
-  allow_final_pos_allow: 0.05
-  adjust_min_vel: 0.5
-  adjust_min_omega: 0.4
-  allow_y_vel: false
-  trajectory_connection_radius: 0
-  stand_at_target: false
-  stand_duration: 0
-- policy_id: 1
-  target_pos:
-    x: 8.292165
-    y: 2.586739
-  target_yaw: 0.026782
-  constraint_target_yaw: false
-  target_vel: 0.01
-  max_velocity: 1.2
-  max_accelation: 0.3
-  max_omega: 1.2
-  kp:
-    x: 3
-    y: 3.0
-    yaw: 2
-  allow_start_dir_error: 0.05
-  allow_final_dir_error: 0.05
-  allow_final_pos_allow: 0.05
-  adjust_min_vel: 0.5
-  adjust_min_omega: 0.4
-  allow_y_vel: false
-  trajectory_connection_radius: 0
-  stand_at_target: false
-  stand_duration: 0
 - policy_id: 5
   target_pos:
     x: 8.29872
     y: 2.450073
   target_yaw: 1.612283
-  constraint_target_yaw: false
+  constraint_target_yaw: true
   target_vel: 0.01
   max_velocity: 1.2
   max_accelation: 0.3
@@ -525,7 +409,7 @@ paths:
   allow_final_pos_allow: 0.05
   adjust_min_vel: 0.5
   adjust_min_omega: 0.4
-  allow_y_vel: false
+  allow_y_vel: true
   trajectory_connection_radius: 0
   stand_at_target: false
   stand_duration: 0
@@ -534,7 +418,7 @@ paths:
     x: 8.643774
     y: -1.437451
   target_yaw: 1.750038
-  constraint_target_yaw: false
+  constraint_target_yaw: true
   target_vel: 0.01
   max_velocity: 1.2
   max_accelation: 0.3
@@ -548,7 +432,7 @@ paths:
   allow_final_pos_allow: 0.05
   adjust_min_vel: 0.5
   adjust_min_omega: 0.4
-  allow_y_vel: false
+  allow_y_vel: true
   trajectory_connection_radius: 0
   stand_at_target: false
   stand_duration: 0
@@ -563,12 +447,12 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
-  allow_start_dir_error: 0.05
-  allow_final_dir_error: 0.05
-  allow_final_pos_allow: 0.05
+    x: 2
+    y: 1.5
+    yaw: 1.5
+  allow_start_dir_error: 0.03
+  allow_final_dir_error: 0.03
+  allow_final_pos_allow: 0.03
   adjust_min_vel: 0.5
   adjust_min_omega: 0.4
   allow_y_vel: false
@@ -586,9 +470,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -609,9 +493,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -621,7 +505,7 @@ paths:
   trajectory_connection_radius: 0
   stand_at_target: false
   stand_duration: 0
-- policy_id: 1
+- policy_id: 5
   target_pos:
     x: 3.438264
     y: -0.802071
@@ -632,9 +516,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -655,9 +539,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -678,9 +562,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -690,7 +574,7 @@ paths:
   trajectory_connection_radius: 0
   stand_at_target: false
   stand_duration: 0
-- policy_id: 1
+- policy_id: 5
   target_pos:
     x: 1.945159
     y: 0.354778
@@ -701,9 +585,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -724,9 +608,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
@@ -736,7 +620,7 @@ paths:
   trajectory_connection_radius: 0
   stand_at_target: false
   stand_duration: 0
-- policy_id: 1
+- policy_id: 5
   target_pos:
     x: 0.01157
     y: -0.113827
@@ -747,9 +631,9 @@ paths:
   max_accelation: 0.3
   max_omega: 1.2
   kp:
-    x: 3
-    y: 2.5
-    yaw: 2
+    x: 2
+    y: 1.5
+    yaw: 1.5
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
