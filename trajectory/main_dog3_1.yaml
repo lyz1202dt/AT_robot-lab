@@ -71,7 +71,7 @@ paths:
 - policy_id: 4
   target_pos:
     x: -3.524586
-    y: -0.158933
+    y: -0.108933
   target_yaw: -1.346013
   constraint_target_yaw: false
   target_vel: 0.01

@@ -1,12 +1,12 @@
 paths:
-- policy_id: 5
+- policy_id: 2
   target_pos:
-    x: 4.430499
-    y: 0.068283
-  target_yaw: 0.065464
+    x: 7.571599
+    y: 0.321881
+  target_yaw: -1.43106
   constraint_target_yaw: false
   target_vel: 0.01
-  max_velocity: 1.4
+  max_velocity: 1
   max_accelation: 0.3
   max_omega: 1.2
   kp:
@@ -21,15 +21,15 @@ paths:
   allow_y_vel: false
   trajectory_connection_radius: 0
   stand_at_target: false
-  stand_duration: 0
-- policy_id: 2
+  stand_duration: 0 
+- policy_id: 5
   target_pos:
-    x: 6.709301
-    y: -0.163582
-  target_yaw: -1.629946
+    x: 4.734094
+    y: 0.321881
+  target_yaw: -3.056018
   constraint_target_yaw: false
   target_vel: 0.01
-  max_velocity: 1
+  max_velocity: 1.4
   max_accelation: 0.3
   max_omega: 1.2
   kp:
