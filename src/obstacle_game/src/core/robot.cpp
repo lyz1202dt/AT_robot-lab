@@ -155,8 +155,8 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
 
             //摇杆赋值
             cmd.vy=-(float)std::clamp((double)msg.lx/1200.0,-0.8,0.8);
-            cmd.vx=(float)std::clamp((double)msg.ly/1200.0,-1.2,1.2);
-            cmd.vz=-(float)std::clamp((double)msg.rx/1200.0,-1.0,1.0);
+            cmd.vx=(float)std::clamp((double)msg.ly/800.0,-1.8,1.8);
+            cmd.vz=-(float)std::clamp((double)msg.rx/1000.0,-1.5,1.5);
 
 
         } else if (current_control_mode == 1) {
