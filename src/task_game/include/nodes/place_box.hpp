@@ -12,8 +12,7 @@ class Robot;
 
 class PlaceBoxAction : public BT::ActionNode {
 public:
-    // box1 从机械臂放下，box0 从平板放下；只有 box0 放完才推进到下一轮计划。
-    explicit PlaceBoxAction(BoxSlot slot);
+    PlaceBoxAction();
     void arm_place_cmd_callback(const std_msgs::msg::Int32::SharedPtr msg);
 
 protected:
@@ -23,7 +22,6 @@ protected:
 
     std::atomic<int> arm_state_{0};
 
-    BoxSlot slot_;
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr arm_cmd_pub_;
     rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr arm_state_sub;
     bool subscriptions_ready_ = false;

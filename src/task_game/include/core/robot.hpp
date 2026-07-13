@@ -19,14 +19,10 @@ class Robot{
 public:
     static constexpr int32_t kTreeIdle = -2;
     static constexpr int32_t kTreeGeneratePlan = -1;
-    static constexpr int32_t kTreeArriveToBox0 = 0;
-    static constexpr int32_t kTreeCatchBox0 = 1;
-    static constexpr int32_t kTreeArriveToBox1 = 2;
-    static constexpr int32_t kTreeCatchBox1 = 3;
-    static constexpr int32_t kTreeArriveToDst1 = 4;
-    static constexpr int32_t kTreePlaceBox1 = 5;
-    static constexpr int32_t kTreeArriveToDst0 = 6;
-    static constexpr int32_t kTreePlaceBox0 = 7;
+    static constexpr int32_t kTreeArriveToBox = 0;
+    static constexpr int32_t kTreeCatchBox = 1;
+    static constexpr int32_t kTreeArriveToTarget = 2;
+    static constexpr int32_t kTreePlaceBox = 3;
 
     Robot(const std::shared_ptr<rclcpp::Node> node);
     ~Robot();

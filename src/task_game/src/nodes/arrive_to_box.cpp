@@ -18,22 +18,10 @@ bool wait_for_stage(Robot* context, int32_t expected_stage) {
     return rclcpp::ok() && context->auto_pilot_enabled.load();
 }
 
-int32_t stage_for_slot(BoxSlot slot) {
-    return slot == BoxSlot::Box0 ? Robot::kTreeArriveToBox0 : Robot::kTreeArriveToBox1;
-}
-
-const BoxMoveTask& task_for_slot(const MoveBoxPlan& plan, BoxSlot slot) {
-    return slot == BoxSlot::Box0 ? plan.box0 : plan.box1;
-}
-
-const char* slot_name(BoxSlot slot) {
-    return slot == BoxSlot::Box0 ? "box0" : "box1";
-}
-
 }  // namespace
 
-ArriveToBoxAction::ArriveToBoxAction(BoxSlot slot)
-    : BT::ActionNode(slot == BoxSlot::Box0 ? "arrive_to_box0_action" : "arrive_to_box1_action"), slot_(slot) {}
+ArriveToBoxAction::ArriveToBoxAction()
+    : BT::ActionNode("arrive_to_box_action") {}
 
 void ArriveToBoxAction::ensure_stop_timer(Robot* context) {
     if (stop_timer_) {
@@ -62,7 +50,7 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
         return BT::FAILED;
     }
 
-    if (!wait_for_stage(context, stage_for_slot(slot_))) {
+    if (!wait_for_stage(context, Robot::kTreeArriveToBox)) {
         context->pilot->stop();
         return BT::FAILED;
     }
@@ -89,30 +77,19 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
     }
 
     const auto& current_plan = move_plan[plan_index];
-    // 激光重规划计划：单吸计划的 box0 到箱、以及末轮平板重试的到箱都跳过。
-    if (current_plan.plate_retry_plan || (slot_ == BoxSlot::Box0 && current_plan.hand_only_plan)) {
-        if (!context->is_tree_debug_mode()) {
-            context->advance_tree_stage();
-        }
-        RCLCPP_INFO(context->node_->get_logger(), "ArriveToBoxAction: 重规划计划跳过 %s 到箱阶段", slot_name(slot_));
-        return BT::SUCCESS;
-    }
-
-    const auto& current_task = task_for_slot(current_plan, slot_);
-    const auto& trajectory_plan = current_task.to_box;
+    const auto& trajectory_plan = current_plan.to_box;
 
     if (trajectory_plan.trajectory.size() != trajectory_plan.target_points.size()) {
         RCLCPP_ERROR(
             context->node_->get_logger(),
-            "ArriveToBoxAction: %s 轨迹点数量=%zu 与参数数量=%zu 不一致",
-            slot_name(slot_),
+            "ArriveToBoxAction: 轨迹点数量=%zu 与参数数量=%zu 不一致",
             trajectory_plan.trajectory.size(),
             trajectory_plan.target_points.size());
         return BT::FAILED;
     }
 
     if (trajectory_plan.trajectory.empty()) {
-        RCLCPP_ERROR(context->node_->get_logger(), "ArriveToBoxAction: %s to_box 为空", slot_name(slot_));
+        RCLCPP_ERROR(context->node_->get_logger(), "ArriveToBoxAction: to_box 为空");
         return BT::FAILED;
     }
 
@@ -143,11 +120,12 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
 
     RCLCPP_INFO(
         context->node_->get_logger(),
-        "ArriveToBoxAction: 开始执行第 %d 轮 %s 到箱计划, 目标箱子位置=(%.2f, %.2f), 连续轨迹点数量=%zu",
+        "ArriveToBoxAction: 开始执行第 %d 轮到箱计划, line=%d,col=%d, 目标箱子位置=(%.2f, %.2f), 连续轨迹点数量=%zu",
         plan_index,
-        slot_name(slot_),
-        current_task.pick_box_pos[0],
-        current_task.pick_box_pos[1],
+        current_plan.line,
+        current_plan.col,
+        current_plan.pick_box_pos[0],
+        current_plan.pick_box_pos[1],
         pilot_targets.size());
 
     if (!context->pilot->set_target(pilot_targets)) {
@@ -171,8 +149,7 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
         const auto& point = trajectory_plan.trajectory[point_index];
         RCLCPP_INFO(
             context->node_->get_logger(),
-            "ArriveToBoxAction: %s 连续轨迹点 %zu -> (%.2f, %.2f, %.2f)",
-            slot_name(slot_),
+            "ArriveToBoxAction: 连续轨迹点 %zu -> (%.2f, %.2f, %.2f)",
             point_index,
             point[0],
             point[1],
@@ -200,11 +177,6 @@ BT::Status ArriveToBoxAction::execute(BT& tree) {
         context->advance_tree_stage();
     }
 
-    RCLCPP_INFO(
-        context->node_->get_logger(),
-        "ArriveToBoxAction: 第 %d 轮 %s 到箱计划执行完成，等待后续抓取动作",
-        plan_index,
-        slot_name(slot_));
-
+    RCLCPP_INFO(context->node_->get_logger(), "ArriveToBoxAction: 第 %d 轮到箱计划执行完成，等待后续抓取动作", plan_index);
     return BT::SUCCESS;
 }

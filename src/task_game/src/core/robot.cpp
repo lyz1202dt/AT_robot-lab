@@ -254,18 +254,14 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         cmd_pub_->publish(cmd);
     });
 
-    //行为树注册：一轮计划先抓平板箱 box0，再抓手上箱 box1，放置时反过来先放 box1。
+    // 行为树注册：四动作单箱串行流程，每轮只处理一个箱子。
     bt.set_context(this);
     bt.rgister(std::make_shared<BT::SequenceNode>("root"));
     bt.rgister(std::make_shared<GeneratePlaneAction>(), "root");
-    bt.rgister(std::make_shared<ArriveToBoxAction>(BoxSlot::Box0), "root");
-    bt.rgister(std::make_shared<CatchBoxAction>(BoxSlot::Box0), "root");
-    bt.rgister(std::make_shared<ArriveToBoxAction>(BoxSlot::Box1), "root");
-    bt.rgister(std::make_shared<CatchBoxAction>(BoxSlot::Box1), "root");
-    bt.rgister(std::make_shared<ArriveToTargetAction>(BoxSlot::Box1), "root");
-    bt.rgister(std::make_shared<PlaceBoxAction>(BoxSlot::Box1), "root");
-    bt.rgister(std::make_shared<ArriveToTargetAction>(BoxSlot::Box0), "root");
-    bt.rgister(std::make_shared<PlaceBoxAction>(BoxSlot::Box0), "root");
+    bt.rgister(std::make_shared<ArriveToBoxAction>(), "root");
+    bt.rgister(std::make_shared<CatchBoxAction>(), "root");
+    bt.rgister(std::make_shared<ArriveToTargetAction>(), "root");
+    bt.rgister(std::make_shared<PlaceBoxAction>(), "root");
     bt.set_root("root");
 
     action_thread = std::make_shared<std::thread>([this]() {
@@ -298,18 +294,12 @@ void Robot::publish_active_box_target_tf() {
     const auto stage = tree_start_key.load();
     const auto& current_plan = move_plan[plan_index];
     const std::array<float, 2>* target_box_pos = nullptr;
-    if (stage == kTreeGeneratePlan || stage == kTreeArriveToBox0 || stage == kTreeCatchBox0) {
-        target_box_pos = &current_plan.box0.pick_box_pos;
+    if (stage == kTreeGeneratePlan || stage == kTreeArriveToBox || stage == kTreeCatchBox) {
+        target_box_pos = &current_plan.pick_box_pos;
         target_tf.transform.translation.z = 0.25f;
-    } else if (stage == kTreeArriveToBox1 || stage == kTreeCatchBox1) {
-        target_box_pos = &current_plan.box1.pick_box_pos;
-        target_tf.transform.translation.z = 0.25f;
-    } else if (stage == kTreeArriveToDst1 || stage == kTreePlaceBox1) {
-        target_box_pos = &current_plan.box1.place_box_pos;
-        target_tf.transform.translation.z = current_plan.box1.place_at_second_floor ? 0.5f : 0.25f;
-    } else if (stage == kTreeArriveToDst0 || stage == kTreePlaceBox0) {
-        target_box_pos = &current_plan.box0.place_box_pos;
-        target_tf.transform.translation.z = current_plan.box0.place_at_second_floor ? 0.5f : 0.25f;
+    } else if (stage == kTreeArriveToTarget || stage == kTreePlaceBox) {
+        target_box_pos = &current_plan.place_box_pos;
+        target_tf.transform.translation.z = current_plan.place_at_second_floor ? 0.5f : 0.25f;
     } else {
         return;
     }
@@ -357,13 +347,13 @@ void Robot::enter_manual_mode() {
 
 void Robot::advance_tree_stage() {
     const int32_t stage = tree_start_key.load();
-    if (stage < kTreeGeneratePlan || stage > kTreePlaceBox0) {
-        tree_start_key = kTreeArriveToBox0;
+    if (stage < kTreeGeneratePlan || stage > kTreePlaceBox) {
+        tree_start_key = kTreeArriveToBox;
         return;
     }
 
-    if (stage == kTreeGeneratePlan || stage == kTreePlaceBox0) {
-        tree_start_key = kTreeArriveToBox0;
+    if (stage == kTreeGeneratePlan || stage == kTreePlaceBox) {
+        tree_start_key = kTreeArriveToBox;
         return;
     }
 

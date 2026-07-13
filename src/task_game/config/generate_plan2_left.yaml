@@ -1,21 +1,16 @@
-# task_game 双箱搬运规划配置
+# task_game 单箱搬运规划配置
 #
-# 每轮计划搬两个箱子：
-# - box0：先抓，放到机器狗平板上；到放置区后第二个放下。
-# - box1：后抓，吸在机械臂上；到放置区后第一个放下。
+# 每轮计划搬一个箱子：ArriveToBox -> CatchBox -> ArriveToTarget -> PlaceBox。
 #
 # 轨迹段对应关系：
-# - start_to_a0：启动区 -> 抓取区过渡点 a0（仅第一轮使用）
-# - a0_to_a1：a0 -> 抓取区入口 a1（仅第一轮使用）
-# - a1_to_box0：a1 -> 第一轮 box0
-# - box0_to_box1：box0 -> box1
-# - box1_to_a2：第一轮 box1 -> 出抓取区过渡点 a2
-# - a2_to_dst1：第一轮 a2 -> dst1（放手上箱 box1）
-# - box1_to_dst1：后续轮 box1 -> dst1（放手上箱 box1）
-# - dst1_to_dst0：dst1 -> dst0（放平板箱 box0）
-# - dst0_to_dst2：dst0 -> dst2（后退点位）
-# - dst2_to_box0：dst2 -> 下一轮 box0
-
+# - start_to_a0：启动区 -> C 通道过渡点 a0（仅第一轮使用）
+# - a0_to_a1：a0 -> C 通道过渡点 a1（仅第一轮使用）
+# - a1_to_a2：a1 -> C 通道出口 a2（仅第一轮使用）
+# - a2_to_a3：a2 -> 动态 a3（a3.x 取目标 src.x，a3.y/yaw 取 a2，仅第一轮使用）
+# - a3_to_src：动态 a3 -> 第一轮 src
+# - src_to_dst：src -> dst 放置点
+# - dst0_to_dst2：dst -> dst2 后退点位
+# - dst2_to_src：dst2 -> 后续轮 src
 start_to_a0_target_point: &start_to_a0_target_point
   constraint_target_yaw: true
   target_vel: 0.0
@@ -46,7 +41,7 @@ a0_to_a1_target_point: &a0_to_a1_target_point
   allow_y_vel: true
   trajectory_connection_radius: 0.0
 
-a1_to_box0_target_point: &a1_to_box0_target_point
+a3_to_src_target_point: &a3_to_src_target_point
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 0.8
@@ -61,7 +56,7 @@ a1_to_box0_target_point: &a1_to_box0_target_point
   allow_y_vel: true
   trajectory_connection_radius: 0.0
 
-box0_to_box1_target_point: &box0_to_box1_target_point
+a1_to_a2_target_point: &a1_to_a2_target_point
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 0.8
@@ -76,7 +71,7 @@ box0_to_box1_target_point: &box0_to_box1_target_point
   allow_y_vel: false
   trajectory_connection_radius: 0.0
 
-box1_to_a2_target_point: &box1_to_a2_target_point
+a2_to_a3_target_point: &a2_to_a3_target_point
   constraint_target_yaw: true
   target_vel: 0.5
   max_velocity: 0.8
@@ -106,7 +101,7 @@ a2_to_dst1_target_point: &a2_to_dst1_target_point #第一轮放
   allow_y_vel: false
   trajectory_connection_radius: 0.0
 
-box1_to_dst1_target_point: &box1_to_dst1_target_point   #去
+src_to_dst_target_point: &src_to_dst_target_point   #去
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 2.0
@@ -151,7 +146,7 @@ dst0_to_dst2_target_point: &dst0_to_dst2_target_point
   allow_y_vel: true
   trajectory_connection_radius: 0.0
 
-dst2_to_box0_target_point: &dst2_to_box0_target_point #回
+dst2_to_src_target_point: &dst2_to_src_target_point #回
   constraint_target_yaw: true
   target_vel: 0.0
   max_velocity: 2.0
@@ -185,7 +180,7 @@ arm_box_positions:
     - [1.457945100063618, -3.275]
 
 # 机器狗导航到的箱子抓取/放置姿态，格式为 [x, y, yaw]
-box_positions_second:
+box_positions:
   place:
     - [4.4014292125949897, -2.4568884826018284, 0.0]  #(0蓝色)
     - [4.4001936226738605, -3.2249089465412117, 0.0]  #(1红色)
@@ -202,31 +197,17 @@ box_positions_second:
     - [2.0510456409969086, -2.425, -3.14]
     - [2.0519516369279833, -3.275, -3.14]
 
-box_positions_first:
-  pick_line_0:
-    - [1.558, -0.725, 0.0]
-    - [1.558, -1.575, 0.0]
-    - [1.558, -2.425, 0.0]
-    - [1.558, -3.275, 0.0]
-  pick_line_1:
-    - [0.755, -0.725, 0.0]
-    - [0.755, -1.575, 0.0]
-    - [0.755, -2.425, 0.0]
-    - [0.755, -3.275, 0.0]
-
 routes:
   a0: [0.495, -2.0, 0.0]
-  a1: [0.695, -1.75, 0.0]
-  a2: [2.755, -1.575, 0.0]
+  a1: [0.895, -2.0, 0.0]
+  a2: [3.20, -2.0, 3.1415926]
 
 target_points:
   start_to_a0: *start_to_a0_target_point
   a0_to_a1: *a0_to_a1_target_point
-  a1_to_box0: *a1_to_box0_target_point
-  box0_to_box1: *box0_to_box1_target_point
-  box1_to_a2: *box1_to_a2_target_point
-  a2_to_dst1: *a2_to_dst1_target_point
-  box1_to_dst1: *box1_to_dst1_target_point
-  dst1_to_dst0: *dst1_to_dst0_target_point
+  a1_to_a2: *a1_to_a2_target_point
+  a2_to_a3: *a2_to_a3_target_point
+  a3_to_src: *a3_to_src_target_point
+  src_to_dst: *src_to_dst_target_point
   dst0_to_dst2: *dst0_to_dst2_target_point
-  dst2_to_box0: *dst2_to_box0_target_point
+  dst2_to_src: *dst2_to_src_target_point
