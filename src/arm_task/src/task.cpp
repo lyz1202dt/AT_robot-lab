@@ -455,32 +455,38 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         std::this_thread::sleep_for(500ms);
         if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试正前方
         {
+            set_air_pump(false);
             object_pose.pose.position.x+=0.12f;
             object_pose.pose.position.z=rady_grasp_z_;
-            execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
-            std::this_thread::sleep_for(350ms);
+            execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_*2);
+            std::this_thread::sleep_for(650ms);
             object_pose.pose.position.z=grasp_z_;
+            set_air_pump(true);
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
             std::this_thread::sleep_for(800ms);
         }
         if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试左侧
         {
+            set_air_pump(false);
             object_pose.pose.position.x-=0.12f;
             object_pose.pose.position.y+=0.12f;
             object_pose.pose.position.z=rady_grasp_z_;
-            execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
-            std::this_thread::sleep_for(350ms);
+            execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_*2);
+            std::this_thread::sleep_for(650ms);
             object_pose.pose.position.z=grasp_z_;
+            set_air_pump(true);
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
             std::this_thread::sleep_for(800ms);
         }
         if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试右侧
         {
+            set_air_pump(false);
             object_pose.pose.position.y-=0.24f;
             object_pose.pose.position.z=rady_grasp_z_;
-            execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
-            std::this_thread::sleep_for(350ms);
+            execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_*2);
+            std::this_thread::sleep_for(650ms);
             object_pose.pose.position.z=grasp_z_;
+            set_air_pump(true);
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
             std::this_thread::sleep_for(800ms);
         }
@@ -618,32 +624,38 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
         std::this_thread::sleep_for(500ms);
         if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试正前方
         {
+            set_air_pump(false);
             object_pose.pose.position.x+=0.12f;
             object_pose.pose.position.z=rady_grasp_z_;
-            execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
-            std::this_thread::sleep_for(350ms);
+            execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_*2);
+            std::this_thread::sleep_for(650ms);
             object_pose.pose.position.z=grasp_z_;
+            set_air_pump(true);
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
             std::this_thread::sleep_for(800ms);
         }
         if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试左侧
         {
+            set_air_pump(false);
             object_pose.pose.position.x-=0.12f;
             object_pose.pose.position.y+=0.12f;
             object_pose.pose.position.z=rady_grasp_z_;
-            execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
-            std::this_thread::sleep_for(350ms);
+            execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_*2);
+            std::this_thread::sleep_for(650ms);
             object_pose.pose.position.z=grasp_z_;
+            set_air_pump(true);
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
             std::this_thread::sleep_for(800ms);
         }
         if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试右侧
         {
+            set_air_pump(false);
             object_pose.pose.position.y-=0.24f;
             object_pose.pose.position.z=rady_grasp_z_;
-            execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
-            std::this_thread::sleep_for(350ms);
+            execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_*2);
+            std::this_thread::sleep_for(650ms);
             object_pose.pose.position.z=grasp_z_;
+            set_air_pump(true);
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
             std::this_thread::sleep_for(800ms);
         }
