@@ -455,7 +455,7 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         std::this_thread::sleep_for(500ms);
         if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试正前方
         {
-            object_pose.pose.position.x+=0.05f;
+            object_pose.pose.position.x+=0.12f;
             object_pose.pose.position.z=rady_grasp_z_;
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
             std::this_thread::sleep_for(350ms);
@@ -465,8 +465,8 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         }
         if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试左侧
         {
-            object_pose.pose.position.x-=0.05f;
-            object_pose.pose.position.y+=0.05f;
+            object_pose.pose.position.x-=0.12f;
+            object_pose.pose.position.y+=0.12f;
             object_pose.pose.position.z=rady_grasp_z_;
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
             std::this_thread::sleep_for(350ms);
@@ -476,7 +476,7 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         }
         if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试右侧
         {
-            object_pose.pose.position.y-=0.1f;
+            object_pose.pose.position.y-=0.24f;
             object_pose.pose.position.z=rady_grasp_z_;
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
             std::this_thread::sleep_for(350ms);
@@ -618,7 +618,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
         std::this_thread::sleep_for(500ms);
         if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试正前方
         {
-            object_pose.pose.position.x+=0.05f;
+            object_pose.pose.position.x+=0.12f;
             object_pose.pose.position.z=rady_grasp_z_;
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
             std::this_thread::sleep_for(350ms);
@@ -628,8 +628,8 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
         }
         if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试左侧
         {
-            object_pose.pose.position.x-=0.05f;
-            object_pose.pose.position.y+=0.05f;
+            object_pose.pose.position.x-=0.12f;
+            object_pose.pose.position.y+=0.12f;
             object_pose.pose.position.z=rady_grasp_z_;
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
             std::this_thread::sleep_for(350ms);
@@ -639,7 +639,7 @@ void ArmTaskNode::execute_grasp_flow_on_box() {
         }
         if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试右侧
         {
-            object_pose.pose.position.y-=0.1f;
+            object_pose.pose.position.y-=0.24f;
             object_pose.pose.position.z=rady_grasp_z_;
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
             std::this_thread::sleep_for(350ms);
@@ -912,11 +912,9 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
 
         if(get_current_box_hand_dis() > 0.1f)
         {
-            std::this_thread::sleep_for(1600ms);
             execute_joint_space_trajectory(home_position_, 0.2);
+            std::this_thread::sleep_for(300ms);
         }
-        else
-            std::this_thread::sleep_for(1500ms);
         
         RCLCPP_INFO(get_logger(),"测距模块读数%f", get_current_box_hand_dis());
 
