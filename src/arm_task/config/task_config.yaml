@@ -17,7 +17,7 @@ arm_task:
       look_for: [0.0, 1.2, 2.3, 2.8]
       grasp_finish: [0.0, 0.1, 0.1, -0.8]
       release_box: [0.0, 1.8, 3.8, 0.6]
-      re_grasp_box: [0.0, 0.7, 3.14, -0.9]
+      re_grasp_box: [0.0, 0.7, 3.3, -0.9]
       re_grasp_box_collision_avoid: [0.0, 1.57, 3.14, -1.2]
       place_box_collision_avoid: [0.0, 0.9, 3.14, -1.1]
       finished_release_box: [0.0, 1.8, 2.0, 0.6]

@@ -183,17 +183,17 @@ void ArmTaskNode::declare_config_parameters() {
 }
 
 void ArmTaskNode::load_config_parameters() {
-    ready_position                     = this->get_parameter("positions.ready").as_double_array();
-    home_position_                     = this->get_parameter("positions.home").as_double_array();
-    place_position                     = this->get_parameter("positions.place_level_1").as_double_array();
-    place_position_2                   = this->get_parameter("positions.place_level_2").as_double_array();
-    look_for_position_                 = this->get_parameter("positions.look_for").as_double_array();
-    grasp_finish_position              = this->get_parameter("positions.grasp_finish").as_double_array();
-    release_box_position               = this->get_parameter("positions.release_box").as_double_array();
-    re_graspe_box_position             = this->get_parameter("positions.re_grasp_box").as_double_array();
+    ready_position                         = this->get_parameter("positions.ready").as_double_array();
+    home_position_                         = this->get_parameter("positions.home").as_double_array();
+    place_position                         = this->get_parameter("positions.place_level_1").as_double_array();
+    place_position_2                       = this->get_parameter("positions.place_level_2").as_double_array();
+    look_for_position_                     = this->get_parameter("positions.look_for").as_double_array();
+    grasp_finish_position                  = this->get_parameter("positions.grasp_finish").as_double_array();
+    release_box_position                   = this->get_parameter("positions.release_box").as_double_array();
+    re_graspe_box_position                 = this->get_parameter("positions.re_grasp_box").as_double_array();
     re_graspe_box_collision_avoid_position = this->get_parameter("positions.re_grasp_box_collision_avoid").as_double_array();
-    place_box_collision_avoid_position = this->get_parameter("positions.place_box_collision_avoid").as_double_array();
-    finished_release_box_position      = this->get_parameter("positions.finished_release_box").as_double_array();
+    place_box_collision_avoid_position     = this->get_parameter("positions.place_box_collision_avoid").as_double_array();
+    finished_release_box_position          = this->get_parameter("positions.finished_release_box").as_double_array();
 
     grasp_z_         = this->get_parameter("poses.grasp_z").as_double();
     rady_grasp_z_    = this->get_parameter("poses.rady_grasp_z").as_double();
@@ -203,36 +203,36 @@ void ArmTaskNode::load_config_parameters() {
 
     grasp_vision_threshold_variance_ = this->get_parameter("vision.grasp_threshold_variance").as_double();
 
-    pump_on_wait_ms_                       = this->get_parameter("timing.pump_on_wait_ms").as_int();
-    record_ready_duration_                 = this->get_parameter("timing.record_ready_duration").as_double();
-    grasp_ready_duration_                  = this->get_parameter("timing.grasp_ready_duration").as_double();
-    grasp_pregrasp_duration_               = this->get_parameter("timing.grasp_pregrasp_duration").as_double();
-    grasp_descend_duration_                = this->get_parameter("timing.grasp_descend_duration").as_double();
-    grasp_lift_duration_                   = this->get_parameter("timing.grasp_lift_duration").as_double();
-    grasp_finish_duration_                 = this->get_parameter("timing.grasp_finish_duration").as_double();
-    release_box_duration_                  = this->get_parameter("timing.release_box_duration").as_double();
-    release_collision_avoid_duration_      = this->get_parameter("timing.release_collision_avoid_duration").as_double();
-    release_home_duration_                 = this->get_parameter("timing.release_home_duration").as_double();
-    place_hand_level_1_prepare_duration_   = this->get_parameter("timing.place_hand_level_1_prepare_duration").as_double();
-    place_hand_level_1_cartesian_duration_ = this->get_parameter("timing.place_hand_level_1_cartesian_duration").as_double();
-    place_hand_level_1_home_duration_      = this->get_parameter("timing.place_hand_level_1_home_duration").as_double();
-    place_hand_level_2_prepare_duration_   = this->get_parameter("timing.place_hand_level_2_prepare_duration").as_double();
-    place_hand_level_2_cartesian_duration_ = this->get_parameter("timing.place_hand_level_2_cartesian_duration").as_double();
-    place_hand_level_2_retract_duration_   = this->get_parameter("timing.place_hand_level_2_retract_duration").as_double();
-    place_hand_level_2_home_duration_      = this->get_parameter("timing.place_hand_level_2_home_duration").as_double();
-    place_box_re_grasp_duration_           = this->get_parameter("timing.place_box_re_grasp_duration").as_double();
+    pump_on_wait_ms_                            = this->get_parameter("timing.pump_on_wait_ms").as_int();
+    record_ready_duration_                      = this->get_parameter("timing.record_ready_duration").as_double();
+    grasp_ready_duration_                       = this->get_parameter("timing.grasp_ready_duration").as_double();
+    grasp_pregrasp_duration_                    = this->get_parameter("timing.grasp_pregrasp_duration").as_double();
+    grasp_descend_duration_                     = this->get_parameter("timing.grasp_descend_duration").as_double();
+    grasp_lift_duration_                        = this->get_parameter("timing.grasp_lift_duration").as_double();
+    grasp_finish_duration_                      = this->get_parameter("timing.grasp_finish_duration").as_double();
+    release_box_duration_                       = this->get_parameter("timing.release_box_duration").as_double();
+    release_collision_avoid_duration_           = this->get_parameter("timing.release_collision_avoid_duration").as_double();
+    release_home_duration_                      = this->get_parameter("timing.release_home_duration").as_double();
+    place_hand_level_1_prepare_duration_        = this->get_parameter("timing.place_hand_level_1_prepare_duration").as_double();
+    place_hand_level_1_cartesian_duration_      = this->get_parameter("timing.place_hand_level_1_cartesian_duration").as_double();
+    place_hand_level_1_home_duration_           = this->get_parameter("timing.place_hand_level_1_home_duration").as_double();
+    place_hand_level_2_prepare_duration_        = this->get_parameter("timing.place_hand_level_2_prepare_duration").as_double();
+    place_hand_level_2_cartesian_duration_      = this->get_parameter("timing.place_hand_level_2_cartesian_duration").as_double();
+    place_hand_level_2_retract_duration_        = this->get_parameter("timing.place_hand_level_2_retract_duration").as_double();
+    place_hand_level_2_home_duration_           = this->get_parameter("timing.place_hand_level_2_home_duration").as_double();
+    place_box_re_grasp_duration_                = this->get_parameter("timing.place_box_re_grasp_duration").as_double();
     place_box_re_grasp_collision_avoid_duration_ = this->get_parameter("timing.place_box_re_grasp_collision_avoid_duration").as_double();
-    place_box_collision_avoid_duration_    = this->get_parameter("timing.place_box_collision_avoid_duration").as_double();
-    place_box_level_1_prepare_duration_    = this->get_parameter("timing.place_box_level_1_prepare_duration").as_double();
-    place_box_level_1_cartesian_duration_  = this->get_parameter("timing.place_box_level_1_cartesian_duration").as_double();
-    place_box_level_1_home_duration_       = this->get_parameter("timing.place_box_level_1_home_duration").as_double();
-    place_box_level_2_prepare_duration_    = this->get_parameter("timing.place_box_level_2_prepare_duration").as_double();
-    place_box_level_2_cartesian_duration_  = this->get_parameter("timing.place_box_level_2_cartesian_duration").as_double();
-    place_box_level_2_retract_duration_    = this->get_parameter("timing.place_box_level_2_retract_duration").as_double();
-    place_box_level_2_home_duration_       = this->get_parameter("timing.place_box_level_2_home_duration").as_double();
-    look_for_prepare_duration_             = this->get_parameter("timing.look_for_prepare_duration").as_double();
-    scan_start_duration_                   = this->get_parameter("timing.scan_start_duration").as_double();
-    scan_home_duration_                    = this->get_parameter("timing.scan_home_duration").as_double();
+    place_box_collision_avoid_duration_         = this->get_parameter("timing.place_box_collision_avoid_duration").as_double();
+    place_box_level_1_prepare_duration_         = this->get_parameter("timing.place_box_level_1_prepare_duration").as_double();
+    place_box_level_1_cartesian_duration_       = this->get_parameter("timing.place_box_level_1_cartesian_duration").as_double();
+    place_box_level_1_home_duration_            = this->get_parameter("timing.place_box_level_1_home_duration").as_double();
+    place_box_level_2_prepare_duration_         = this->get_parameter("timing.place_box_level_2_prepare_duration").as_double();
+    place_box_level_2_cartesian_duration_       = this->get_parameter("timing.place_box_level_2_cartesian_duration").as_double();
+    place_box_level_2_retract_duration_         = this->get_parameter("timing.place_box_level_2_retract_duration").as_double();
+    place_box_level_2_home_duration_            = this->get_parameter("timing.place_box_level_2_home_duration").as_double();
+    look_for_prepare_duration_                  = this->get_parameter("timing.look_for_prepare_duration").as_double();
+    scan_start_duration_                        = this->get_parameter("timing.scan_start_duration").as_double();
+    scan_home_duration_                         = this->get_parameter("timing.scan_home_duration").as_double();
 
     scan_start_joint_0_    = this->get_parameter("scan.start_joint_0").as_double();
     scan_stop_joint_0_     = this->get_parameter("scan.stop_joint_0").as_double();
