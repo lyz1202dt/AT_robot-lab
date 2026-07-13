@@ -833,8 +833,10 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
         RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
         set_air_pump(true);
         execute_joint_space_trajectory(re_graspe_box_collision_avoid_position, place_box_re_grasp_collision_avoid_duration_);
+        
         std::this_thread::sleep_for(850ms);
         execute_joint_space_trajectory(re_graspe_box_position, place_box_re_grasp_duration_);
+        RCLCPP_INFO(get_logger(),"pos=(%lf,%lf,%lf,%lf)",re_graspe_box_position[0],re_graspe_box_position[1],re_graspe_box_position[2],re_graspe_box_position[3]);
         std::this_thread::sleep_for(450ms);
 
         execute_joint_space_trajectory(place_box_collision_avoid_position, place_box_collision_avoid_duration_);
@@ -920,6 +922,7 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
         execute_joint_space_trajectory(re_graspe_box_collision_avoid_position, place_box_re_grasp_collision_avoid_duration_);
         std::this_thread::sleep_for(850ms);
         execute_joint_space_trajectory(re_graspe_box_position, place_box_re_grasp_duration_);
+        RCLCPP_INFO(get_logger(),"pos=(%lf,%lf,%lf,%lf)",re_graspe_box_position[0],re_graspe_box_position[1],re_graspe_box_position[2],re_graspe_box_position[3]);
         std::this_thread::sleep_for(450ms);
 
         execute_joint_space_trajectory(place_box_collision_avoid_position, place_box_collision_avoid_duration_);
