@@ -560,7 +560,7 @@ class TaskGameUi:
     def _refresh_vip_box_id(self) -> None:
         if self._vip_box_id_label is None:
             return
-        text = "" if self._vip_box_id is None else str(self._vip_box_id)
+        text = "" if self._vip_box_id is None else str(self._vip_box_id % 4)
         self._vip_box_id_label.configure(text=text)
 
     def close(self) -> None:
