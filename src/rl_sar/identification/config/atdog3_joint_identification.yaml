@@ -1,84 +1,148 @@
-# 运行前必须核对关节顺序、正方向和机械软限位。
-# 默认只启用逻辑关节0，并执行静态保持实验。
+# ATDog3 参数辨识配置
+#
+# 修改顺序：
+# 1. 先核对 mapping、center_rad、lower_limit_rad、upper_limit_rad。
+# 2. 只启用一个关节，并用 hold 验证方向、增益和安全退出。
+# 3. 再运行 smooth_step，最后运行低振幅、低频率的 sine。
+# 4. 每次修改后先执行 --validate，不要直接连接实机运行。
+#
+# 逻辑关节顺序与 policy/atdog3/base.yaml 一致：
+# 0 FR_hip     1 FR_thigh     2 FR_calf
+# 3 FL_hip     4 FL_thigh     5 FL_calf
+# 6 RR_hip     7 RR_thigh     8 RR_calf
+# 9 RL_hip    10 RL_thigh    11 RL_calf
 
 runtime:
+  # 参数辨识程序直接以该频率向下位机发送目标。当前 ATDog3 底层周期为 200 Hz。
   control_hz: 200.0
+
+  # 启动后等待第一帧有效关节反馈的最长时间。超时不会启用位置控制。
   wait_feedback_seconds: 5.0
+
+  # enable_control(true) 后，先保持启动时实测角，避免第一条命令跳到中心角。
   hold_current_seconds: 1.0
+
+  # 从启动实测角平滑移动到 center_rad 的时间。越大越慢，第一次不要设得太短。
   ramp_to_center_seconds: 2.0
+
+  # 实验结束位置平滑返回 center_rad 的时间。
   ramp_back_seconds: 1.0
+
+  # 返回中心角后继续保持的时间，随后切换到底层安全阻尼模式。
   final_hold_seconds: 1.0
 
 safety:
+  # 距最后一次有效反馈超过该时间即退出。USB/下位机抖动较大时可适当增加。
   feedback_timeout_ms: 100.0
+
+  # 连续多少个控制周期取不到反馈即退出，与 feedback_timeout_ms 同时生效。
   max_consecutive_feedback_misses: 10
+
+  # 单个控制周期允许目标角变化的最大值，单位 rad。
+  # 等效最大命令速度约为该值 × control_hz；0.005 × 200 = 1 rad/s。
   max_position_step_per_cycle: 0.005
+
+  # 任意关节实测绝对速度超过该值就退出，单位 rad/s。
   max_velocity_abs: 6.0
+
+  # 任意关节反馈绝对力矩超过该值就退出，单位取决于下位机反馈定义，当前按 Nm 使用。
   max_torque_abs: 23.5
+
+  # 实测角允许比配置软限位多出的容差，避免限位附近的测量噪声误触发。
   measured_limit_margin_rad: 0.05
+
+  # 启动实测角与启用关节 center_rad 的最大允许距离。
+  # 如果超过，说明中心角、关节顺序或正方向可能填错，程序拒绝启控。
   max_initial_center_error_rad: 0.50
 
 logging:
+  # CSV 输出文件。目录必须已存在且当前用户可写；重复运行会覆盖同名文件。
   csv_path: "/tmp/atdog3_joint_identification.csv"
+
+  # 每多少个控制周期刷新一次文件。越小越不易丢数据，但磁盘写入更频繁。
   flush_every_n_cycles: 20
 
 joints:
-  # 逻辑顺序：FR、FL、RR、RL，每条腿依次为 hip、thigh、calf。
-  # 当前工程使用恒等映射；若下位机实际顺序不同，必须先修正此项。
+  # 逻辑 DOF 到硬件 DOF 的映射。每个数字必须在 0~11 且不能重复。
+  # 硬件索引 / 3 得到腿编号，硬件索引 % 3 得到腿内关节编号。
+  # 当前工程使用恒等映射，但注释显示硬件腿顺序可能与策略顺序不同，必须实机核对。
   mapping: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
-  # 第一次运行只允许一个关节为 true。
+  # true 表示该逻辑关节参与实验轨迹；false 表示始终保持程序启动时的实测角。
+  # 第一次必须只启用一个关节，确认方向后再考虑多关节实验。
   enabled: [true, false, false,
             false, false, false,
             false, false, false,
             false, false, false]
 
-  # 启用关节会平滑移动到中心角；未启用关节保持程序启动时的实测角。
+  # 实验中心角，单位 rad。仅 enabled=true 的关节会平滑移动到这里。
+  # 当前值参考 policy/atdog3/base.yaml 的默认姿态，不代表机械零位或绝对安全姿态。
   center_rad: [0.00, -0.80, 0.00,
                0.00,  0.80, 0.00,
                0.00, -0.80, 0.00,
                0.00,  0.80, 0.00]
 
-  # 以下是实验软限位示例，不是机械硬限位，运行前必须按实机修改。
+  # 实验软下限，单位 rad。必须根据真实机械结构、线束和安装方向逐关节确认。
+  # 这些示例值不是 URDF 硬限位，也不是厂商安全保证值。
   lower_limit_rad: [-0.50, -1.30, -1.00,
                     -0.50,  0.30, -1.00,
                     -0.50, -1.30, -1.00,
                     -0.50,  0.30, -1.00]
 
+  # 实验软上限，单位 rad。center、正弦峰值和阶跃目标都必须位于上下限之间。
   upper_limit_rad: [0.50, -0.30, 1.00,
                     0.50,  1.30, 1.00,
                     0.50, -0.30, 1.00,
                     0.50,  1.30, 1.00]
 
-  # 仅 sine 使用，各关节可以设置不同振幅。
+  # sine 的每关节振幅，单位 rad；实际轨迹为 center + amplitude*sin(...)。
+  # 第一次建议 0.02~0.03 rad，确认安全后再逐步增加。
   amplitude_rad: [0.03, 0.03, 0.03,
                   0.03, 0.03, 0.03,
                   0.03, 0.03, 0.03,
                   0.03, 0.03, 0.03]
 
-  # 建议先使用较低增益完成悬空单关节验证，再逐步调整。
+  # 发送给 STM32/下位机位置 PD 的比例增益。不是 AI 策略的参数。
+  # 值越大位置跟踪越硬，同时冲击和峰值力矩通常也越大。
   kp: [20.0, 20.0, 20.0,
        20.0, 20.0, 20.0,
        20.0, 20.0, 20.0,
        20.0, 20.0, 20.0]
 
+  # 发送给 STM32/下位机位置 PD 的微分增益。
+  # 值过小可能振荡，值过大可能响应迟钝或放大速度噪声。
   kd: [1.0, 1.0, 1.0,
        1.0, 1.0, 1.0,
        1.0, 1.0, 1.0,
        1.0, 1.0, 1.0]
 
 experiment:
-  # 可选：hold、smooth_step、sine。
+  # hold：保持中心角，用于验证静态误差、噪声和基本安全性。
+  # smooth_step：执行平滑位置变化，用于分析上升时间、超调和稳态误差。
+  # sine：执行正弦位置轨迹，用于分析幅值衰减、相位和频率响应。
   type: "hold"
+
+  # RUN_EXPERIMENT 阶段总时长，单位秒。
+  # smooth_step 时应至少覆盖 hold_before + transition + hold_after。
   duration_seconds: 5.0
 
   sine:
+    # 所有启用关节共用频率。第一次建议从 0.2 Hz 开始。
     frequency_hz: 0.20
+
+    # 正弦初相位，单位 rad。通常保持 0，使轨迹从 center 开始，减少切入跳变。
     phase_rad: 0.0
 
   smooth_step:
-    # 所有启用关节使用相同偏移；负值表示反方向。
+    # 相对 center_rad 的目标偏移，单位 rad；负值表示反方向。
+    # 当前实现所有启用关节共用该偏移。
     offset_rad: 0.03
+
+    # 到达实验中心角后，执行平滑变化前的保持时间。
     hold_before_seconds: 2.0
+
+    # 从 center 平滑变化到 center + offset 的时间；不是瞬时硬阶跃。
     transition_seconds: 1.0
+
+    # 到达新目标后的保持时间，用于测量稳态误差。
     hold_after_seconds: 2.0

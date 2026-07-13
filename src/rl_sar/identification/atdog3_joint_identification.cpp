@@ -20,20 +20,24 @@
 
 namespace {
 
+// 本程序固定用于 ATDog3 的 12 个关节。数组中的逻辑顺序由 YAML 的 mapping 决定。
 constexpr std::size_t kDofCount = 12;
 constexpr double kPi = 3.14159265358979323846;
+
+// 信号处理函数不能安全地操作驱动或文件，只设置退出标志，由主控制循环完成安全停机。
 std::atomic_bool g_shutdown_requested{false};
 
 void signal_handler(int) {
     g_shutdown_requested.store(true);
 }
 
+// 实验不会直接从当前姿态跳到激励轨迹，而是按以下阶段顺序运行。
 enum class Phase {
-    HoldCurrent,
-    RampToCenter,
-    RunExperiment,
-    RampBack,
-    FinalHold
+    HoldCurrent,   // 启控后短暂保持启动时的实测角，避免第一帧跳变
+    RampToCenter,  // 从启动角平滑移动到配置的实验中心角
+    RunExperiment, // 执行 hold、smooth_step 或 sine
+    RampBack,      // 从实验结束位置平滑回到中心角
+    FinalHold      // 在中心角短暂保持，然后切换到底层安全阻尼
 };
 
 std::string phase_name(Phase phase) {
@@ -52,13 +56,17 @@ std::string phase_name(Phase phase) {
     return "UNKNOWN";
 }
 
+// YAML 中的全部运行参数。实验时通常只改 YAML，不需要修改本文件。
 struct Config {
+    // runtime：循环频率和各状态阶段持续时间。
     double control_hz{};
     double wait_feedback_seconds{};
     double hold_current_seconds{};
     double ramp_to_center_seconds{};
     double ramp_back_seconds{};
     double final_hold_seconds{};
+
+    // safety：反馈、角度、速度和力矩保护阈值。
     double feedback_timeout_ms{};
     int max_consecutive_feedback_misses{};
     int flush_every_n_cycles{};
@@ -67,6 +75,8 @@ struct Config {
     double max_torque_abs{};
     double measured_limit_margin_rad{};
     double max_initial_center_error_rad{};
+
+    // logging / experiment：日志位置和激励轨迹参数。
     std::string csv_path;
     std::string experiment_type;
     double experiment_duration_seconds{};
@@ -76,6 +86,8 @@ struct Config {
     double step_hold_before_seconds{};
     double step_transition_seconds{};
     double step_hold_after_seconds{};
+
+    // joints：数组索引均为逻辑 DOF；mapping 将逻辑 DOF 映射到硬件 DOF。
     std::array<int, kDofCount> mapping{};
     std::array<bool, kDofCount> enabled{};
     std::array<double, kDofCount> center_rad{};
@@ -86,6 +98,7 @@ struct Config {
     std::array<double, kDofCount> kd{};
 };
 
+// 读取固定长度为 12 的 YAML 数组，防止关节参数错位或漏填。
 template <typename T>
 std::array<T, kDofCount> read_array(const YAML::Node& node, const std::string& key) {
     const auto values = node[key];
@@ -100,6 +113,7 @@ std::array<T, kDofCount> read_array(const YAML::Node& node, const std::string& k
     return result;
 }
 
+// 只负责把 YAML 转换为 Config；参数之间的安全关系由 validate_config 统一检查。
 Config load_config(const std::string& path) {
     const auto root = YAML::LoadFile(path);
     Config config;
@@ -148,6 +162,8 @@ Config load_config(const std::string& path) {
     return config;
 }
 
+// 所有静态检查都在构造 LegDriver 和启用控制之前完成。
+// 这里拒绝危险配置，而不是在运行时静默截断正弦或阶跃轨迹。
 void validate_config(const Config& config) {
     if (config.control_hz <= 0.0 || config.control_hz > 1000.0) {
         throw std::runtime_error("control_hz 必须在 (0, 1000] 范围内");
@@ -207,6 +223,7 @@ void validate_config(const Config& config) {
     }
 }
 
+// 三次平滑插值：起点和终点速度均为零，用于启控和退出时避免硬阶跃。
 double smoothstep(double ratio) {
     const double value = std::clamp(ratio, 0.0, 1.0);
     return value * value * (3.0 - 2.0 * value);
@@ -224,6 +241,8 @@ uint32_t steady_time_ms32() {
                                      .count());
 }
 
+// 将驱动返回的四腿数据转换为逻辑 12 DOF 数组。
+// field：0=位置，1=速度，2=估计力矩。
 std::array<double, kDofCount> unpack_state(
     const std::array<LegState_t, 4>& legs, const std::array<int, kDofCount>& mapping, int field) {
     std::array<double, kDofCount> values{};
@@ -235,6 +254,8 @@ std::array<double, kDofCount> unpack_state(
     return values;
 }
 
+// 将逻辑 12 DOF 位置目标打包成下位机需要的 4 腿 × 3 关节命令。
+// 本实验只激励位置：目标速度和前馈力矩固定为零，Kp/Kd 由 YAML 指定。
 std::array<LegTarget_t, 4> make_targets(
     const Config& config, const std::array<double, kDofCount>& command) {
     std::array<LegTarget_t, 4> targets{};
@@ -250,6 +271,8 @@ std::array<LegTarget_t, 4> make_targets(
     return targets;
 }
 
+// 关闭正常位置控制后，LegDriver 会把命令转换为 kp=0、kd=默认值的安全阻尼模式。
+// 连续发送数帧，降低单个 USB 数据包丢失导致最后一帧位置命令残留的概率。
 void send_safe_damping(LegDriver& driver) {
     std::array<LegTarget_t, 4> targets{};
     driver.enable_control(false);
@@ -259,6 +282,7 @@ void send_safe_damping(LegDriver& driver) {
     }
 }
 
+// 异常、throw 或提前 return 时自动执行安全阻尼；正常停机完成后调用 disarm 避免重复发送。
 class SafetyGuard {
 public:
     explicit SafetyGuard(LegDriver& driver) : driver_(driver) {}
@@ -274,6 +298,8 @@ private:
     bool armed_{true};
 };
 
+// CSV 使用长表格式：每个控制周期写 12 行，每行对应一个逻辑关节。
+// 这种格式便于 Python、MATLAB 或 AI 按 dof 分组分析，不需要解析数组字符串。
 class CsvLogger {
 public:
     CsvLogger(const std::string& path, int flush_every_n_cycles)
@@ -315,6 +341,8 @@ private:
     int cycles_since_flush_{};
 };
 
+// 根据实验类型生成本周期的位置目标。
+// 未启用关节始终使用 center 参数传入的保持角，不参与激励。
 std::array<double, kDofCount> experiment_command(const Config& config,
                                                   const std::array<double, kDofCount>& center,
                                                   double elapsed_s) {
@@ -348,6 +376,7 @@ std::array<double, kDofCount> experiment_command(const Config& config,
     return command;
 }
 
+// 限制相邻控制周期的位置变化量。这是额外保护，不应依赖它修复错误的中心角或振幅。
 void apply_step_limit(std::array<double, kDofCount>& command,
                       const std::array<double, kDofCount>& previous, double max_step) {
     for (std::size_t i = 0; i < kDofCount; ++i) {
@@ -355,6 +384,7 @@ void apply_step_limit(std::array<double, kDofCount>& command,
     }
 }
 
+// 每个周期都检查命令和反馈。任意一项越界都会抛出异常，并由 SafetyGuard 切换安全阻尼。
 void check_runtime_safety(const Config& config,
                           const std::array<double, kDofCount>& command,
                           const std::array<double, kDofCount>& measured_position,
@@ -377,6 +407,7 @@ void check_runtime_safety(const Config& config,
     }
 }
 
+// 实机运行主流程：等待反馈 -> 检查初始姿态 -> 启控保持 -> 平滑到中心 -> 实验 -> 安全退出。
 int run(const Config& config) {
     LegDriver driver;
     SafetyGuard safety_guard(driver);
@@ -385,6 +416,7 @@ int run(const Config& config) {
         g_shutdown_requested.store(true);
     });
 
+    // 未收到第一帧有效关节状态前，不调用 enable_control(true)。
     std::array<LegState_t, 4> legs_state{};
     uint32_t bottom_time = 0;
     const auto feedback_deadline = std::chrono::steady_clock::now() +
@@ -399,6 +431,7 @@ int run(const Config& config) {
         throw std::runtime_error("等待关节反馈超时，未启用位置控制");
     }
 
+    // 初始姿态检查在启控前完成，防止中心角填错时直接拉动关节。
     const auto initial_position = unpack_state(legs_state, config.mapping, 0);
     for (std::size_t i = 0; i < kDofCount; ++i) {
         if (initial_position[i] < config.lower_limit_rad[i] - config.measured_limit_margin_rad ||
@@ -417,6 +450,7 @@ int run(const Config& config) {
     auto measured_position = initial_position;
     auto measured_velocity = unpack_state(legs_state, config.mapping, 1);
     auto measured_torque = unpack_state(legs_state, config.mapping, 2);
+    // 未启用关节的 center_command 保持为启动实测角；只有 enabled=true 的关节会移动到配置中心角。
     auto center_command = initial_position;
     auto ramp_back_start = initial_position;
     for (std::size_t i = 0; i < kDofCount; ++i) {
@@ -425,6 +459,7 @@ int run(const Config& config) {
         }
     }
 
+    // 从这一行开始，下位机会按 targets 中的位置、Kp 和 Kd 执行正常位置控制。
     driver.enable_control(true);
 
     const double period_seconds = 1.0 / config.control_hz;
@@ -440,6 +475,7 @@ int run(const Config& config) {
         const auto now = std::chrono::steady_clock::now();
         const double phase_elapsed = std::chrono::duration<double>(now - phase_start).count();
 
+        // 同时使用“连续失败次数”和“距最后有效反馈时间”判断通信是否失效。
         const bool feedback_ok = driver.get_leg_state(legs_state, bottom_time);
         if (feedback_ok) {
             measured_position = unpack_state(legs_state, config.mapping, 0);
@@ -456,6 +492,7 @@ int run(const Config& config) {
             throw std::runtime_error("关节反馈丢失或超时");
         }
 
+        // 先生成轨迹，再经过单周期变化限制和运行时保护，最后才发送给下位机。
         switch (phase) {
             case Phase::HoldCurrent:
                 command = initial_position;
