@@ -1,0 +1,84 @@
+# 运行前必须核对关节顺序、正方向和机械软限位。
+# 默认只启用逻辑关节0，并执行静态保持实验。
+
+runtime:
+  control_hz: 200.0
+  wait_feedback_seconds: 5.0
+  hold_current_seconds: 1.0
+  ramp_to_center_seconds: 2.0
+  ramp_back_seconds: 1.0
+  final_hold_seconds: 1.0
+
+safety:
+  feedback_timeout_ms: 100.0
+  max_consecutive_feedback_misses: 10
+  max_position_step_per_cycle: 0.005
+  max_velocity_abs: 6.0
+  max_torque_abs: 23.5
+  measured_limit_margin_rad: 0.05
+  max_initial_center_error_rad: 0.50
+
+logging:
+  csv_path: "/tmp/atdog3_joint_identification.csv"
+  flush_every_n_cycles: 20
+
+joints:
+  # 逻辑顺序：FR、FL、RR、RL，每条腿依次为 hip、thigh、calf。
+  # 当前工程使用恒等映射；若下位机实际顺序不同，必须先修正此项。
+  mapping: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+
+  # 第一次运行只允许一个关节为 true。
+  enabled: [true, false, false,
+            false, false, false,
+            false, false, false,
+            false, false, false]
+
+  # 启用关节会平滑移动到中心角；未启用关节保持程序启动时的实测角。
+  center_rad: [0.00, -0.80, 0.00,
+               0.00,  0.80, 0.00,
+               0.00, -0.80, 0.00,
+               0.00,  0.80, 0.00]
+
+  # 以下是实验软限位示例，不是机械硬限位，运行前必须按实机修改。
+  lower_limit_rad: [-0.50, -1.30, -1.00,
+                    -0.50,  0.30, -1.00,
+                    -0.50, -1.30, -1.00,
+                    -0.50,  0.30, -1.00]
+
+  upper_limit_rad: [0.50, -0.30, 1.00,
+                    0.50,  1.30, 1.00,
+                    0.50, -0.30, 1.00,
+                    0.50,  1.30, 1.00]
+
+  # 仅 sine 使用，各关节可以设置不同振幅。
+  amplitude_rad: [0.03, 0.03, 0.03,
+                  0.03, 0.03, 0.03,
+                  0.03, 0.03, 0.03,
+                  0.03, 0.03, 0.03]
+
+  # 建议先使用较低增益完成悬空单关节验证，再逐步调整。
+  kp: [20.0, 20.0, 20.0,
+       20.0, 20.0, 20.0,
+       20.0, 20.0, 20.0,
+       20.0, 20.0, 20.0]
+
+  kd: [1.0, 1.0, 1.0,
+       1.0, 1.0, 1.0,
+       1.0, 1.0, 1.0,
+       1.0, 1.0, 1.0]
+
+experiment:
+  # 可选：hold、smooth_step、sine。
+  type: "hold"
+  duration_seconds: 5.0
+
+  sine:
+    frequency_hz: 0.20
+    phase_rad: 0.0
+
+  smooth_step:
+    # 所有启用关节使用相同偏移；负值表示反方向。
+    offset_rad: 0.03
+    hold_before_seconds: 2.0
+    transition_seconds: 1.0
+    hold_after_seconds: 2.0

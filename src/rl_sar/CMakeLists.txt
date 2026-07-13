@@ -701,6 +701,26 @@ if(SYSTEM_TYPE STREQUAL "Linux")
     endif()
 endif()
 
+# executable for ATDog3 joint identification (ROS2 dependent)
+if(SYSTEM_TYPE STREQUAL "Linux")
+    if(NOT USE_CMAKE)
+        add_executable(atdog3_joint_identification identification/atdog3_joint_identification.cpp)
+        target_link_libraries(atdog3_joint_identification
+            atdog::leg_driver
+            ${YAML_CPP_LIBRARIES}
+        )
+        if($ENV{ROS_DISTRO} MATCHES "noetic")
+            target_link_libraries(atdog3_joint_identification ${catkin_LIBRARIES})
+        elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
+            install(TARGETS atdog3_joint_identification DESTINATION lib/${PROJECT_NAME})
+            install(
+                DIRECTORY identification/config
+                DESTINATION share/${PROJECT_NAME}/identification
+            )
+        endif()
+    endif()
+endif()
+
 # executable for rl real atdog (ROS2 dependent)
 if(SYSTEM_TYPE STREQUAL "Linux")
     if(NOT USE_CMAKE)
