@@ -167,7 +167,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                     pilot->stop();
                 }
             } else if (check_key_trigger(msg.key, 5)) {
-                if (!robot_pose_valid_ || !sync_pilot_state_from_transform(robot_pos_transfer)) {
+                if (!refresh_robot_pose()) {
                     RCLCPP_ERROR(node_->get_logger(), "自动轨迹启动失败，尚未获取有效map->base_link位姿");
                 } else {
                     auto pilot = active_pilot();
@@ -246,7 +246,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
                 if (!param.as_bool()) {
                     continue;
                 }
-                if (!robot_pose_valid_ || !sync_pilot_state_from_transform(robot_pos_transfer)) {
+                if (!refresh_robot_pose()) {
                     RCLCPP_ERROR(node_->get_logger(), "begin_game触发失败，尚未获取有效map->base_link位姿");
                 } else {
                     auto pilot = active_pilot();
@@ -279,36 +279,7 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         }
 
         geometry_msgs::msg::TransformStamped transfer;
-        try {
-            transfer = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero, tf2::durationFromSec(0.05));
-            robot_pos_transfer = transfer;
-            robot_pose_valid_ = sync_pilot_state_from_transform(transfer);
-            if (!robot_pose_valid_) {
-                RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 500, "map->base_link位姿数值无效，自动驾驶仪停止运行");
-                if (current_control_mode == 1) {
-                    auto pilot = active_pilot();
-                    if (pilot) {
-                        pilot->stop();
-                    }
-                    cmd.mode = 1;
-                    cmd.vx = 0.0f;
-                    cmd.vy = 0.0f;
-                    cmd.vz = 0.0f;
-                    current_control_mode = 0;
-                }
-                cmd_pub_->publish(cmd);
-                return;
-            }
-            RCLCPP_INFO_THROTTLE(
-                node_->get_logger(),
-                *node_->get_clock(),
-                1000,
-                "pos=(%lf,%lf)",
-                transfer.transform.translation.x,
-                transfer.transform.translation.y);
-        } catch (const tf2::TransformException& ex) {
-            robot_pose_valid_ = false;
-            RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 500, "获取目标 TF 失败，自动驾驶仪停止运行: %s", ex.what());
+        if (!refresh_robot_pose()) {
             if (current_control_mode == 1) {
                 auto pilot = active_pilot();
                 if (pilot) {
@@ -323,6 +294,15 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
             cmd_pub_->publish(cmd);
             return;
         }
+
+        transfer = robot_pos_transfer;
+        RCLCPP_INFO_THROTTLE(
+            node_->get_logger(),
+            *node_->get_clock(),
+            1000,
+            "pos=(%lf,%lf)",
+            transfer.transform.translation.x,
+            transfer.transform.translation.y);
 
         if (current_control_mode == 1) {
             // geometry_msgs::msg::TransformStamped transfer;
@@ -355,6 +335,23 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         }
         cmd_pub_->publish(cmd);
     });
+}
+
+bool Robot::refresh_robot_pose()
+{
+    try {
+        const auto transfer = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+        robot_pos_transfer = transfer;
+        robot_pose_valid_ = sync_pilot_state_from_transform(transfer);
+        if (!robot_pose_valid_) {
+            RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 500, "map->base_link位姿数值无效");
+        }
+        return robot_pose_valid_;
+    } catch (const tf2::TransformException& ex) {
+        robot_pose_valid_ = false;
+        RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 500, "获取目标 TF 失败: %s", ex.what());
+        return false;
+    }
 }
 
 bool Robot::sync_pilot_state_from_transform(const geometry_msgs::msg::TransformStamped& transfer)

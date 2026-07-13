@@ -20,6 +20,7 @@ public:
     bool check_key_trigger(uint32_t current_key,int index);
     bool check_key_pressed(uint32_t current_key,int index);
 private:
+    bool refresh_robot_pose();
     bool sync_pilot_state_from_transform(const geometry_msgs::msg::TransformStamped& transfer);
     std::shared_ptr<Pilot> active_pilot() const;
     bool switch_to_path(int path_id);
