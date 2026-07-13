@@ -20,7 +20,7 @@ class ObstacleGameUiRunNode(Node):
         )
         self.declare_parameter(
             "dog3_real_path",
-            "/home/pc/Desktop/AT_robot-lab/install/rl_sar/lib/rl_sar/rl_real_atdog3",
+            "/home/pc/Desktop/AT_robot-lab_obstacle/install/rl_sar/lib/rl_sar/rl_real_atdog3",
         )
         target_node = self.get_parameter("target_node").value
         service_name = self._parameter_service_name(target_node)
