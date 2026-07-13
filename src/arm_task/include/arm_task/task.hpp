@@ -116,7 +116,8 @@ private:
     std::vector<double> look_for_position_{0.0, 1.2, 2.3, 2.8};   //这是全场扫描时机械臂合适的位置    //0.0 1.0 2.45 3.1
     std::vector<double> grasp_finish_position{0.0, 0.1, 0.1, -0.8};
     std::vector<double> release_box_position{0.0, 1.8, 3.8, 0.6};   //将箱子放到狗背上的关节位置
-    std::vector<double> re_graspe_box_position{0.0, 0.8, 3.3, -1.2};
+    std::vector<double> re_graspe_box_position{0.0, 0.8, 3.14, -1.2};
+    std::vector<double> re_graspe_box_collision_avoid_position{0.0,1.57, 3.14, -1.2};
     std::vector<double> place_box_collision_avoid_position{0.0, 0.1, 1.6, 0.2};
     std::vector<double> finished_release_box_position{0.0, 1.8, 2.0, 0.6};  //放置碰撞的中间轨迹点
     
@@ -145,7 +146,8 @@ private:
     double place_hand_level_2_cartesian_duration_{0.6};
     double place_hand_level_2_retract_duration_{0.2};
     double place_hand_level_2_home_duration_{0.5};
-    double place_box_re_grasp_duration_{1.0};
+    double place_box_re_grasp_duration_{0.4};
+    double place_box_re_grasp_collision_avoid_duration_{0.8};
     double place_box_collision_avoid_duration_{0.1};
     double place_box_level_1_prepare_duration_{3.5};
     double place_box_level_1_cartesian_duration_{0.6};

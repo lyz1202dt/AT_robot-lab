@@ -18,6 +18,7 @@ arm_task:
       grasp_finish: [0.0, 0.1, 0.1, -0.8]
       release_box: [0.0, 1.2, 3.1416, 0.5]
       re_grasp_box: [0.0, 0.1, 2.0, 0.2]
+      re_grasp_box_collision_avoid: [0.0, 0.1, 2.0, 0.2]
       place_box_collision_avoid: [0.0, 0.1, 1.6, 0.2]
       finished_release_box: [0.0, 1.8, 2.0, 0.6]
 
@@ -50,6 +51,7 @@ arm_task:
       place_hand_level_2_retract_duration: 0.2
       place_hand_level_2_home_duration: 0.5
       place_box_re_grasp_duration: 1.0
+      place_box_re_grasp_collision_avoid_duration: 0.8
       place_box_collision_avoid_duration: 0.1
       place_box_level_1_prepare_duration: 3.5
       place_box_level_1_cartesian_duration: 0.6
