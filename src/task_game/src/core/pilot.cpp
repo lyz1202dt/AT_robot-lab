@@ -44,6 +44,7 @@ constexpr double kMinDuration = 0.05;     ///< 最小规划时长(s)，防止零
 constexpr double kDefaultAccel = 0.25;    ///< 默认加速度(m/s²)
 constexpr double kDefaultVelocity = 0.7;  ///< 默认最大速度(m/s)
 constexpr double kTinyError = 1e-5;       ///< 极微小误差阈值，用于判断是否无需补偿
+constexpr double kPiTurnDeadband = 0.08;  ///< 180° 临界区宽度(rad)，用于稳定初始瞄准方向
 
 /**
  * @brief 速度规划采样结果
@@ -327,6 +328,8 @@ void Pilot::reset_execution() {
     segment_start_yaw_ = current_yaw_;
     segment_start_speed_ = 0.0;
     aiming_done_ = false;
+    aiming_pi_turn_latched_ = false;
+    aiming_pi_turn_sign_ = 1.0;
     transition_ = CubicTransition{};
     finished_cb_ = nullptr;
     stop_when_finished_ = true;
@@ -349,6 +352,8 @@ void Pilot::begin_current_segment(std::chrono::time_point<std::chrono::high_reso
     segment_start_speed_ = start_speed;
     segment_start_time_ = time;
     transition_ = CubicTransition{};
+    aiming_pi_turn_latched_ = false;
+    aiming_pi_turn_sign_ = 1.0;
 
     if (current_index_ < targets_.size()) {
         // allow_y_vel=true 可直接边走边转
@@ -381,6 +386,8 @@ void Pilot::finish_current_target(std::chrono::time_point<std::chrono::high_reso
         segment_start_time_ = time;
         transition_ = CubicTransition{};
         aiming_done_ = targets_[current_index_].allow_y_vel;
+        aiming_pi_turn_latched_ = false;
+        aiming_pi_turn_sign_ = 1.0;
         state_ = PilotState::Running;
         return;
     }
@@ -726,6 +733,8 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                     segment_start_time_ = time;
                     transition_ = CubicTransition{};  // 清除过渡数据
                     aiming_done_ = true;
+                    aiming_pi_turn_latched_ = false;
+                    aiming_pi_turn_sign_ = 1.0;
                     // 过渡完成后若已无更多目标，则进入最终微调
                     if (current_index_ >= targets_.size()) {
                         state_ = PilotState::Adjusting;
@@ -755,8 +764,26 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                 // ---- 原地瞄准阶段（allow_y_vel=false && !aiming_done_） ----
                 if (!target.allow_y_vel && !aiming_done_) {
                     // 非横移模式：先原地旋转对准 path_yaw，满足阈值后开始直线前进
-                    const double yaw_error = normalize_angle(path_yaw - current_yaw_);
+                    const double raw_yaw_error = normalize_angle(path_yaw - current_yaw_);
+                    double yaw_error = raw_yaw_error;
+                    const bool near_pi = std::abs(std::abs(raw_yaw_error) - kPi) < kPiTurnDeadband;
+                    if (near_pi) {
+                        if (!aiming_pi_turn_latched_) {
+                            aiming_pi_turn_sign_ = current_yaw_ < 0.0f ? 1.0 : -1.0;
+                            aiming_pi_turn_latched_ = true;
+                            RCLCPP_INFO(
+                                node_->get_logger(),
+                                "Pilot 初始瞄准进入 180 度临界区: index=%zu, current_yaw=%.4f, path_yaw=%.4f, raw_error=%.4f, turn_sign=%.0f",
+                                current_index_,
+                                current_yaw_,
+                                path_yaw,
+                                raw_yaw_error,
+                                aiming_pi_turn_sign_);
+                        }
+                        yaw_error = std::copysign(std::abs(raw_yaw_error), aiming_pi_turn_sign_);
+                    }
                     if (std::abs(yaw_error) < static_cast<double>(target.allow_start_dir_error)) {
+                        const bool pi_turn_was_latched = aiming_pi_turn_latched_;
                         // 瞄准完成，重新校准时间基准，开始直线段
                         begin_current_segment(time, 0.0);
                         // ⚠️ begin_current_segment 会按 allow_y_vel 初始化 aiming_done_，
@@ -764,6 +791,14 @@ robot_msgs::msg::Cmd Pilot::get_command(std::chrono::time_point<std::chrono::hig
                         aiming_done_ = true;
                         segment_vec = target.target_pos - segment_start_pos_;
                         distance = segment_vec.norm();
+                        if (pi_turn_was_latched) {
+                            RCLCPP_INFO(
+                                node_->get_logger(),
+                                "Pilot 180 度初始瞄准完成: index=%zu, current_yaw=%.4f, path_yaw=%.4f",
+                                current_index_,
+                                current_yaw_,
+                                path_yaw);
+                        }
                     } else {
                         // 还在瞄准：输出纯旋转，平移速度为零
                         double omega = target.kp.z() * yaw_error;

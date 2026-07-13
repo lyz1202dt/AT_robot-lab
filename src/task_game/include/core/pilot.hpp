@@ -247,6 +247,9 @@ private:
     double segment_start_speed_{0.0};
     /// 瞄准完成标志：allow_y_vel=false 时，true 表示已完成初始瞄准，可以开始直线前进
     bool aiming_done_{false};
+    /// 180° 临界瞄准时锁定的旋转方向，避免 yaw 跨 ±π 后角速度反向
+    bool aiming_pi_turn_latched_{false};
+    double aiming_pi_turn_sign_{1.0};
     /// 当前直线轨迹段的起始时间戳，梯形速度规划以此计算 elapsed
     std::chrono::time_point<std::chrono::high_resolution_clock> segment_start_time_{};
 
