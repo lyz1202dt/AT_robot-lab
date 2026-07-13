@@ -305,6 +305,17 @@ void ArmCtrlNode::refresh_plan(double now_sec) {
     case MotionMode::kJointSpace:                                                               // 关节空间模式
         joint_space_move_->set_start_state(current_joint_state_);                               // 设置起点状态
         joint_space_move_->set_goal_state(joint_target_state_, trajectory_duration_sec_);       // 设置目标状态和持续时间
+        RCLCPP_INFO(get_logger(),
+                    "关节空间轨迹目标: start=[%.3f, %.3f, %.3f, %.3f], goal=[%.3f, %.3f, %.3f, %.3f], duration=%.3f",
+                    current_joint_state_.position[0],
+                    current_joint_state_.position[1],
+                    current_joint_state_.position[2],
+                    current_joint_state_.position[3],
+                    joint_target_state_.position[0],
+                    joint_target_state_.position[1],
+                    joint_target_state_.position[2],
+                    joint_target_state_.position[3],
+                    trajectory_duration_sec_);
         if (execute_trajectory_) {                                                              // 如果执行轨迹
             joint_space_move_->start(now_sec);                                                  // 开始轨迹
         }
@@ -796,13 +807,18 @@ void ArmCtrlNode::on_visual_target(const geometry_msgs::msg::PoseStamped& msg) {
  */
 void ArmCtrlNode::on_joint_space_target(const std_msgs::msg::Float64MultiArray& msg) {
     if (msg.data.size() < kJointDoF) {
-        RCLCPP_WARN(this->get_logger(), "joint_space_target requires at least 6 elements");
+        RCLCPP_WARN(this->get_logger(), "joint_space_target requires at least %zu elements", kJointDoF);
         return;
     }
 
     for (std::size_t i = 0; i < kJointDoF; ++i) {
         joint_target_state_.position[static_cast<int>(i)] = msg.data[i];
     }
+    RCLCPP_INFO(this->get_logger(), "收到关节空间目标: [%.3f, %.3f, %.3f, %.3f]",
+                joint_target_state_.position[0],
+                joint_target_state_.position[1],
+                joint_target_state_.position[2],
+                joint_target_state_.position[3]);
 
     // 满足条件时立即切换到关节空间模式并刷新规划
     if (has_joint_state_ && active_motion_mode_ == MotionMode::kIdle && requested_motion_mode_ == MotionMode::kJointSpace

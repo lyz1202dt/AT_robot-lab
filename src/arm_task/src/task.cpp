@@ -1256,7 +1256,12 @@ void ArmTaskNode::set_initial_arm_state(const std::vector<double>& joint_angles)
 
 // 关节轨迹规划控制
 void ArmTaskNode::execute_joint_space_trajectory(const std::vector<double>& joint_angles, double duration) {
-    RCLCPP_INFO(this->get_logger(), "执行关节轨迹规划");
+    RCLCPP_INFO(this->get_logger(), "执行关节轨迹规划: target=[%.3f, %.3f, %.3f, %.3f], duration=%.3f",
+                joint_angles.size() > 0 ? joint_angles[0] : 0.0,
+                joint_angles.size() > 1 ? joint_angles[1] : 0.0,
+                joint_angles.size() > 2 ? joint_angles[2] : 0.0,
+                joint_angles.size() > 3 ? joint_angles[3] : 0.0,
+                duration);
 
     // Publish joint target
     std_msgs::msg::Float64MultiArray msg;
