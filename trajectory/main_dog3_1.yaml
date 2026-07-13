@@ -436,16 +436,15 @@ paths:
   trajectory_connection_radius: 0
   stand_at_target: false
   stand_duration: 0
-  # 缺少2
 - policy_id: 2
   target_pos:
-    x: 7.245361
-    y: 2.878234
-  target_yaw: -1.497891
-  constraint_target_yaw: true
+    x: 7.27237
+    y: 2.683148
+  target_yaw: -3.047564
+  constraint_target_yaw: false
   target_vel: 0.01
-  max_velocity: 1.6
-  max_accelation: 1.0
+  max_velocity: 1
+  max_accelation: 0.3
   max_omega: 1.2
   kp:
     x: 3
@@ -454,21 +453,20 @@ paths:
   allow_start_dir_error: 0.05
   allow_final_dir_error: 0.05
   allow_final_pos_allow: 0.05
-  adjust_min_vel: 1.4
+  adjust_min_vel: 0.5
   adjust_min_omega: 0.4
-  allow_y_vel: true
+  allow_y_vel: false
   trajectory_connection_radius: 0
   stand_at_target: false
   stand_duration: 0
-  # 缺少2
 - policy_id: 7
   target_pos:
-    x: 4.971771
-    y: 2.547441
-  target_yaw: -3.10177
+    x: 4.9238
+    y: 2.579134
+  target_yaw: 3.103799
   constraint_target_yaw: false
   target_vel: 0.01
-  max_velocity: 0.7
+  max_velocity: 1
   max_accelation: 0.3
   max_omega: 1.2
   kp:
