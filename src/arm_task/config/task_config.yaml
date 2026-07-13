@@ -50,7 +50,7 @@ arm_task:
       place_hand_level_2_cartesian_duration: 0.8
       place_hand_level_2_retract_duration: 0.2
       place_hand_level_2_home_duration: 0.5
-      place_box_re_grasp_duration: 1.0
+      place_box_re_grasp_duration: 0.4
       place_box_re_grasp_collision_avoid_duration: 0.8
       place_box_collision_avoid_duration: 0.1
       place_box_level_1_prepare_duration: 3.5
