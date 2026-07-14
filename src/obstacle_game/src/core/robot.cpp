@@ -94,6 +94,16 @@ Robot::Robot(const std::shared_ptr<rclcpp::Node> node)
         if (pilot) {
             pilot->notify_policy_done(msg.data);
         }
+
+        // 手动触发 cross_wall 时，固定动作结束后切回站立，
+        // 否则上层会持续发送 mode=8，底层在 get_up 后又会重新进入 cross_wall。
+        if (current_control_mode == 0 && msg.data == 8 && cmd.mode == 8) {
+            cmd.mode = 1;
+            cmd.vx = 0.0f;
+            cmd.vy = 0.0f;
+            cmd.vz = 0.0f;
+            RCLCPP_INFO(node_->get_logger(), "手动cross_wall完成，切回getup/位控站立，可继续遥控");
+        }
     });
 
     // 机器人运动控制指令发布
