@@ -364,8 +364,8 @@ class TaskGameUi:
         minute_prepare_button.grid(
             row=0,
             column=0,
+            columnspan=2,
             sticky="ew",
-            padx=(0, self._action_gap // 2),
             pady=(0, self._action_gap),
         )
 
@@ -377,17 +377,10 @@ class TaskGameUi:
         vip_recognition_button.grid(
             row=1,
             column=0,
+            columnspan=2,
             sticky="ew",
-            padx=(0, self._action_gap // 2),
             pady=(0, self._action_gap),
         )
-
-        auto_button = self._create_primary_button(
-            action_frame,
-            "切入自动",
-            self._switch_to_auto,
-        )
-        auto_button.grid(row=2, column=0, sticky="ew", padx=(0, self._action_gap // 2))
 
         start_button = self._create_primary_button(
             action_frame,
@@ -395,15 +388,11 @@ class TaskGameUi:
             self._start_game,
         )
         start_button.grid(
-            row=0,
-            column=1,
+            row=2,
+            column=0,
+            columnspan=2,
             sticky="ew",
-            padx=(self._action_gap // 2, 0),
-            pady=(0, self._action_gap),
         )
-
-        confirm_button = self._create_primary_button(action_frame, "确定", self._publish_grid)
-        confirm_button.grid(row=1, column=1, sticky="ew", padx=(self._action_gap // 2, 0))
 
         emergency_stop_button = self._create_emergency_button(
             right_frame,
@@ -494,6 +483,9 @@ class TaskGameUi:
         self._refresh_button(row, col)
 
     def _start_game(self) -> None:
+        snapshot = [row[:] for row in self._grid]
+        self._ros_node.switch_to_auto()
+        self._ros_node.publish_grid(snapshot)
         self._ros_node.set_start_game()
 
     def _start_vip_recognition(self) -> None:
