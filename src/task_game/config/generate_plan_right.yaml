@@ -25,7 +25,7 @@ start_to_a0_target_point: &start_to_a0_target_point
   kp: [2.0, 0.5, 2.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.1
-  allow_final_pos_allow: 0.05
+  allow_final_pos_allow: 0.08
   adjust_min_vel: 0.37
   adjust_min_omega: 0.4
   allow_y_vel: true
@@ -40,7 +40,7 @@ a0_to_a1_target_point: &a0_to_a1_target_point
   kp: [2.0, 0.5, 2.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.1
-  allow_final_pos_allow: 0.05
+  allow_final_pos_allow: 0.08
   adjust_min_vel: 0.37
   adjust_min_omega: 0.4
   allow_y_vel: true
@@ -55,7 +55,7 @@ a1_to_box0_target_point: &a1_to_box0_target_point
   kp: [2.0, 0.5, 2.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.1
-  allow_final_pos_allow: 0.05
+  allow_final_pos_allow: 0.08
   adjust_min_vel: 0.37
   adjust_min_omega: 0.4
   allow_y_vel: true
@@ -70,7 +70,7 @@ box0_to_box1_target_point: &box0_to_box1_target_point
   kp: [2.0, 0.5, 2.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.1
-  allow_final_pos_allow: 0.05
+  allow_final_pos_allow: 0.08
   adjust_min_vel: 0.37
   adjust_min_omega: 0.4
   allow_y_vel: false
@@ -85,7 +85,7 @@ box1_to_a2_target_point: &box1_to_a2_target_point
   kp: [2.5, 0.5, 2.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.1
-  allow_final_pos_allow: 0.05
+  allow_final_pos_allow: 0.08
   adjust_min_vel: 0.37
   adjust_min_omega: 0.4
   allow_y_vel: false
@@ -100,7 +100,7 @@ a2_to_dst1_target_point: &a2_to_dst1_target_point #第一轮放
   kp: [2.5, 0.5, 2.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.1
-  allow_final_pos_allow: 0.05
+  allow_final_pos_allow: 0.08
   adjust_min_vel: 0.37
   adjust_min_omega: 0.4
   allow_y_vel: false
@@ -115,7 +115,7 @@ box1_to_dst1_target_point: &box1_to_dst1_target_point   #去
   kp: [2.5, 0.5, 2.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.1
-  allow_final_pos_allow: 0.05
+  allow_final_pos_allow: 0.08
   adjust_min_vel: 0.37
   adjust_min_omega: 0.4
   allow_y_vel: false
@@ -130,7 +130,7 @@ dst1_to_dst0_target_point: &dst1_to_dst0_target_point
   kp: [2.0, 1.0, 2.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.1
-  allow_final_pos_allow: 0.05
+  allow_final_pos_allow: 0.08
   adjust_min_vel: 0.37
   adjust_min_omega: 0.4
   allow_y_vel: true
@@ -145,7 +145,7 @@ dst0_to_dst2_target_point: &dst0_to_dst2_target_point
   kp: [2.0, 0.5, 2.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.1
-  allow_final_pos_allow: 0.05
+  allow_final_pos_allow: 0.08
   adjust_min_vel: 0.37
   adjust_min_omega: 0.4
   allow_y_vel: true
@@ -160,7 +160,7 @@ dst2_to_box0_target_point: &dst2_to_box0_target_point #回
   kp: [2.5, 0.5, 2.0]
   allow_start_dir_error: 0.1
   allow_final_dir_error: 0.1
-  allow_final_pos_allow: 0.05
+  allow_final_pos_allow: 0.08
   adjust_min_vel: 0.37
   adjust_min_omega: 0.4
   allow_y_vel: false
@@ -192,15 +192,15 @@ box_positions_second:
     - [4.1101936226738605, -2.4658884826018284, 0.016418700182858133]  #(2灰色)
     - [4.1114292125949897, -3.2599089465412117, -0.013295672041067306]  #(3绿色)
   pick_line_0:
-    - [3.0012381778653731, -0.810, -3.14]
-    - [3.0012381778653731, -1.6116394874108346, -3.14]
-    - [3.0061148222899482, -2.4372288330604324, -3.112081493277739]
-    - [3.0077117988662979, -3.3032856257276642, -3.1271719800303472]
+    - [2.9712381778653731, -0.810, -3.14]
+    - [2.9712381778653731, -1.6116394874108346, -3.14]
+    - [2.9761148222899482, -2.4372288330604324, -3.112081493277739]
+    - [2.9777117988662979, -3.3032856257276642, -3.1271719800303472]
   pick_line_1:
-    - [2.1310456409969086, -0.810, -3.14]
-    - [2.1310456409969086, -1.5741184319666135, -3.14]
-    - [2.1310456409969086, -2.422191449042745, -3.1356773741215962]
-    - [2.1319516369279833, -3.2947027090480336, -3.1193922909543348]
+    - [2.1010456409969086, -0.810, -3.14]
+    - [2.1010456409969086, -1.5741184319666135, -3.14]
+    - [2.1010456409969086, -2.422191449042745, -3.1356773741215962]
+    - [2.1019516369279833, -3.2947027090480336, -3.1193922909543348]
 
 box_positions_first:
   pick_line_0:
