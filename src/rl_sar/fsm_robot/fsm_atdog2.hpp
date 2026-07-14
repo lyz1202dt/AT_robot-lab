@@ -105,11 +105,13 @@ public:
         0.00, 0.00, 0.00, 0.00
     };
     bool stand_from_passive = true;
+    bool stand_from_check = false;
 
     void Enter() override
     {
         percent_pre_getup = 0.0f;
         percent_getup = 0.0f;
+        stand_from_check = false;
         if (rl.fsm.previous_state_->GetStateName() == "RLFSMStatePassive")
         {
             stand_from_passive = true;
@@ -118,6 +120,10 @@ public:
         {
             stand_from_passive = false;
         }
+        else if (rl.fsm.previous_state_->GetStateName() == "RLFSMStateCheck")
+        {
+            stand_from_check = true;
+        }
         rl.now_state = *fsm_state;
         rl.start_state = rl.now_state;
         std::cout<<"当前关节角:"<<rl.now_state.motor_state.q<<std::endl;
@@ -125,16 +131,27 @@ public:
 
     void Run() override
     {
-        if(stand_from_passive)
+        if(stand_from_check)
         {
+            if (Interpolate(percent_pre_getup, rl.now_state.motor_state.q, pre_running_pos, 3.0f, "Pre Getting up", true)) return;
+            if (Interpolate(percent_getup, pre_running_pos, rl.params.Get<std::vector<float>>("default_dof_pos"), 3.0f, "Getting up", true)) return;
+        }
+        else 
+        {
+            if(stand_from_passive)
+            {
 
-            if (Interpolate(percent_pre_getup, rl.now_state.motor_state.q, pre_running_pos, 1.0f, "Pre Getting up", true)) return;
-            if (Interpolate(percent_getup, pre_running_pos, rl.params.Get<std::vector<float>>("default_dof_pos"), 2.0f, "Getting up", true)) return;
+                if (Interpolate(percent_pre_getup, rl.now_state.motor_state.q, pre_running_pos, 1.0f, "Pre Getting up", true)) return;
+                if (Interpolate(percent_getup, pre_running_pos, rl.params.Get<std::vector<float>>("default_dof_pos"), 2.0f, "Getting up", true)) return;
+            }
+            else
+            {
+                if (Interpolate(percent_getup, rl.now_state.motor_state.q, rl.params.Get<std::vector<float>>("default_dof_pos"), 1.0f, "Getting up", true)) return;
+            }
+
         }
-        else
-        {
-            if (Interpolate(percent_getup, rl.now_state.motor_state.q, rl.params.Get<std::vector<float>>("default_dof_pos"), 1.0f, "Getting up", true)) return;
-        }
+
+
     }
 
     void Exit() override {}
