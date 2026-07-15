@@ -19,105 +19,105 @@
 start_to_a0_target_point: &start_to_a0_target_point
   constraint_target_yaw: true
   target_vel: 0.0
-  max_velocity: 0.8
-  max_accelation: 0.4
+  max_velocity: 1.5
+  max_accelation: 0.6
   max_omega: 1.2
-  kp: [2.0, 0.5, 1.5]
+  kp: [3.0, 1.0, 2.5]
   allow_start_dir_error: 0.15
   allow_final_dir_error: 0.08
   allow_final_pos_allow: 0.1
-  adjust_min_vel: 0.35
-  adjust_min_omega: 0.45
+  adjust_min_vel: 0.45
+  adjust_min_omega: 0.5
   allow_y_vel: true
   trajectory_connection_radius: 0.0
 
 a0_to_a1_target_point: &a0_to_a1_target_point
   constraint_target_yaw: true
   target_vel: 0.5
-  max_velocity: 0.6
-  max_accelation: 0.4
+  max_velocity: 1.5
+  max_accelation: 0.6
   max_omega: 1.2
-  kp: [2.0, 0.5, 1.5]
+  kp: [3.0, 1.0, 2.5]
   allow_start_dir_error: 0.15
   allow_final_dir_error: 0.08
   allow_final_pos_allow: 0.1
-  adjust_min_vel: 0.35
-  adjust_min_omega: 0.45
+  adjust_min_vel: 0.45
+  adjust_min_omega: 0.5
   allow_y_vel: true
   trajectory_connection_radius: 0.0
 
 a1_to_box0_target_point: &a1_to_box0_target_point
   constraint_target_yaw: true
   target_vel: 0.0
-  max_velocity: 0.8
-  max_accelation: 0.4
+  max_velocity: 1.5
+  max_accelation: 0.6
   max_omega: 1.2
-  kp: [2.0, 0.5, 1.5]
+  kp: [3.0, 1.0, 2.5]
   allow_start_dir_error: 0.15
   allow_final_dir_error: 0.08
   allow_final_pos_allow: 0.08
-  adjust_min_vel: 0.35
-  adjust_min_omega: 0.45
+  adjust_min_vel: 0.45
+  adjust_min_omega: 0.5
   allow_y_vel: true
   trajectory_connection_radius: 0.0
 
 box0_to_box1_target_point: &box0_to_box1_target_point
   constraint_target_yaw: true
   target_vel: 0.0
-  max_velocity: 0.8
-  max_accelation: 0.5
+  max_velocity: 1.5
+  max_accelation: 0.6
   max_omega: 1.2
-  kp: [2.0, 0.5, 1.5]
+  kp: [3.0, 1.0, 2.5]
   allow_start_dir_error: 0.15
   allow_final_dir_error: 0.08
   allow_final_pos_allow: 0.08
-  adjust_min_vel: 0.35
-  adjust_min_omega: 0.45
+  adjust_min_vel: 0.45
+  adjust_min_omega: 0.5
   allow_y_vel: false
   trajectory_connection_radius: 0.0
 
 box1_to_a2_target_point: &box1_to_a2_target_point
   constraint_target_yaw: true
   target_vel: 0.5
-  max_velocity: 0.8
-  max_accelation: 0.4
+  max_velocity: 1.5
+  max_accelation: 0.6
   max_omega: 1.2
-  kp: [2.5, 0.5, 1.5]
+  kp: [3.0, 1.0, 2.5]
   allow_start_dir_error: 0.15
   allow_final_dir_error: 0.08
   allow_final_pos_allow: 0.1
-  adjust_min_vel: 0.35
-  adjust_min_omega: 0.45
+  adjust_min_vel: 0.45
+  adjust_min_omega: 0.5
   allow_y_vel: false
   trajectory_connection_radius: 0.0
 
 a2_to_dst1_target_point: &a2_to_dst1_target_point #第一轮放
   constraint_target_yaw: true
   target_vel: 0.0
-  max_velocity: 2.0
-  max_accelation: 0.6
+  max_velocity: 2.5
+  max_accelation: 0.7
   max_omega: 2.0
-  kp: [2.5, 0.5, 1.5]
+  kp: [3.0, 1.0, 2.5]
   allow_start_dir_error: 0.15
   allow_final_dir_error: 0.08
   allow_final_pos_allow: 0.08
-  adjust_min_vel: 0.35
-  adjust_min_omega: 0.45
+  adjust_min_vel: 0.45
+  adjust_min_omega: 0.5
   allow_y_vel: false
   trajectory_connection_radius: 0.0
 
 box1_to_dst1_target_point: &box1_to_dst1_target_point   #去
   constraint_target_yaw: true
   target_vel: 0.0
-  max_velocity: 2.0
-  max_accelation: 0.6
+  max_velocity: 2.5
+  max_accelation: 0.7
   max_omega: 2.0
-  kp: [2.5, 0.5, 1.5]
+  kp: [3.0, 1.0, 2.5]
   allow_start_dir_error: 0.15
   allow_final_dir_error: 0.08
   allow_final_pos_allow: 0.08
-  adjust_min_vel: 0.35
-  adjust_min_omega: 0.45
+  adjust_min_vel: 0.45
+  adjust_min_omega: 0.5
   allow_y_vel: false
   trajectory_connection_radius: 0.0
 
@@ -127,12 +127,12 @@ dst1_to_dst0_target_point: &dst1_to_dst0_target_point
   max_velocity: 0.65
   max_accelation: 0.4
   max_omega: 2.0
-  kp: [2.0, 0.5, 1.5]
+  kp: [3.0, 1.0, 2.5]
   allow_start_dir_error: 0.15
   allow_final_dir_error: 0.08
   allow_final_pos_allow: 0.08
-  adjust_min_vel: 0.35
-  adjust_min_omega: 0.45
+  adjust_min_vel: 0.45
+  adjust_min_omega: 0.5
   allow_y_vel: true
   trajectory_connection_radius: 0.0
 
@@ -142,27 +142,27 @@ dst0_to_dst2_target_point: &dst0_to_dst2_target_point
   max_velocity: 1.5
   max_accelation: 0.75
   max_omega: 2.0
-  kp: [2.0, 0.5, 1.5]
+  kp: [3.0, 1.0, 2.5]
   allow_start_dir_error: 3.2
   allow_final_dir_error: 0.15
   allow_final_pos_allow: 0.15
-  adjust_min_vel: 0.35
-  adjust_min_omega: 0.45
+  adjust_min_vel: 0.45
+  adjust_min_omega: 0.5
   allow_y_vel: true
   trajectory_connection_radius: 0.0
 
 dst2_to_box0_target_point: &dst2_to_box0_target_point #回
   constraint_target_yaw: true
   target_vel: 0.0
-  max_velocity: 2.0
-  max_accelation: 0.6
+  max_velocity: 2.5
+  max_accelation: 0.7
   max_omega: 2.0
-  kp: [2.5, 0.5, 1.5]
+  kp: [3.5, 1.0, 2.5]
   allow_start_dir_error: 0.15
   allow_final_dir_error: 0.08
   allow_final_pos_allow: 0.08
-  adjust_min_vel: 0.35
-  adjust_min_omega: 0.45
+  adjust_min_vel: 0.45
+  adjust_min_omega: 0.5
   allow_y_vel: false
   trajectory_connection_radius: 0.25
 
@@ -187,15 +187,15 @@ arm_box_positions:
 # 机器狗导航到的箱子抓取/放置姿态，格式为 [x, y, yaw]
 box_positions_second:
   place:
-    - [4.4014292125949897, -2.4568884826018284, 0.0]  #(0蓝色)
-    - [4.4001936226738605, -3.2249089465412117, 0.0]  #(1红色)
-    - [4.406775076718437, -1.6592277302970256, 0.0]  #（2灰色）
-    - [4.4011294642237737, -0.85949762722138499, 0.0]    #(3绿色)
+    - [4.2514292125949897, -2.4568884826018284, 0.0]  #(0蓝色)
+    - [4.2501936226738605, -3.2249089465412117, 0.0]  #(1红色)
+    - [4.256775076718437, -1.6592277302970256, 0.0]  #（2灰色）
+    - [4.2511294642237737, -0.85949762722138499, 0.0]    #(3绿色)
   pick_line_0:
-    - [2.9512381778653731, -0.725, -3.14]
-    - [2.9512381778653731, -1.575, -3.14]
-    - [2.9561148222899482, -2.425, -3.14]
-    - [2.9577117988662979, -3.275, -3.14]
+    - [2.8512381778653731, -0.725, -3.14]
+    - [2.8512381778653731, -1.575, -3.14]
+    - [2.8561148222899482, -2.425, -3.14]
+    - [2.8577117988662979, -3.275, -3.14]
   pick_line_1:
     - [2.0510456409969086, -0.725, -3.14]
     - [2.0554874380278018, -1.575, -3.14]
