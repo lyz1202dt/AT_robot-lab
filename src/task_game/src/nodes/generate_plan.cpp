@@ -719,7 +719,7 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
             }
             plan.box1.to_dst.trajectory.push_back(box1_dst);
             plan.box1.to_dst.target_points.push_back(is_first_plan ? plan_config.a2_to_dst1 : plan_config.box1_to_dst1);
-            plan.dst2_pos = {box1_dst[0] - 0.20f, box1_dst[1], box1_dst[2]};
+            plan.dst2_pos = {box1_dst[0] - 0.25f, box1_dst[1], box1_dst[2]};
             RCLCPP_INFO(
                 context->node_->get_logger(),
                 "生成单吸手放计划: box(line=%d,col=%d,默认id=%d), dst2.y=%.3f",
