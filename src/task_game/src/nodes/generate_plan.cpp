@@ -739,7 +739,7 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
             plan.box1.to_dst.target_points.push_back(is_first_plan ? plan_config.a2_to_dst1 : plan_config.box1_to_dst1);
             plan.box0.to_dst.trajectory.push_back(box0_dst);
             plan.box0.to_dst.target_points.push_back(plan_config.dst1_to_dst0);
-            plan.dst2_pos = {box0_dst[0] - 0.05f, box0_dst[1], box0_dst[2]};
+            plan.dst2_pos = {box0_dst[0] - 0.25f, box0_dst[1], box0_dst[2]};
             RCLCPP_INFO(
                 context->node_->get_logger(),
                 "生成双箱计划: box0(line=%d,col=%d,默认id=%d), box1(line=%d,col=%d,默认id=%d), dst2.y=%.3f",
