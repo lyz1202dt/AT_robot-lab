@@ -817,8 +817,8 @@ void ArmTaskNode::execute_place_flow_2_on_hand() {
 
 void ArmTaskNode::execute_place_flow_1_on_box() {
 
-    constexpr const int kRetrycnt = 2;
-    int max_ryretry               = kRetrycnt;
+    // constexpr const int kRetrycnt = 2;
+    // int max_ryretry               = kRetrycnt;
 
     // auto temp1=std::vector{-1.3,1.57,1.57,0.0};
     // execute_joint_space_trajectory(temp1, 4.0);
@@ -829,7 +829,7 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
     // execute_joint_space_trajectory(grasp_finish_position, 4.0);
     // std::this_thread::sleep_for(4100ms);
 
-    do {
+    /*do {
         RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
         set_air_pump(true);
         execute_joint_space_trajectory(re_graspe_box_collision_avoid_position, place_box_re_grasp_collision_avoid_duration_);
@@ -857,58 +857,58 @@ void ArmTaskNode::execute_place_flow_1_on_box() {
         
         RCLCPP_INFO(get_logger(),"测距模块读数%f", get_current_box_hand_dis());
 
-    } while (max_ryretry && get_current_box_hand_dis() > 0.1f);
-    if (get_current_box_hand_dis() > 0.1f) {
+    } while (max_ryretry && get_current_box_hand_dis() > 0.1f);*/
+    /*if (get_current_box_hand_dis() > 0.1f) {*/
         std_msgs::msg::Int32 ret;
         ret.data = -1;
         arm_finished_pub->publish(ret);
         RCLCPP_INFO(get_logger(),"从背上抓取失败，触发重规划");
         execute_joint_space_trajectory(home_position_, 0.3);
         std::this_thread::sleep_for(300ms);
-        return;
-    }
+        return ;
+    //}
 
-    double x = 0.0;
-    double y = 0.0;
-    if (!sample_target_xy_from_tf(0.08, x, y)) {
-        RCLCPP_INFO(get_logger(), "找不到要放置的目标");
-        return;
-    }
+    // double x = 0.0;
+    // double y = 0.0;
+    // if (!sample_target_xy_from_tf(0.08, x, y)) {
+    //     RCLCPP_INFO(get_logger(), "找不到要放置的目标");
+    //     return;
+    // }
 
-    // 强制规定姿态
-    geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, place_level_1_z_, pitch_offset_);
+    // // 强制规定姿态
+    // geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, place_level_1_z_, pitch_offset_);
 
-    RCLCPP_INFO(
-        this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
-        object_pose.pose.position.z);
+    // RCLCPP_INFO(
+    //     this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
+    //     object_pose.pose.position.z);
 
-    execute_cartesian_space_trajectory(object_pose, place_box_level_1_cartesian_duration_);
+    // execute_cartesian_space_trajectory(object_pose, place_box_level_1_cartesian_duration_);
 
-    auto now=get_clock()->now();
-    while(get_clock()->now()-now<rclcpp::Duration(600ms)){  //不断更新位置
-        sample_target_xy_from_tf(0.08, x, y);
-        object_pose.pose.position.x=x;
-        object_pose.pose.position.y=y;
-        visual_target_pub_->publish(object_pose);
-    }
+    // auto now=get_clock()->now();
+    // while(get_clock()->now()-now<rclcpp::Duration(600ms)){  //不断更新位置
+    //     sample_target_xy_from_tf(0.08, x, y);
+    //     object_pose.pose.position.x=x;
+    //     object_pose.pose.position.y=y;
+    //     visual_target_pub_->publish(object_pose);
+    // }
 
-    RCLCPP_INFO(this->get_logger(), "关闭气泵");
+    // RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
-    set_air_pump(false);
+    // set_air_pump(false);
 
-    std::this_thread::sleep_for(200ms);
+    // std::this_thread::sleep_for(200ms);
 
-    RCLCPP_INFO(this->get_logger(), "返回初始位置");
+    // RCLCPP_INFO(this->get_logger(), "返回初始位置");
 
-    execute_joint_space_trajectory(home_position_, place_box_level_1_home_duration_);
+    // execute_joint_space_trajectory(home_position_, place_box_level_1_home_duration_);
 
-    std_msgs::msg::Int32 ret;
-    ret.data = 1;
-    arm_finished_pub->publish(ret);
+    // std_msgs::msg::Int32 ret;
+    // ret.data = 1;
+    // arm_finished_pub->publish(ret);
 
-    std::this_thread::sleep_for(300ms);
+    // std::this_thread::sleep_for(300ms);
 
-    RCLCPP_INFO(this->get_logger(), "第一层放块任务结束");
+    // RCLCPP_INFO(this->get_logger(), "第一层放块任务结束");
 }
 
 void ArmTaskNode::execute_place_flow_2_on_box() {
