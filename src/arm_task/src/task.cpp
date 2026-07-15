@@ -456,8 +456,15 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         RCLCPP_INFO(this->get_logger(), "启动气泵");
         set_air_pump(true);
 
-        std::this_thread::sleep_for(500ms);
-        if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试正前方
+        bool successed_grasp=false;
+        for(int i=0;i<50;i++)
+        {
+            if(get_current_box_hand_dis()<0.1f)
+                successed_grasp=true;
+            std::this_thread::sleep_for(20ms);
+        }
+        
+        if(!successed_grasp) //正下方抓取失败，尝试正前方
         {
             //set_air_pump(false);
             object_pose.pose.position.z=rady_grasp_z_;
@@ -467,9 +474,16 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
             object_pose.pose.position.x+=0.12f;
             //set_air_pump(true);
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
-            std::this_thread::sleep_for(800ms);
+            successed_grasp=false;
+            for(int i=0;i<40;i++)
+            {
+                if(get_current_box_hand_dis()<0.1f)
+                    successed_grasp=true;
+                std::this_thread::sleep_for(20ms);
+            }
+            //std::this_thread::sleep_for(800ms);
         }
-        if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试左侧
+        if(!successed_grasp) //正下方抓取失败，尝试左侧
         {
             //set_air_pump(false);
             object_pose.pose.position.z=rady_grasp_z_;
@@ -480,9 +494,16 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
             object_pose.pose.position.y+=0.12f;
             //set_air_pump(true);
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
-            std::this_thread::sleep_for(800ms);
+            successed_grasp=false;
+            for(int i=0;i<40;i++)
+            {
+                if(get_current_box_hand_dis()<0.1f)
+                    successed_grasp=true;
+                std::this_thread::sleep_for(20ms);
+            }
+            //std::this_thread::sleep_for(800ms);
         }
-        if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试右侧
+        if(!successed_grasp) //正下方抓取失败，尝试右侧
         {
             //set_air_pump(false);
             object_pose.pose.position.z=rady_grasp_z_;
@@ -492,7 +513,14 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
             object_pose.pose.position.y-=0.24f;
             //set_air_pump(true);
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
-            std::this_thread::sleep_for(800ms);
+            successed_grasp=false;
+            for(int i=0;i<40;i++)
+            {
+                if(get_current_box_hand_dis()<0.1f)
+                    successed_grasp=true;
+                std::this_thread::sleep_for(20ms);
+            }
+            //std::this_thread::sleep_for(800ms);
         }
         // if (max_ryretry != kRetrycnt) // 重试时抓的时间长一些
         //     std::this_thread::sleep_for(500ms);
