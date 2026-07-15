@@ -27,7 +27,7 @@ constexpr int kArmPlaceHandSecondFloor = 6;
 constexpr int kArmPlacePlateFirstFloor = 3;
 constexpr int kArmPlacePlateSecondFloor = 4;
 
-constexpr float dst2_pos_x_offset = 0.10f;
+constexpr float dst2_pos_x_offset = 0.15f;
 
 bool wait_for_stage(Robot* context, int32_t expected_stage) {
     while (rclcpp::ok() && context->auto_pilot_enabled.load() && context->tree_start_key.load() != expected_stage) {
