@@ -460,11 +460,11 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试正前方
         {
             //set_air_pump(false);
-            object_pose.pose.position.x+=0.12f;
             object_pose.pose.position.z=rady_grasp_z_;
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_*2);
             std::this_thread::sleep_for(650ms);
             object_pose.pose.position.z=grasp_z_;
+            object_pose.pose.position.x+=0.12f;
             //set_air_pump(true);
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
             std::this_thread::sleep_for(800ms);
@@ -472,12 +472,12 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试左侧
         {
             //set_air_pump(false);
-            object_pose.pose.position.x-=0.12f;
-            object_pose.pose.position.y+=0.12f;
             object_pose.pose.position.z=rady_grasp_z_;
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_*2);
             std::this_thread::sleep_for(650ms);
             object_pose.pose.position.z=grasp_z_;
+            object_pose.pose.position.x-=0.12f;
+            object_pose.pose.position.y+=0.12f;
             //set_air_pump(true);
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
             std::this_thread::sleep_for(800ms);
@@ -485,11 +485,11 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         if(get_current_box_hand_dis()>0.1f) //正下方抓取失败，尝试右侧
         {
             //set_air_pump(false);
-            object_pose.pose.position.y-=0.24f;
             object_pose.pose.position.z=rady_grasp_z_;
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_*2);
             std::this_thread::sleep_for(650ms);
             object_pose.pose.position.z=grasp_z_;
+            object_pose.pose.position.y-=0.24f;
             //set_air_pump(true);
             execute_cartesian_space_trajectory(object_pose, grasp_descend_duration_);
             std::this_thread::sleep_for(800ms);
@@ -509,7 +509,7 @@ void ArmTaskNode::execute_grasp_flow_on_hand() {
         max_ryretry--;
         RCLCPP_INFO(get_logger(),"测距模块读数%f", get_current_box_hand_dis());
         
-    } while ((get_current_box_hand_dis()>0.1f )&& max_ryretry);
+    } while (0);
 
     std_msgs::msg::Int32 ret;
     ret.data = 1;
@@ -923,7 +923,7 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
         execute_joint_space_trajectory(home_position_, 0.3);
         std::this_thread::sleep_for(300ms);
         return ;
-        
+
     // do {
     //     RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
     //     set_air_pump(true);
