@@ -27,6 +27,8 @@ constexpr int kArmPlaceHandSecondFloor = 6;
 constexpr int kArmPlacePlateFirstFloor = 3;
 constexpr int kArmPlacePlateSecondFloor = 4;
 
+constexpr float dst2_pos_x_offset = 0.10f;
+
 bool wait_for_stage(Robot* context, int32_t expected_stage) {
     while (rclcpp::ok() && context->auto_pilot_enabled.load() && context->tree_start_key.load() != expected_stage) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -343,11 +345,24 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
     // - 单吸计划(hand_only 非 retry)的 box0 放置跳过（真实箱已由 box1 放置），推进到下一计划；
     // - 末轮平板重试(plate_retry)只走 box0 放置，box1 放置阶段跳过。
     if (slot_ == BoxSlot::Box0 && plan.hand_only_plan && !plan.plate_retry_plan) {
-        tree.write_msg("plan_index", plan_index + 1);
+        MoveBoxPlan retreat_plan = plan;
+        std::array<std::array<float, 3>, 4> place_table{};
+        const int box_id = plan.box1.box_id;
+        if (box_id >= 0 && box_id < 4 && tree.read_msg("place_table", place_table)) {
+            retreat_plan.dst2_pos = {place_table[box_id][0] - dst2_pos_x_offset, place_table[box_id][1], place_table[box_id][2]};
+        }
+
+        const bool final_round = plan_index + 1 >= static_cast<int>(move_plan.size());
+        if (!retreat_to_dst2(context, retreat_plan, final_round)) {
+            return BT::FAILED;
+        }
+        if (!final_round) {
+            tree.write_msg("plan_index", plan_index + 1);
+        }
         if (!context->is_tree_debug_mode() && context->auto_pilot_enabled.load()) {
             context->advance_tree_stage();
         }
-        RCLCPP_INFO(context->node_->get_logger(), "PlaceBoxAction: 单吸计划跳过 box0 放置阶段");
+        RCLCPP_INFO(context->node_->get_logger(), "PlaceBoxAction: 单吸计划跳过 box0 放置阶段，已退让到 dst2");
         return BT::SUCCESS;
     }
     if (slot_ == BoxSlot::Box1 && plan.plate_retry_plan) {
@@ -441,7 +456,7 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         MoveBoxPlan retreat_plan = plan;
         std::array<std::array<float, 3>, 4> place_table{};
         if (box_id >= 0 && box_id < 4 && tree.read_msg("place_table", place_table)) {
-            retreat_plan.dst2_pos = {place_table[box_id][0] - 0.25f, place_table[box_id][1], place_table[box_id][2]};
+            retreat_plan.dst2_pos = {place_table[box_id][0] - dst2_pos_x_offset, place_table[box_id][1], place_table[box_id][2]};
         }
 
         const bool final_round = plan.finish_after_box0_place || (plan_index + 1 >= static_cast<int>(move_plan.size()));
