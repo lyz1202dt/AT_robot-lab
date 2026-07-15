@@ -116,13 +116,13 @@ public:
         {
             stand_from_passive = true;
         }
-        else
-        {
-            stand_from_passive = false;
-        }
         else if (rl.fsm.previous_state_->GetStateName() == "RLFSMStateCheck")
         {
             stand_from_check = true;
+        }
+        else
+        {
+            stand_from_passive = false;
         }
         rl.now_state = *fsm_state;
         rl.start_state = rl.now_state;
