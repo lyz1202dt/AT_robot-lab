@@ -916,89 +916,97 @@ void ArmTaskNode::execute_place_flow_2_on_box() {
     constexpr const int kRetrycnt = 2;
     int max_ryretry               = kRetrycnt;
 
-    do {
-        RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
-        set_air_pump(true);
-        execute_joint_space_trajectory(re_graspe_box_collision_avoid_position, place_box_re_grasp_collision_avoid_duration_);
-        std::this_thread::sleep_for(850ms);
-        execute_joint_space_trajectory(re_graspe_box_position, place_box_re_grasp_duration_);
-        RCLCPP_INFO(get_logger(),"pos=(%lf,%lf,%lf,%lf)",re_graspe_box_position[0],re_graspe_box_position[1],re_graspe_box_position[2],re_graspe_box_position[3]);
-        std::this_thread::sleep_for(450ms);
-
-        execute_joint_space_trajectory(place_box_collision_avoid_position, place_box_collision_avoid_duration_);
-        std::this_thread::sleep_for(200ms);
-
-        execute_joint_space_trajectory(place_position_2, place_box_level_2_prepare_duration_);
-        std::this_thread::sleep_for(3600ms);
-
-        max_ryretry--;
-
-        if(get_current_box_hand_dis() > 0.1f)
-        {
-            execute_joint_space_trajectory(home_position_, 0.2);
-            std::this_thread::sleep_for(300ms);
-        }
-        
-        RCLCPP_INFO(get_logger(),"测距模块读数%f", get_current_box_hand_dis());
-
-    } while (max_ryretry && get_current_box_hand_dis() > 0.1f);
-    if (get_current_box_hand_dis() > 0.1f) {
-        std_msgs::msg::Int32 ret;
+    std_msgs::msg::Int32 ret;
         ret.data = -1;
         arm_finished_pub->publish(ret);
         RCLCPP_INFO(get_logger(),"从背上抓取失败，触发重规划");
         execute_joint_space_trajectory(home_position_, 0.3);
         std::this_thread::sleep_for(300ms);
-        return;
-    }
+        return ;
+        
+    // do {
+    //     RCLCPP_INFO(this->get_logger(), "移动到框中抓取箱子");
+    //     set_air_pump(true);
+    //     execute_joint_space_trajectory(re_graspe_box_collision_avoid_position, place_box_re_grasp_collision_avoid_duration_);
+    //     std::this_thread::sleep_for(850ms);
+    //     execute_joint_space_trajectory(re_graspe_box_position, place_box_re_grasp_duration_);
+    //     RCLCPP_INFO(get_logger(),"pos=(%lf,%lf,%lf,%lf)",re_graspe_box_position[0],re_graspe_box_position[1],re_graspe_box_position[2],re_graspe_box_position[3]);
+    //     std::this_thread::sleep_for(450ms);
 
-    double x = 0.0;
-    double y = 0.0;
-    if (!sample_target_xy_from_tf(0.08, x, y)) {
-        RCLCPP_INFO(get_logger(), "找不到要放置的目标");
-        return;
-    }
+    //     execute_joint_space_trajectory(place_box_collision_avoid_position, place_box_collision_avoid_duration_);
+    //     std::this_thread::sleep_for(200ms);
 
-    // 强制规定姿态
-    geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, place_level_2_z_, pitch_offset_);
+    //     execute_joint_space_trajectory(place_position_2, place_box_level_2_prepare_duration_);
+    //     std::this_thread::sleep_for(3600ms);
 
-    RCLCPP_INFO(
-        this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
-        object_pose.pose.position.z);
+    //     max_ryretry--;
 
-    execute_cartesian_space_trajectory(object_pose, place_box_level_2_cartesian_duration_);
+    //     if(get_current_box_hand_dis() > 0.1f)
+    //     {
+    //         execute_joint_space_trajectory(home_position_, 0.2);
+    //         std::this_thread::sleep_for(300ms);
+    //     }
+        
+    //     RCLCPP_INFO(get_logger(),"测距模块读数%f", get_current_box_hand_dis());
 
-    auto now=get_clock()->now();
-    while(get_clock()->now()-now<rclcpp::Duration(1000ms)){  //不断更新位置
-        sample_target_xy_from_tf(0.08, x, y);
-        object_pose.pose.position.x=x;
-        object_pose.pose.position.y=y;
-        visual_target_pub_->publish(object_pose);
-    }
+    // } while (max_ryretry && get_current_box_hand_dis() > 0.1f);
+    // if (get_current_box_hand_dis() > 0.1f) {
+    //     std_msgs::msg::Int32 ret;
+    //     ret.data = -1;
+    //     arm_finished_pub->publish(ret);
+    //     RCLCPP_INFO(get_logger(),"从背上抓取失败，触发重规划");
+    //     execute_joint_space_trajectory(home_position_, 0.3);
+    //     std::this_thread::sleep_for(300ms);
+    //     return;
+    // }
 
-    RCLCPP_INFO(this->get_logger(), "关闭气泵");
+    // double x = 0.0;
+    // double y = 0.0;
+    // if (!sample_target_xy_from_tf(0.08, x, y)) {
+    //     RCLCPP_INFO(get_logger(), "找不到要放置的目标");
+    //     return;
+    // }
 
-    set_air_pump(false);
+    // // 强制规定姿态
+    // geometry_msgs::msg::PoseStamped object_pose = make_fixed_pitch_pose(x, y, place_level_2_z_, pitch_offset_);
 
-    std::this_thread::sleep_for(200ms);
+    // RCLCPP_INFO(
+    //     this->get_logger(), "放置坐标: [%.3f, %.3f, %.3f]", object_pose.pose.position.x, object_pose.pose.position.y,
+    //     object_pose.pose.position.z);
 
-    RCLCPP_INFO(this->get_logger(), "返回初始位置");
+    // execute_cartesian_space_trajectory(object_pose, place_box_level_2_cartesian_duration_);
 
-    execute_joint_space_trajectory(place_position_2, place_box_level_2_retract_duration_);
+    // auto now=get_clock()->now();
+    // while(get_clock()->now()-now<rclcpp::Duration(1000ms)){  //不断更新位置
+    //     sample_target_xy_from_tf(0.08, x, y);
+    //     object_pose.pose.position.x=x;
+    //     object_pose.pose.position.y=y;
+    //     visual_target_pub_->publish(object_pose);
+    // }
 
-    std::this_thread::sleep_for(200ms);
+    // RCLCPP_INFO(this->get_logger(), "关闭气泵");
 
-    std_msgs::msg::Int32 ret;
-    ret.data = 1;
-    arm_finished_pub->publish(ret);
+    // set_air_pump(false);
 
-    std::this_thread::sleep_for(500ms); // 等待狗子离开
+    // std::this_thread::sleep_for(200ms);
 
-    execute_joint_space_trajectory(home_position_, place_box_level_2_home_duration_);
+    // RCLCPP_INFO(this->get_logger(), "返回初始位置");
 
-    std::this_thread::sleep_for(500ms);
+    // execute_joint_space_trajectory(place_position_2, place_box_level_2_retract_duration_);
 
-    RCLCPP_INFO(this->get_logger(), "第二层放块任务结束");
+    // std::this_thread::sleep_for(200ms);
+
+    // std_msgs::msg::Int32 ret;
+    // ret.data = 1;
+    // arm_finished_pub->publish(ret);
+
+    // std::this_thread::sleep_for(500ms); // 等待狗子离开
+
+    // execute_joint_space_trajectory(home_position_, place_box_level_2_home_duration_);
+
+    // std::this_thread::sleep_for(500ms);
+
+    // RCLCPP_INFO(this->get_logger(), "第二层放块任务结束");
 }
 
 
