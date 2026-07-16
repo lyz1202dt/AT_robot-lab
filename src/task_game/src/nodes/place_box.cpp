@@ -212,6 +212,7 @@ std::vector<MoveBoxPlan> make_replan_after_plate_blocked(const std::vector<MoveB
     MoveBoxPlan retry_plan = move_plan[blocked_plan_index];
     retry_plan.box0 = blocked_task;
     retry_plan.plate_retry_plan = true;
+    retry_plan.replan_after_box1_place = false;
     retry_plan.finish_after_box0_place = true;
     retry_plan.skip_box0_place_check = true;
     replan.push_back(retry_plan);
@@ -422,6 +423,15 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         if (has_placed_count && box_id >= 0 && box_id < 4) {
             ++placed_count[box_id];
             tree.write_msg("placed_count", placed_count);
+        }
+        if (plan.replan_after_box1_place) {
+            RCLCPP_WARN(context->node_->get_logger(), "PlaceBoxAction: 第一轮 box1 放置结束，跳过 dst1 到 dst0 并提前重规划");
+            const auto replan = make_replan_after_plate_blocked(move_plan, plan_index);
+            tree.write_msg("move_plan", replan);
+            tree.write_msg<int>("plan_index", 0);
+            context->tree_start_key = Robot::kTreeArriveToBox0;
+            RCLCPP_INFO(context->node_->get_logger(), "PlaceBoxAction: 已生成 %zu 轮提前重规划计划", replan.size());
+            return BT::SUCCESS;
         }
         if (!context->is_tree_debug_mode() && context->auto_pilot_enabled.load()) {
             context->advance_tree_stage();

@@ -729,6 +729,7 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
                 plan.box1.box_id,
                 plan.dst2_pos[1]);
         } else {
+            plan.replan_after_box1_place = is_first_plan;
             plan.box1.to_box.trajectory.push_back(box1_src);
             plan.box1.to_box.target_points.push_back(plan_config.box0_to_box1);
 
