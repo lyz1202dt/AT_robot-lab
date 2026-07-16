@@ -405,12 +405,12 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         if (arm_state_ == -1) {
             RCLCPP_ERROR(context->node_->get_logger(), "机械臂返回 %s 放置失败", slot_name(slot_));
             arm_state_ = 0;
-            return BT::FAILED;
+            //return BT::FAILED;
         }
 
         if (std::chrono::steady_clock::now() - start > 20s) {
             RCLCPP_ERROR(context->node_->get_logger(), "机械臂放置 %s 超时", slot_name(slot_));
-            return BT::FAILED;
+            //return BT::FAILED;
         }
 
         std::this_thread::sleep_for(10ms);
