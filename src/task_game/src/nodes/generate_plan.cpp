@@ -710,6 +710,7 @@ BT::Status GeneratePlaneAction::execute(BT& tree) {
         first_plan = false;
 
         if (group.hand_only) {
+            plan.replan_after_box1_place = false;
             plan.hand_only_plan = true;
             plan.box0.to_box = {};
             plan.box0.to_dst = {};

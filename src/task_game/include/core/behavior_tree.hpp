@@ -152,12 +152,12 @@ public:
     // True when a child action has finished and asked the tree to stop the
     // current run so the next run can restart from the root.
     bool should_restart_from_root() const;
+    void request_restart_from_root();
 
 private:
     bool attach_parent_child(const std::shared_ptr<Node>& parent, const std::shared_ptr<Node>& child);
     void resolve_pending_links_for(const std::string& node_name);
     std::shared_ptr<Node> resolve_root() const;
-    void request_restart_from_root();
     void clear_restart_from_root();
 
     std::unordered_map<std::string, std::shared_ptr<Node>> nodes_;

@@ -52,8 +52,6 @@ struct MoveBoxPlan {
     bool plate_retry_plan{false};
     // finish_after_box0_place：本轮 box0 放完后直接结束行为树（退让 dst2 并进手动）。
     bool finish_after_box0_place{false};
-    // skip_box0_place_check：本轮 box0 放完后不再用激光距离触发新的重规划。
-    bool skip_box0_place_check{false};
 };
 
 enum class BoxSlot {

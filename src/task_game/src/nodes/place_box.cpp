@@ -61,6 +61,7 @@ const char* slot_name(BoxSlot slot) {
 MoveBoxPlan make_single_hand_place_plan(const MoveBoxPlan& previous_plan, const BoxMoveTask& remaining_task)
 {
     MoveBoxPlan plan;
+    plan.replan_after_box1_place = false;
     plan.box0 = remaining_task;
     plan.box1 = remaining_task;
     plan.hand_only_plan = true;
@@ -214,7 +215,6 @@ std::vector<MoveBoxPlan> make_replan_after_plate_blocked(const std::vector<MoveB
     retry_plan.plate_retry_plan = true;
     retry_plan.replan_after_box1_place = false;
     retry_plan.finish_after_box0_place = true;
-    retry_plan.skip_box0_place_check = true;
     replan.push_back(retry_plan);
     return replan;
 }
@@ -394,7 +394,6 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
 
     auto start = std::chrono::steady_clock::now();
 
-    bool arm_place_failed = false;
     while (rclcpp::ok()) {
 
         if (arm_state_ == 1) {
@@ -404,18 +403,21 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         }
 
         if (arm_state_ == -1) {
-            RCLCPP_WARN(context->node_->get_logger(), "机械臂返回 %s 放置失败", slot_name(slot_));
-            arm_place_failed = true;
+            RCLCPP_ERROR(context->node_->get_logger(), "机械臂返回 %s 放置失败", slot_name(slot_));
             arm_state_ = 0;
-            break;
+            return BT::FAILED;
         }
 
         if (std::chrono::steady_clock::now() - start > 20s) {
-            RCLCPP_ERROR(context->node_->get_logger(), "机械臂任务超时");
-            break;
+            RCLCPP_ERROR(context->node_->get_logger(), "机械臂放置 %s 超时", slot_name(slot_));
+            return BT::FAILED;
         }
 
         std::this_thread::sleep_for(10ms);
+    }
+
+    if (!rclcpp::ok()) {
+        return BT::FAILED;
     }
 
     // box1 从手上放置：视为成功，更新二层计数后推进。
@@ -430,6 +432,7 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
             tree.write_msg("move_plan", replan);
             tree.write_msg<int>("plan_index", 0);
             context->tree_start_key = Robot::kTreeArriveToBox0;
+            tree.request_restart_from_root();
             RCLCPP_INFO(context->node_->get_logger(), "PlaceBoxAction: 已生成 %zu 轮提前重规划计划", replan.size());
             return BT::SUCCESS;
         }
@@ -439,23 +442,7 @@ BT::Status PlaceBoxAction::execute(BT& tree) {
         return BT::SUCCESS;
     }
 
-    // box0 从平板放置：机械臂明确返回 -1 时认为平板放置失败，需要触发重规划。
     if (slot_ == BoxSlot::Box0) {
-        const bool place_failed = !plan.skip_box0_place_check && arm_place_failed;
-
-        if (place_failed) {
-            // 平板被卡死：重建剩余箱子为单吸手放计划 + 末轮平板重试，从下一轮重新开始。
-            // 注意：失败的箱子未计入 placed_count，不影响同 ID 后续箱子的楼层判定。
-            RCLCPP_ERROR(context->node_->get_logger(), "PlaceBoxAction: box0 平板放置失败(卡死)，开始重新规划轨迹");
-            const auto replan = make_replan_after_plate_blocked(move_plan, plan_index);
-            tree.write_msg("move_plan", replan);
-            tree.write_msg<int>("plan_index", 0);
-            // 从 ArriveToBox0 阶段重新进入，单吸计划会在 box0 各阶段自动跳过。
-            context->tree_start_key = Robot::kTreeArriveToBox0;
-            RCLCPP_INFO(context->node_->get_logger(), "PlaceBoxAction: 已生成 %zu 轮重规划计划", replan.size());
-            return BT::SUCCESS;
-        }
-
         // 放置成功，更新二层计数。
         if (has_placed_count && box_id >= 0 && box_id < 4) {
             ++placed_count[box_id];
