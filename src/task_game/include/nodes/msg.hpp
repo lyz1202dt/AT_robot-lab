@@ -45,7 +45,7 @@ struct MoveBoxPlan {
     // 以下为激光重规划标记：当 box0 平板放置失败（平板被卡死）时，
     // 剩余箱子改为“单吸到手上再从手上放置”，并在最后回头重试卡住的平板箱。
     // replan_after_box1_place：box1 放置后直接按 box0 平板失败重规划，跳过 box0 放置链。
-    bool replan_after_box1_place{false};
+    bool replan_after_box1_place{true};
     // hand_only_plan：本轮是单吸手放计划，真实箱子放在 box1 槽，box0 槽被跳过。
     bool hand_only_plan{false};
     // plate_retry_plan：本轮是“最后回头重试卡住的平板箱”计划，只走 box0 平板放置。
