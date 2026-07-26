@@ -214,6 +214,129 @@ void RL::InitControl()
     this->control.yaw = 0.0f;
 }
 
+size_t RL::GetConfiguredPolicyInputDim(size_t observation_dim) const
+{
+    const auto observations_history = this->params.Get<std::vector<int>>("observations_history");
+    if (observations_history.empty())
+    {
+        return observation_dim;
+    }
+    return observation_dim * observations_history.size();
+}
+
+void RL::ValidateObservationConfig(const std::vector<float>& observation) const
+{
+    const int num_observations = this->params.Get<int>("num_observations");
+    if (num_observations <= 0)
+    {
+        throw std::runtime_error("num_observations must be positive, got " + std::to_string(num_observations));
+    }
+
+    if (observation.size() != static_cast<size_t>(num_observations))
+    {
+        throw std::runtime_error(
+            "Observation dimension mismatch: config num_observations=" + std::to_string(num_observations) +
+            ", computed observation_dim=" + std::to_string(observation.size()));
+    }
+
+    const auto observations_history = this->params.Get<std::vector<int>>("observations_history");
+    const std::string history_priority = this->params.Get<std::string>("observations_history_priority", "time");
+    if (history_priority != "time" && history_priority != "term")
+    {
+        throw std::runtime_error(
+            "Unsupported observations_history_priority='" + history_priority + "'. Expected 'time' or 'term'.");
+    }
+
+    for (int history_index : observations_history)
+    {
+        if (history_index < 0)
+        {
+            throw std::runtime_error(
+                "observations_history contains negative index " + std::to_string(history_index) +
+                ". 0 must be the latest observation.");
+        }
+    }
+
+    const size_t policy_input_dim = this->GetConfiguredPolicyInputDim(observation.size());
+    if (!observations_history.empty())
+    {
+        const size_t expected_history_input_dim = static_cast<size_t>(num_observations) * observations_history.size();
+        if (policy_input_dim != expected_history_input_dim)
+        {
+            throw std::runtime_error(
+                "Policy input dimension mismatch: model_input_dim=" + std::to_string(policy_input_dim) +
+                ", num_observations * len(observations_history)=" + std::to_string(expected_history_input_dim));
+        }
+    }
+
+    if (this->params.Has("expected_policy_input_dim"))
+    {
+        const int expected_policy_input_dim = this->params.Get<int>("expected_policy_input_dim");
+        if (expected_policy_input_dim <= 0)
+        {
+            throw std::runtime_error(
+                "expected_policy_input_dim must be positive, got " + std::to_string(expected_policy_input_dim));
+        }
+        if (policy_input_dim != static_cast<size_t>(expected_policy_input_dim))
+        {
+            throw std::runtime_error(
+                "Policy input dimension mismatch: configured model_input_dim=" + std::to_string(policy_input_dim) +
+                ", expected_policy_input_dim=" + std::to_string(expected_policy_input_dim));
+        }
+    }
+
+    if (this->params.Has("expected_history_layout"))
+    {
+        const std::string expected_history_layout = this->params.Get<std::string>("expected_history_layout");
+        if (expected_history_layout != "time_major_current_to_oldest")
+        {
+            throw std::runtime_error(
+                "Unsupported expected_history_layout='" + expected_history_layout +
+                "'. Supported: time_major_current_to_oldest.");
+        }
+        if (observations_history.empty())
+        {
+            throw std::runtime_error(
+                "expected_history_layout is set, but observations_history is empty.");
+        }
+        if (history_priority != "time")
+        {
+            throw std::runtime_error(
+                "expected_history_layout=time_major_current_to_oldest requires observations_history_priority='time'.");
+        }
+        for (size_t i = 0; i < observations_history.size(); ++i)
+        {
+            if (observations_history[i] != static_cast<int>(i))
+            {
+                throw std::runtime_error(
+                    "expected_history_layout=time_major_current_to_oldest requires observations_history=[0, 1, ...]. " +
+                    std::string("Mismatch at position ") + std::to_string(i) +
+                    ": got " + std::to_string(observations_history[i]));
+            }
+        }
+    }
+}
+
+void RL::ValidateLoadedModelInput(const std::string& model_path, size_t expected_input_dim) const
+{
+    if (!this->model)
+    {
+        throw std::runtime_error("Cannot validate model input before loading model: " + model_path);
+    }
+
+    std::vector<float> dummy_input(expected_input_dim, 0.0f);
+    try
+    {
+        (void)this->model->forward({dummy_input});
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(
+            "Model input dimension check failed for '" + model_path + "': configured input_dim=" +
+            std::to_string(expected_input_dim) + ", model rejected the dummy input: " + e.what());
+    }
+}
+
 void RL::InitJointNum(size_t num_joints)
 {
     this->robot_state.motor_state.resize(num_joints);
@@ -235,6 +358,9 @@ void RL::InitRL(std::string robot_config_path)
     this->InitObservations();
     this->InitOutputs();
     this->InitControl();
+    std::vector<float> initial_observation = this->ComputeObservation();
+    this->ValidateObservationConfig(initial_observation);
+    const size_t configured_policy_input_dim = this->GetConfiguredPolicyInputDim(initial_observation.size());
 
     // init obs history
     const auto& observations_history = this->params.Get<std::vector<int>>("observations_history");  // avoid dangling reference
@@ -242,6 +368,11 @@ void RL::InitRL(std::string robot_config_path)
     {
         int history_length = *std::max_element(observations_history.begin(), observations_history.end()) + 1;
         this->history_obs_buf = ObservationBuffer(1, this->obs_dims, history_length, this->params.Get<std::string>("observations_history_priority"));
+        // Pre-fill every history slot with the current observation so that the
+        // first few control cycles do not feed zero-filled stale frames to the
+        // policy. This mirrors the training-side reset behaviour where the
+        // observation buffer is initialised with the initial observation.
+        this->history_obs_buf.reset({0}, initial_observation);
     }
 
     // init model
@@ -251,6 +382,7 @@ void RL::InitRL(std::string robot_config_path)
     {
         throw std::runtime_error("Failed to load model from: " + model_path);
     }
+    this->ValidateLoadedModelInput(model_path, configured_policy_input_dim);
 }
 
 void RL::ComputeOutput(const std::vector<float> &actions, std::vector<float> &output_dof_pos, std::vector<float> &output_dof_vel, std::vector<float> &output_dof_tau)

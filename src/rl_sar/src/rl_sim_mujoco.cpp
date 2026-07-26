@@ -7,6 +7,29 @@
 
 RL_Sim* RL_Sim::instance = nullptr;
 
+namespace
+{
+bool ShouldRetryWithMesaGL(const std::exception& e)
+{
+    return std::string(e.what()).find("could not create window") != std::string::npos &&
+           std::getenv("AT_ROBOT_LAB_MESA_GL_RESTARTED") == nullptr;
+}
+
+int RestartWithMesaGL(int argc, char** argv)
+{
+    (void)argc;
+    std::cout << LOGGER::WARNING
+              << "[MuJoCo] GLFW/GLX window creation failed. Restarting with Mesa software GL fallback."
+              << std::endl;
+    setenv("AT_ROBOT_LAB_MESA_GL_RESTARTED", "1", 1);
+    setenv("LIBGL_ALWAYS_SOFTWARE", "1", 1);
+    setenv("__GLX_VENDOR_LIBRARY_NAME", "mesa", 1);
+    execvp(argv[0], argv);
+    std::cout << LOGGER::ERROR << "[MuJoCo] Failed to restart with Mesa software GL fallback" << std::endl;
+    return 1;
+}
+}
+
 RL_Sim::RL_Sim(int argc, char **argv)
 {
     // Set static instance pointer early for signal handler
@@ -444,6 +467,18 @@ void signalHandler(int signum)
 int main(int argc, char **argv)
 {
     signal(SIGINT, signalHandler);
-    RL_Sim rl_sar(argc, argv);
+    try
+    {
+        RL_Sim rl_sar(argc, argv);
+    }
+    catch (const std::exception& e)
+    {
+        if (ShouldRetryWithMesaGL(e))
+        {
+            return RestartWithMesaGL(argc, argv);
+        }
+        std::cout << LOGGER::ERROR << e.what() << std::endl;
+        return 1;
+    }
     return 0;
 }

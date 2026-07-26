@@ -100,10 +100,17 @@ void ObservationBuffer::insert(const std::vector<float>& new_obs)
 /**
  * @brief Gets history of observations indexed by obs_ids.
  *
- * @param obs_ids An array of integers with which to index the desired
- *                observations, where 0 is the latest observation and
- *                history_length - 1 is the oldest observation.
+ * @param obs_ids Time indices into the history buffer, where 0 is the latest
+ *                observation (newest frame) and history_length - 1 is the
+ *                oldest observation. These are NOT term indices.
  * @return A vector containing the concatenated observations.
+ *
+ * Output layout depends on priority:
+ *   "time" -> [frame0_all_terms, frame1_all_terms, ...]
+ *             (Time-first + Current-to-Oldest + Term-order)
+ *   "term" -> [term0_all_frames, term1_all_frames, ...]
+ *             (Term-first + Current-to-Oldest + Time-order)
+ * In both cases frame0 = newest, frameN = oldest.
  */
 std::vector<float> ObservationBuffer::get_obs_vec(std::vector<int> obs_ids)
 {
@@ -112,47 +119,50 @@ std::vector<float> ObservationBuffer::get_obs_vec(std::vector<int> obs_ids)
         return std::vector<float>();
     }
 
-    // Calculate output size
-    int output_size = 0;
+    // Count valid time indices (those within the buffer depth [0, history_length)).
+    // obs_ids are TIME indices, not term indices.
+    int num_valid_ids = 0;
     for (int obs_id : obs_ids)
     {
-        if (obs_id >= 0 && obs_id < static_cast<int>(obs_dims.size()))
+        if (obs_id >= 0 && obs_id < history_length)
         {
-            output_size += obs_dims[obs_id];
+            num_valid_ids++;
         }
     }
 
-    if (output_size == 0)
+    if (num_valid_ids == 0)
     {
         return std::vector<float>();
     }
 
-    // Create output vector
+    // Each valid frame contributes num_obs_total values regardless of priority mode.
+    int output_size_per_env = num_valid_ids * num_obs_total;
+
     std::vector<float> output;
-    output.reserve(num_envs * history_length * output_size);
+    output.reserve(static_cast<size_t>(num_envs) * output_size_per_env);
 
     if (this->priority == "time")
     {
-        // Time priority: iterate environments first, then time steps, finally observation dimensions
+        // Time-major: concatenate entire frames (all terms at once).
+        // Output: [frame0(ang_vel,gravity,...,actions), frame1(...), ...]
+        // frame0 = newest (buf index 0), frameN = oldest.
         for (int env_idx = 0; env_idx < num_envs; ++env_idx)
         {
             for (int obs_id : obs_ids)
             {
                 if (obs_id >= 0 && obs_id < history_length)
                 {
-                    // obs_id=0 is newest (at index 0), obs_id=N is oldest (at index N)
-                    int slice_idx = obs_id;
-                    for (int i = 0; i < num_obs_total; ++i)
-                    {
-                        output.push_back(obs_buf[env_idx][slice_idx][i]);
-                    }
+                    const auto& frame = obs_buf[env_idx][obs_id];
+                    output.insert(output.end(), frame.begin(), frame.end());
                 }
             }
         }
     }
     else if (this->priority == "term")
     {
-        // Term priority: iterate environments first, then observation terms, finally time steps
+        // Term-major: for each term, concatenate its slice across all requested frames.
+        // Output: [term0(frame0,frame1,...), term1(frame0,frame1,...), ...]
+        // frame0 = newest (buf index 0), frameN = oldest.
         for (int env_idx = 0; env_idx < num_envs; ++env_idx)
         {
             int obs_offset = 0;
@@ -163,12 +173,8 @@ std::vector<float> ObservationBuffer::get_obs_vec(std::vector<int> obs_ids)
                 {
                     if (step >= 0 && step < history_length)
                     {
-                        // step=0 is newest (at index 0), step=N is oldest (at index N)
-                        int time_offset = step;
-                        for (int j = 0; j < dim; ++j)
-                        {
-                            output.push_back(obs_buf[env_idx][time_offset][obs_offset + j]);
-                        }
+                        const auto& frame = obs_buf[env_idx][step];
+                        output.insert(output.end(), frame.begin() + obs_offset, frame.begin() + obs_offset + dim);
                     }
                 }
                 obs_offset += dim;

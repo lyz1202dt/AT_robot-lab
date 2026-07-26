@@ -223,6 +223,9 @@ public:
     void InitControl();
     void InitRL(std::string robot_config_path);
     void InitJointNum(size_t num_joints);
+    size_t GetConfiguredPolicyInputDim(size_t observation_dim) const;
+    void ValidateObservationConfig(const std::vector<float>& observation) const;
+    void ValidateLoadedModelInput(const std::string& model_path, size_t expected_input_dim) const;
 
     // rl functions
     virtual std::vector<float> Forward() = 0;

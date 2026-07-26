@@ -15,6 +15,8 @@
 #include "glfw_adapter.h"
 
 #include <cstdlib>
+#include <iostream>
+#include <stdexcept>
 #include <utility>
 
 #include <GLFW/glfw3.h>
@@ -28,8 +30,14 @@
 
 namespace mujoco {
 namespace {
+void GlfwErrorCallback(int error, const char* description) {
+  std::cerr << "[GLFW] Error " << error << ": "
+            << (description ? description : "(no description)") << std::endl;
+}
+
 int MaybeGlfwInit() {
   static const int is_initialized = []() {
+    glfwSetErrorCallback(GlfwErrorCallback);
     auto success = Glfw().glfwInit();
     if (success == GLFW_TRUE) {
       std::atexit(Glfw().glfwTerminate);
@@ -54,14 +62,38 @@ GlfwAdapter::GlfwAdapter() {
   Glfw().glfwWindowHint(GLFW_VISIBLE, 1);
 
   // get video mode and save
-  vidmode_ = *Glfw().glfwGetVideoMode(Glfw().glfwGetPrimaryMonitor());
+  GLFWmonitor* primary_monitor = Glfw().glfwGetPrimaryMonitor();
+  if (!primary_monitor) {
+    mju_error("could not find a primary monitor. Check DISPLAY/WAYLAND_DISPLAY and X permissions.");
+  }
+  const GLFWvidmode* video_mode = Glfw().glfwGetVideoMode(primary_monitor);
+  if (!video_mode) {
+    mju_error("could not query GLFW video mode");
+  }
+  vidmode_ = *video_mode;
 
   // create window
   window_ = Glfw().glfwCreateWindow((2 * vidmode_.width) / 3,
                                     (2 * vidmode_.height) / 3,
                                     "MuJoCo", nullptr, nullptr);
   if (!window_) {
-    mju_error("could not create window");
+    std::cerr << "[GLFW] Retrying MuJoCo window creation without multisampling." << std::endl;
+    Glfw().glfwWindowHint(GLFW_SAMPLES, 0);
+    window_ = Glfw().glfwCreateWindow((2 * vidmode_.width) / 3,
+                                      (2 * vidmode_.height) / 3,
+                                      "MuJoCo", nullptr, nullptr);
+  }
+  if (!window_) {
+    const char* display = std::getenv("DISPLAY");
+    const char* wayland_display = std::getenv("WAYLAND_DISPLAY");
+    std::cerr << "[GLFW] Failed to create MuJoCo window. DISPLAY="
+              << (display ? display : "(unset)")
+              << ", WAYLAND_DISPLAY="
+              << (wayland_display ? wayland_display : "(unset)")
+              << std::endl;
+    std::cerr << "[GLFW] If NVIDIA GLX is selected but the NVIDIA driver is unavailable, try: "
+              << "LIBGL_ALWAYS_SOFTWARE=1 __GLX_VENDOR_LIBRARY_NAME=mesa" << std::endl;
+    throw std::runtime_error("could not create window. Check OpenGL/GLX driver availability and display permissions.");
   }
 
   // save window position and size
