@@ -16,6 +16,7 @@
 #include <memory>
 #include <fstream>
 #include <mutex>
+#include <cmath>
 
 #include <yaml-cpp/yaml.h>
 #include "fsm.hpp"

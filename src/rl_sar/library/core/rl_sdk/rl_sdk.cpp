@@ -110,6 +110,14 @@ std::vector<float> RL::ComputeObservation()
         {
             obs_list.push_back(this->obs.actions);
         }
+        else if (observation == "phase")
+        {
+            const float cycle_time = this->params.Get<float>("cycle_time", 0.5f);
+            const float step_dt = this->params.Get<float>("dt") * this->params.Get<int>("decimation");
+            const float phase = static_cast<float>(this->episode_length_buf) * step_dt / cycle_time;
+            constexpr float kTwoPi = 6.2831853071795864769f;
+            obs_list.push_back({std::sin(kTwoPi * phase), std::cos(kTwoPi * phase)});
+        }
         // ============= Other Observations =============
         else if (observation == "whole_body_tracking/motion_command")
         {
@@ -242,6 +250,7 @@ void RL::InitRL(std::string robot_config_path)
     {
         int history_length = *std::max_element(observations_history.begin(), observations_history.end()) + 1;
         this->history_obs_buf = ObservationBuffer(1, this->obs_dims, history_length, this->params.Get<std::string>("observations_history_priority"));
+        this->history_obs_buf.reset({0}, this->ComputeObservation());
     }
 
     // init model

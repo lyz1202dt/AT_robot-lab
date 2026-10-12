@@ -12,6 +12,7 @@
 #include "fsm_d1.hpp"
 #include "fsm_g1.hpp"
 #include "fsm_go2.hpp"
+#include "fsm_csdog1.hpp"
 #include "fsm_go2w.hpp"
 #include "fsm_gr1t1.hpp"
 #include "fsm_gr1t2.hpp"
@@ -19,7 +20,5 @@
 #include "fsm_lite3.hpp"
 #include "fsm_tita.hpp"
 #include "fsm_atdog.hpp"
-#include "fsm_atdog2.hpp"
-#include "fsm_atdog3.hpp"
 
 #endif // FSM_ALL_HPP
